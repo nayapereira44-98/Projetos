@@ -19,8 +19,8 @@ export type Destaque = {
 export type Intervalo = { inicioSeg: number; fimSeg: number };
 
 export const ROTEIRO = {
-  // Arquivo dentro de public/ (ex.: "entrevista.mp4"). Sem ele, aparece a foto de referência.
-  video: "entrevista.mp4",
+  // Arquivo dentro de public/ (ex.: "entrevista.mov"). Sem ele, aparece a foto de referência.
+  video: "entrevista.mov",
   // trecho do arquivo que entra na edição
   inicioSeg: 0,
   fimSeg: 360,

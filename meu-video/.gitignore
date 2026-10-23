@@ -8,7 +8,6 @@ out
 
 # Fotos e vídeos da entrevistada não vão para o Git
 public/foto-tela.png
-public/viva-logo.png
 public/foto-ref.jpg
 public/*.mp4
 public/*.mov
