@@ -23,10 +23,26 @@ import { ROTEIRO } from "../src/entrevista/roteiro.ts";
 
 registerMediabunnyServer();
 
+// O runtime de IA pode travar ao fechar; avisa o scripts/legendas.mjs, que encerra este processo.
+const sair = (codigo: number) => console.log(codigo === 0 ? "@@PRONTO" : "@@FALHOU");
+const falhou = (erro: unknown) => {
+  console.error("Erro ao gerar legendas:", erro instanceof Error ? erro.message : erro);
+  sair(1);
+};
+process.on("uncaughtException", falhou);
+process.on("unhandledRejection", falhou);
+
 const support = await canUseWhisperWebGpu();
 if (!support.supported) {
-  throw new Error(support.detailedReason);
+  console.error(
+    "Este computador não tem placa de vídeo compatível para gerar as legendas.\n" +
+      "Alternativa: gere um arquivo .srt (CapCut, Premiere) e mande para o Claude.\n\n" +
+      support.detailedReason,
+  );
+  sair(1);
+  await new Promise(() => {});
 }
+console.log("Lendo o áudio do vídeo...");
 
 const chunks: { startFrame: number; waveform: Float32Array }[] = [];
 
@@ -88,6 +104,7 @@ for (const c of chunks) {
   }
 }
 
+console.log("Transcrevendo (na primeira vez baixa o modelo, pode demorar)...");
 const model = "small";
 await downloadWhisperModel({ model });
 await loadWhisperModel({ model });
@@ -96,3 +113,4 @@ const { captions } = toCaptions({ whisperWebGpuOutput: transcription });
 
 await writeFile("public/legendas.json", JSON.stringify(captions, null, 2));
 console.log(`Pronto: ${captions.length} palavras em public/legendas.json`);
+sair(0);

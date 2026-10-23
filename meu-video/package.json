@@ -37,7 +37,7 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    "legendas": "tsx scripts/transcrever.mts",
+    "legendas": "node scripts/legendas.mjs",
     "render": "remotion render Entrevista out/entrevista-viva.mp4"
   },
   "allowScripts": {
