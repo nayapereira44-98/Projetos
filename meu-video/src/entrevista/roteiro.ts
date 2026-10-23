@@ -25,7 +25,7 @@ export const ROTEIRO = {
   inicioSeg: 0,
   fimSeg: 360,
 
-  nome: "Nome da Entrevistada",
+  nome: "Taise",
   abertura: {
     rotulo: "UMA HISTÓRIA DE FÉ",
     subtitulo: "Fé, força e gratidão na caminhada contra o câncer de mama",
@@ -35,9 +35,10 @@ export const ROTEIRO = {
     texto: "Obrigada por compartilhar a sua história.",
   },
 
-  // Trilha instrumental opcional em public/ (ex.: "trilha.mp3"); null = sem trilha
-  trilha: null as string | null,
-  volumeTrilha: 0.12,
+  // Trilha instrumental em public/ (gerada por scripts/gerar_trilha.py); null = sem trilha
+  trilha: "trilha.mp3" as string | null,
+  volumeTrilha: 0.1,
+  volumeTrilhaVinhetas: 0.6,
 
   // Enquadramento do rosto para os closes das laterais (0 a 1 da imagem) e zoom
   rosto: { x: 0.5, y: 0.33, zoom: 1.4 },

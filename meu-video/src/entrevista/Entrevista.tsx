@@ -330,10 +330,6 @@ const Corpo: React.FC<Props> = ({ legendas }) => {
   return (
     <AbsoluteFill style={{ background: FUNDO }}>
       <Fita y={560} opacidade={0.4} id="fita-corpo" />
-      {ROTEIRO.trilha && temArquivo(ROTEIRO.trilha) ? (
-        <Audio src={staticFile(ROTEIRO.trilha)} volume={ROTEIRO.volumeTrilha} loop />
-      ) : null}
-
       {ROTEIRO.closes.map((c, i) => {
         const duracao = Math.round((c.fimSeg - c.inicioSeg) * fps);
         return (
@@ -503,6 +499,27 @@ export const Video: React.FC<Props> = ({ legendas }) => {
   const corpo = Math.round((ROTEIRO.fimSeg - ROTEIRO.inicioSeg) * FPS);
   return (
     <AbsoluteFill style={{ backgroundColor: CREME }}>
+      {ROTEIRO.trilha && temArquivo(ROTEIRO.trilha) ? (
+        <Audio
+          src={staticFile(ROTEIRO.trilha)}
+          loop
+          // mais alta na abertura e no encerramento, baixinha enquanto ela fala
+          volume={(f) =>
+            interpolate(
+              f,
+              [0, abertura - 30, abertura + 30, abertura + corpo - 30, abertura + corpo + 30],
+              [
+                ROTEIRO.volumeTrilhaVinhetas,
+                ROTEIRO.volumeTrilhaVinhetas,
+                ROTEIRO.volumeTrilha,
+                ROTEIRO.volumeTrilha,
+                ROTEIRO.volumeTrilhaVinhetas,
+              ],
+              { extrapolateRight: "clamp" },
+            )
+          }
+        />
+      ) : null}
       <Sequence durationInFrames={abertura}>
         <Abertura />
       </Sequence>
