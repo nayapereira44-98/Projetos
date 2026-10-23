@@ -309,12 +309,17 @@ const Corpo: React.FC<Props> = ({ legendas }) => {
   );
   const { pages } = createTikTokStyleCaptions({
     captions: legendas,
-    combineTokensWithinMilliseconds: 2600,
+    combineTokensWithinMilliseconds: ROTEIRO.agruparLegendasMs,
   });
   const ms = seg * 1000;
-  const pagina = pages.find(
-    (p) => ms >= p.startMs && ms < p.startMs + p.durationMs,
-  );
+  // cada legenda fica na tela até a próxima começar, no máximo 1,5 s depois de acabar
+  const pagina = pages.find((p, i) => {
+    const fim = Math.min(
+      pages[i + 1]?.startMs ?? Infinity,
+      p.startMs + p.durationMs + 1500,
+    );
+    return ms >= p.startMs && ms < fim;
+  });
 
   const painel = (lado: "left" | "right"): React.CSSProperties => ({
     position: "absolute",
@@ -381,7 +386,23 @@ const Corpo: React.FC<Props> = ({ legendas }) => {
             {atual.texto}
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div style={painel("left")}>
+          <div style={{ marginBottom: 10 }}>
+            <Rotulo texto={ROTEIRO.abertura.rotulo} />
+          </div>
+          <div
+            style={{
+              fontFamily: script,
+              fontSize: 150,
+              color: FRAMBOESA,
+              lineHeight: 1.2,
+            }}
+          >
+            {ROTEIRO.nome}
+          </div>
+        </div>
+      )}
 
       <div style={painel("right")}>
         {destaque ? (
