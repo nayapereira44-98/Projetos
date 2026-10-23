@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "video-edit": {
+      "source": "yerinsabraham/video-edit-skill",
+      "sourceType": "github",
+      "skillPath": "skills/video-edit/SKILL.md",
+      "computedHash": "56d673dfb0517304c1101c4ba9c25f67cc2e6aaf41b5982b9f915882410dae44"
+    }
+  }
+}
