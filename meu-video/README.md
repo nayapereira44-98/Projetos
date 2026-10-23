@@ -1,54 +1,15 @@
-# Remotion video
+# Vídeo da entrevista – VIVA
 
-<p align="center">
-  <a href="https://github.com/remotion-dev/logo">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-dark.apng">
-      <img alt="Animated Remotion Logo" src="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-light.gif">
-    </picture>
-  </a>
-</p>
+Vídeo para o telão (3584×1080) com abertura animada, telas de pergunta,
+legendas e encerramento. Tudo que muda fica em `src/entrevista/roteiro.ts`.
 
-Welcome to your Remotion project!
+## Passo a passo (no seu computador)
 
-## Commands
-
-**Install Dependencies**
-
-```console
-npm i --loglevel=error
-```
-
-**Start Preview**
-
-```console
-npm run dev
-```
-
-**Render video**
-
-```console
-npx remotion render
-```
-
-**Upgrade Remotion**
-
-```console
-npx remotion upgrade
-```
-
-## Docs
-
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
-
-## Help
-
-We provide help on our [Discord server](https://discord.gg/6VzzNDwUwV).
-
-## Issues
-
-Found an issue with Remotion? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
-
-## License
-
-Note that for some entities a company license is needed. [Read the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+1. Instale o Node.js (versão 22 ou mais nova) e rode `npm i` nesta pasta.
+2. Coloque em `public/`:
+   - o vídeo da entrevista com o nome `entrevista.mp4` (ou mude `video` no roteiro);
+   - a logo `viva-logo.png` (arte do evento na horizontal, fundo transparente).
+3. Gere as legendas: `npm run legendas` (cria `public/legendas.json`).
+4. Abra o editor: `npm run dev`. Ajuste no `roteiro.ts` os tempos de cada pergunta,
+   as frases de destaque, os closes e o nome dela, vendo o resultado ao vivo.
+5. Exporte: `npm run render` → `out/entrevista-viva.mp4`.
