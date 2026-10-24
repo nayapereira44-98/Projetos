@@ -1,0 +1,390 @@
+<title>Territórios Visuais Dassah</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital@0;1&family=Hanken+Grotesk:wght@400;500;600&family=Young+Serif&family=Figtree:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..500;1,8..60,300..500&display=swap">
+<style>
+/* Layout: moldura neutra e quieta; cada território ocupa uma faixa inteira com as próprias cores, como se fosse uma prancha de apresentação. */
+:root {
+  --bg: #F5F5F3;
+  --fg: #1A1A1A;
+  --muted: #66645F;
+  --line: #D9D8D3;
+  --surface: #ECEBE7;
+  --ui: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --read: "Source Serif 4", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #181817; --fg: #F1F0EC; --muted: #A8A69F; --line: #34332F; --surface: #222220; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #181817; --fg: #F1F0EC; --muted: #A8A69F; --line: #34332F; --surface: #222220; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--read); font-size: 1.0625rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { margin: 0; font-weight: 500; line-height: 1.1; text-wrap: balance; }
+p { margin: 0; max-width: 64ch; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+.ui { font-family: var(--ui); }
+.muted { color: var(--muted); }
+
+/* Abertura */
+.intro .wrap { padding-block: clamp(48px, 8vw, 104px) 56px; display: grid; gap: 28px; }
+.intro h1 { font-family: var(--ui); font-weight: 600; font-size: clamp(2.2rem, 5.5vw, 3.8rem); letter-spacing: -0.03em; max-width: 16ch; }
+.intro .lead { font-size: 1.375rem; font-weight: 300; line-height: 1.45; max-width: 46ch; }
+.learn { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.learn > div { padding: 18px 20px 0 0; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.learn > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.learn h4 { font-family: var(--ui); font-weight: 600; font-size: 1rem; }
+.note { background: var(--surface); padding: 20px 22px; display: grid; gap: 6px; }
+.note h4 { font-family: var(--ui); font-weight: 600; font-size: 1rem; }
+
+/* Faixa de território */
+.route { color: var(--r-fg); background: var(--r-bg); }
+.route .wrap { padding-block: clamp(56px, 8vw, 104px); display: grid; gap: 48px; }
+.route-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+.route-head > * { min-width: 0; }
+.route .tag { font-family: var(--ui); font-size: .875rem; color: var(--r-soft); }
+.route h2 { font-family: var(--r-display); font-size: clamp(2.6rem, 6vw, 4.4rem); letter-spacing: -0.01em; margin-top: 10px; }
+.route .origin { margin-top: 18px; font-style: italic; color: var(--r-soft); max-width: 40ch; }
+.route .concept { display: grid; gap: 14px; }
+.route .concept p { font-family: var(--r-text); }
+
+.board { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+.board > * { min-width: 0; }
+.tile { background: var(--r-tile); color: var(--r-tile-fg); position: relative; display: grid; place-items: center; padding: 28px; min-height: 280px; }
+.tile .cap { position: absolute; left: 14px; bottom: 10px; font-family: var(--ui); font-size: .75rem; opacity: .7; }
+.tile.alt { background: var(--r-bg2); color: var(--r-bg2-fg); }
+.symbol { width: min(200px, 60%); aspect-ratio: 1; display: block; }
+.lockup { display: flex; align-items: center; gap: .3em; font-size: clamp(2.2rem, 5vw, 3.4rem); }
+.lockup svg { width: 1.1em; height: 1.1em; flex: none; }
+
+.specs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.specs > * { min-width: 0; }
+.palette { display: grid; grid-template-columns: 2fr 1.3fr 1fr .7fr; min-height: 168px; }
+.palette > div { padding: 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; font-family: var(--ui); font-size: .8rem; min-width: 0; }
+.palette b { font-weight: 600; font-size: .9rem; }
+.typeset { background: var(--r-tile); color: var(--r-tile-fg); padding: 24px; display: grid; gap: 10px; align-content: start; }
+.typeset .big { font-family: var(--r-display); font-size: clamp(2.4rem, 5vw, 3.4rem); line-height: 1; }
+.typeset .names { font-family: var(--ui); font-size: .8rem; opacity: .75; }
+
+.apps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start; }
+.apps figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.apps figcaption { font-family: var(--ui); font-size: .8rem; color: var(--r-soft); }
+.post { aspect-ratio: 4 / 5; container-type: inline-size; position: relative; overflow: hidden; display: grid; align-content: space-between; padding: 9% 9%; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card { aspect-ratio: 85 / 55; container-type: inline-size; position: relative; overflow: hidden; display: grid; padding: 8%; min-width: 0; box-shadow: 0 1px 0 rgba(0,0,0,.08); font-size: 1rem; }
+.card.back > div { font-size: 4.4cqw; line-height: 1.4; }
+
+.verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; border-top: 1px solid var(--r-line); }
+.verdict > div { padding-top: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.verdict h4 { font-family: var(--ui); font-weight: 600; font-size: .95rem; }
+.verdict p { font-family: var(--r-text); color: var(--r-soft); }
+
+/* Território A: O Selo */
+.ra { --r-bg: #1F2547; --r-fg: #F1F1EE; --r-soft: #B9BCCB; --r-line: #3A4170; --r-tile: #F1F1EE; --r-tile-fg: #1F2547; --r-bg2: #8C2F2B; --r-bg2-fg: #F1F1EE;
+      --r-display: "Libre Caslon Display", "Libre Caslon Text", Georgia, serif; --r-text: "Libre Caslon Text", Georgia, serif; }
+.ra .wm { font-family: "Libre Caslon Display", Georgia, serif; letter-spacing: .01em; }
+.ra .post { background: #F1F1EE; color: #1F2547; }
+.ra .post .h { font-family: "Libre Caslon Display", Georgia, serif; font-size: 11cqw; line-height: 1.04; }
+.ra .post .f { font-family: "Hanken Grotesk", sans-serif; font-size: 4.2cqw; display: flex; justify-content: space-between; align-items: center; }
+.ra .post .f svg { width: 9cqw; height: 9cqw; }
+.ra .card.front { background: #1F2547; color: #F1F1EE; place-items: center; }
+.ra .card.back { background: #F1F1EE; color: #1F2547; align-content: end; font-family: "Hanken Grotesk", sans-serif; }
+.ra .card.back b { font-family: "Libre Caslon Display", Georgia, serif; font-weight: 400; font-size: 7cqw; display: block; }
+.ra .card .seal-dot { position: absolute; right: 8%; top: 10%; width: 14cqw; height: 14cqw; color: #8C2F2B; }
+
+/* Território B: A Murta */
+.rb { --r-bg: #2E2238; --r-fg: #F7F6F2; --r-soft: #C7BFCF; --r-line: #4A3D56; --r-tile: #E6E8E3; --r-tile-fg: #2E2238; --r-bg2: #4D6A52; --r-bg2-fg: #F7F6F2;
+      --r-display: "Young Serif", Georgia, serif; --r-text: "Figtree", "Helvetica Neue", sans-serif; }
+.rb .wm { font-family: "Young Serif", Georgia, serif; }
+.rb .post { background: #4D6A52; color: #F7F6F2; }
+.rb .post .h { font-family: "Young Serif", Georgia, serif; font-size: 10.5cqw; line-height: 1.08; }
+.rb .post .f { font-family: "Figtree", sans-serif; font-size: 4.2cqw; display: flex; justify-content: space-between; align-items: center; }
+.rb .post .f svg { width: 9cqw; height: 9cqw; }
+.rb .card.front { background: #E6E8E3; color: #2E2238; place-items: center; }
+.rb .card.back { background: #2E2238; color: #F7F6F2; align-content: end; font-family: "Figtree", sans-serif; }
+.rb .card.back b { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 7cqw; display: block; }
+
+/* Território C: A Nota */
+.rc { --r-bg: #FFFFFF; --r-fg: #000000; --r-soft: #55534E; --r-line: #DEDDD8; --r-tile: #E4E3DF; --r-tile-fg: #000000; --r-bg2: #000000; --r-bg2-fg: #FFFFFF;
+      --r-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; --r-text: "Source Serif 4", Georgia, serif; }
+.rc h2 { font-weight: 800; letter-spacing: -0.04em; }
+.rc .wm { font-family: "Schibsted Grotesk", Arial, sans-serif; font-weight: 800; letter-spacing: -0.045em; }
+.rc .wm sup { font-size: .5em; vertical-align: .75em; margin-left: .02em; color: #6A1E3A; }
+.rc .post { background: #000000; color: #FFFFFF; }
+.rc .post .num { font-family: "Schibsted Grotesk", Arial, sans-serif; font-weight: 800; font-size: 44cqw; letter-spacing: -0.06em; line-height: .85; }
+.rc .post .num sup { font-size: .42em; vertical-align: .9em; color: #E07A9B; }
+.rc .post .fn { font-family: "Source Serif 4", Georgia, serif; font-style: italic; font-size: 5.6cqw; line-height: 1.35; max-width: 26ch; }
+.rc .post .f { font-family: "Schibsted Grotesk", sans-serif; font-weight: 700; font-size: 4.6cqw; display: flex; justify-content: space-between; letter-spacing: -0.02em; }
+.rc .post .src { font-family: "Schibsted Grotesk", sans-serif; font-size: 3.8cqw; color: #A9A7A1; }
+.rc .card.front { background: #FFFFFF; color: #000000; align-content: space-between; outline: 1px solid #DEDDD8; outline-offset: -1px; }
+.rc .card.front .wm { font-size: 13cqw; }
+.rc .card.front .fn { font-family: "Source Serif 4", Georgia, serif; font-style: italic; font-size: 4.2cqw; color: #55534E; }
+.rc .card.back { background: #6A1E3A; color: #FFFFFF; align-content: end; font-family: "Schibsted Grotesk", sans-serif; }
+.rc .card.back b { font-weight: 700; font-size: 6.5cqw; display: block; letter-spacing: -0.02em; }
+
+/* Fechamento */
+.close .wrap { padding-block: 72px 96px; display: grid; gap: 28px; }
+.close h2 { font-family: var(--ui); font-weight: 600; font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -0.02em; }
+.cmp { width: 100%; border-collapse: collapse; font-family: var(--ui); font-size: .95rem; }
+.cmp th, .cmp td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
+.cmp thead th { font-weight: 600; border-bottom: 2px solid var(--fg); }
+.cmp tbody th { font-weight: 500; color: var(--muted); width: 22%; }
+.table-wrap { overflow-x: auto; }
+.qs { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+
+@media (max-width: 860px) {
+  .route-head, .board, .specs, .apps, .verdict, .learn { grid-template-columns: minmax(0, 1fr); }
+  .learn > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 18px; margin-top: 18px; }
+  .verdict > div + div { margin-top: 12px; }
+}
+@media (max-width: 480px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .palette { grid-template-columns: 1fr 1fr; }
+  .palette > div { min-height: 84px; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- A: dois triângulos entrelaçados dentro de um selo. --halo é a cor do fundo, que abre o cruzamento. -->
+    <symbol id="selo" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="47" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="50" cy="50" r="43.5" fill="none" stroke="currentColor" stroke-width=".7"/>
+      <g fill="none" stroke-linejoin="miter">
+        <path d="M50 84 L20.56 33 L79.44 33 Z" stroke="var(--halo)" stroke-width="8"/>
+        <path d="M50 84 L20.56 33 L79.44 33 Z" stroke="currentColor" stroke-width="3.2"/>
+        <path d="M50 16 L79.44 67 L20.56 67 Z" stroke="var(--halo)" stroke-width="8"/>
+        <path d="M50 16 L79.44 67 L20.56 67 Z" stroke="currentColor" stroke-width="3.2"/>
+        <g stroke-linecap="butt">
+          <path d="M54.81 33 L64.81 33" stroke="var(--halo)" stroke-width="8"/>
+          <path d="M53.81 33 L65.81 33" stroke="currentColor" stroke-width="3.2"/>
+          <path d="M62.31 62.67 L57.31 71.33" stroke="var(--halo)" stroke-width="8"/>
+          <path d="M62.81 61.80 L56.81 72.20" stroke="currentColor" stroke-width="3.2"/>
+          <path d="M32.87 54.33 L27.87 45.67" stroke="var(--halo)" stroke-width="8"/>
+          <path d="M33.37 55.20 L27.37 44.80" stroke="currentColor" stroke-width="3.2"/>
+        </g>
+      </g>
+    </symbol>
+    <!-- B: o D é uma folha de murta; a folhinha oposta é o Co. Os pontos são as glândulas de óleo da folha. -->
+    <symbol id="murta" viewBox="0 0 100 100">
+      <path d="M36 10 C62 15 82 31 92 56 C78 76 60 87 36 90 Z" fill="currentColor"/>
+      <rect x="30" y="8" width="6" height="84" rx="3" fill="currentColor"/>
+      <path d="M30 38 C18 35 9 27 5 14 C17 17 26 26 30 38 Z" fill="currentColor"/>
+      <path d="M36 52 C56 50 74 51 89 56" fill="none" stroke="var(--halo)" stroke-width="2.2" stroke-linecap="round"/>
+      <g fill="var(--halo)"><circle cx="54" cy="36" r="1.3"/><circle cx="66" cy="44" r="1.1"/><circle cx="58" cy="66" r="1.3"/><circle cx="47" cy="72" r="1"/></g>
+    </symbol>
+    <!-- C: asterisco de seis pontas, a marca de nota de rodapé. -->
+    <symbol id="nota" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M51.10 50.00 L54.25 10.00 A4.25 4.25 0 0 0 45.75 10.00 L48.90 50.00 Z M50.55 50.95 L86.77 33.68 A4.25 4.25 0 0 0 82.52 26.32 L49.45 49.05 Z M49.45 50.95 L82.52 73.68 A4.25 4.25 0 0 0 86.77 66.32 L50.55 49.05 Z M48.90 50.00 L45.75 90.00 A4.25 4.25 0 0 0 54.25 90.00 L51.10 50.00 Z M49.45 49.05 L13.23 66.32 A4.25 4.25 0 0 0 17.48 73.68 L50.55 50.95 Z M50.55 49.05 L17.48 26.32 A4.25 4.25 0 0 0 13.23 33.68 L49.45 50.95 Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="intro gutter">
+  <div class="wrap">
+    <span class="ui muted">Dassah Co., identidade visual, rodada 2</span>
+    <h1>Três caminhos para a identidade</h1>
+    <p class="lead">Cada um sai de uma parte diferente da explicação do nome. Nenhum é final. Dá para escolher um, juntar dois ou descartar os três e voltar uma casa.</p>
+    <div class="learn">
+      <div><h4>O que não funcionou</h4><p>O símbolo de filamentos não se lia como marca, e o verde com azul ficou institucional e frio.</p></div>
+      <div><h4>O que é boutique</h4><p>Poucos elementos com acabamento alto. Tipografia com presença. Cor profunda. A sensação de receber uma carta escrita para você.</p></div>
+      <div><h4>O que continua proibido</h4><p>Creme com dourado, ramo em traço fino e o brilho de quatro pontas. São os sinais mais fortes de marca feita por IA.</p></div>
+    </div>
+    <div class="note">
+      <h4>Sobre a estrela de Davi</h4>
+      <p>Ela é o símbolo central do judaísmo e está na bandeira de Israel. Usada inteira e sozinha como logo comercial, pode ser lida como filiação religiosa ou política, o que a Dassah não quer comunicar. Por isso os caminhos usam a geometria dela de forma indireta: entrelaçada dentro de um selo (A) ou reduzida às seis pontas de um asterisco (C).</p>
+    </div>
+  </div>
+</header>
+
+<!-- Território A -->
+<section class="route ra gutter" style="--halo:#F1F1EE">
+  <div class="wrap">
+    <div class="route-head">
+      <div>
+        <span class="tag">Caminho A</span>
+        <h2>O Selo</h2>
+        <p class="origin">"O escrito que se sela com o anel do rei não se pode revogar." Ester 8:8</p>
+      </div>
+      <div class="concept">
+        <p>Ester muda a história do seu povo com um documento selado. O selo é compromisso: o que foi decidido não volta atrás. É isso que a Dassah entrega para o cliente, uma direção assinada.</p>
+        <p>Dentro do selo, a estrela de Davi aparece como dois triângulos entrelaçados, um passando por cima do outro. São a Dassah e o cliente: construção em companhia, o sentido do Co. O selo também conversa com os selos de evidência do método.</p>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="tile"><svg class="symbol" role="img" aria-label="Símbolo do Selo"><use href="#selo"/></svg><span class="cap">Símbolo</span></div>
+      <div class="tile"><div class="lockup"><svg aria-hidden="true"><use href="#selo"/></svg><span class="wm">Dassah Co.</span></div><span class="cap">Assinatura</span></div>
+    </div>
+
+    <div class="specs">
+      <div class="palette">
+        <div style="background:#1F2547;color:#F1F1EE;box-shadow:inset 0 0 0 1px #3A4170"><b>Tinta</b>#1F2547</div>
+        <div style="background:#F1F1EE;color:#1F2547"><b>Papel</b>#F1F1EE</div>
+        <div style="background:#8C2F2B;color:#F1F1EE"><b>Lacre</b>#8C2F2B</div>
+        <div style="background:#A8A39B;color:#1F2547"><b>Pedra</b>#A8A39B</div>
+      </div>
+      <div class="typeset">
+        <span class="big" style="font-family:'Libre Caslon Display',serif">Aa Gg</span>
+        <span class="names">Libre Caslon Display para títulos, Hanken Grotesk para texto</span>
+        <p style="font-family:'Hanken Grotesk',sans-serif;font-size:.95rem">A Caslon é a letra das declarações e dos contratos. Aqui ela dá o tom de documento importante, sem o floreio das serifadas de moda.</p>
+      </div>
+    </div>
+
+    <div class="apps">
+      <figure>
+        <div class="post"><span class="f"><svg aria-hidden="true" style="--halo:#F1F1EE"><use href="#selo"/></svg><span>1/5</span></span><span class="h">Você só aprova. A gente assina o resto.</span></div>
+        <figcaption>Post do Instagram, 1080 × 1350.</figcaption>
+      </figure>
+      <figure>
+        <div class="cards">
+          <div class="card front" style="--halo:#1F2547"><div class="lockup" style="font-size:6.5cqw;color:#F1F1EE"><svg aria-hidden="true"><use href="#selo"/></svg><span class="wm" style="font-family:'Libre Caslon Display',serif">Dassah Co.</span></div></div>
+          <div class="card back"><svg class="seal-dot" aria-hidden="true" style="--halo:#F1F1EE"><use href="#selo"/></svg><div><b>Victoria Lima</b>Estratégia e comunicação<br>hello.dassahco@gmail.com</div></div>
+        </div>
+        <figcaption>Cartão de visita, 85 × 55 mm. Na gráfica, o selo vai em relevo seco ou em lacre vermelho, nunca em dourado.</figcaption>
+      </figure>
+    </div>
+
+    <div class="verdict">
+      <div><h4>O que esse caminho diz</h4><p>Autoridade discreta, compromisso, documento. Fala muito bem com a média empresa e com a proposta de FEE.</p></div>
+      <div><h4>Risco</h4><p>Pode ficar sério demais para a Renata. A estrela, mesmo entrelaçada, ainda é reconhecível; vale testar com duas ou três clientes.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Território B -->
+<section class="route rb gutter" style="--halo:#E6E8E3">
+  <div class="wrap">
+    <div class="route-head">
+      <div>
+        <span class="tag">Caminho B</span>
+        <h2>A Murta</h2>
+        <p class="origin">Hadassa significa murta.</p>
+      </div>
+      <div class="concept">
+        <p>O D do símbolo é uma folha de murta. A folhinha do outro lado do talo é o Co.: na murta, as folhas nascem sempre em pares, uma de frente para a outra. Construção em companhia, desenhada pela própria planta.</p>
+        <p>Os pontinhos na folha são reais. A folha da murta tem glândulas de óleo que só liberam o perfume quando ela é tocada. O valor já estava ali. É a mesma ideia de "menos aparência, mais essência".</p>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="tile"><svg class="symbol" role="img" aria-label="Símbolo da Murta"><use href="#murta"/></svg><span class="cap">Símbolo</span></div>
+      <div class="tile alt" style="--halo:#4D6A52"><div class="lockup"><svg aria-hidden="true"><use href="#murta"/></svg><span class="wm">Dassah Co.</span></div><span class="cap">Assinatura sobre folha</span></div>
+    </div>
+
+    <div class="specs">
+      <div class="palette">
+        <div style="background:#2E2238;color:#F7F6F2;box-shadow:inset 0 0 0 1px #4A3D56"><b>Baga</b>#2E2238</div>
+        <div style="background:#4D6A52;color:#F7F6F2"><b>Folha</b>#4D6A52</div>
+        <div style="background:#E6E8E3;color:#2E2238"><b>Névoa</b>#E6E8E3</div>
+        <div style="background:#F7F6F2;color:#2E2238"><b>Flor</b>#F7F6F2</div>
+      </div>
+      <div class="typeset">
+        <span class="big" style="font-family:'Young Serif',serif">Aa Gg</span>
+        <span class="names">Young Serif para títulos, Figtree para texto</span>
+        <p style="font-family:'Figtree',sans-serif;font-size:.95rem">Uma serifada de traço firme e redondo, calorosa sem ser delicada. Fica longe da Cormorant e da Playfair que todo mundo usa.</p>
+      </div>
+    </div>
+
+    <div class="apps">
+      <figure>
+        <div class="post"><span class="f"><svg aria-hidden="true" style="--halo:#4D6A52"><use href="#murta"/></svg><span>1/5</span></span><span class="h">Postar depois do expediente não é estratégia. É sobra.</span></div>
+        <figcaption>Post do Instagram, 1080 × 1350.</figcaption>
+      </figure>
+      <figure>
+        <div class="cards">
+          <div class="card front" style="--halo:#E6E8E3"><div class="lockup" style="font-size:7cqw"><svg aria-hidden="true"><use href="#murta"/></svg><span class="wm">Dassah Co.</span></div></div>
+          <div class="card back"><div><b>Victoria Lima</b>Estratégia e comunicação<br>hello.dassahco@gmail.com</div></div>
+        </div>
+        <figcaption>Cartão de visita, 85 × 55 mm. A folha pode ir em relevo seco no papel névoa.</figcaption>
+      </figure>
+    </div>
+
+    <div class="verdict">
+      <div><h4>O que esse caminho diz</h4><p>Proximidade, cuidado e autoria. É o mais caloroso dos três e o que mais combina com a Renata.</p></div>
+      <div><h4>Risco</h4><p>Marcas com folha são muitas. A diferença está toda no desenho do D-folha, que precisa de um bom ilustrador para não virar "logo de clínica de estética".</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Território C -->
+<section class="route rc gutter" style="--halo:#FFFFFF">
+  <div class="wrap">
+    <div class="route-head">
+      <div>
+        <span class="tag">Caminho C</span>
+        <h2>A Nota</h2>
+        <p class="origin">De Hadassa para Dassah: menos excesso, mais intenção.</p>
+      </div>
+      <div class="concept">
+        <p>A marca é quase só tipografia, como a própria redução do nome. O único sinal gráfico é um asterisco de seis pontas, as mesmas seis pontas da estrela, usado como nota de rodapé: Dassah*. A nota explica a origem: *Hadassa, Ester 2:7.</p>
+        <p>O asterisco também é o método. É a marca de "isto tem fonte", o que a Estratégia Macro chama de agência que mostra a fonte do argumento. Todo dado da Dassah vem com o asterisco e a fonte embaixo.</p>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="tile"><svg class="symbol" role="img" aria-label="Símbolo da Nota" style="color:#6A1E3A"><use href="#nota"/></svg><span class="cap">Símbolo</span></div>
+      <div class="tile alt"><div style="display:grid;gap:14px;justify-items:start"><span class="wm" style="font-size:clamp(2.6rem,6vw,4.2rem);line-height:.9">Dassah<sup style="color:#E07A9B">*</sup></span><span style="font-family:'Source Serif 4',serif;font-style:italic;font-size:1rem;opacity:.8">*Hadassa, Ester 2:7. Estratégia e comunicação.</span></div><span class="cap">Assinatura</span></div>
+    </div>
+
+    <div class="specs">
+      <div class="palette">
+        <div style="background:#000000;color:#FFFFFF"><b>Tinta</b>#000000</div>
+        <div style="background:#FFFFFF;color:#000000;box-shadow:inset 0 0 0 1px #DEDDD8"><b>Página</b>#FFFFFF</div>
+        <div style="background:#6A1E3A;color:#FFFFFF"><b>Amora</b>#6A1E3A</div>
+        <div style="background:#E4E3DF;color:#000000"><b>Giz</b>#E4E3DF</div>
+      </div>
+      <div class="typeset">
+        <span class="big" style="font-family:'Schibsted Grotesk',sans-serif;font-weight:800;letter-spacing:-0.04em">Aa <span style="font-family:'Source Serif 4',serif;font-weight:300;font-style:italic;letter-spacing:0">Gg</span></span>
+        <span class="names">Schibsted Grotesk para títulos, Source Serif em itálico para as notas</span>
+        <p style="font-family:'Source Serif 4',serif;font-size:.95rem">Uma grotesca de jornal, compacta e firme, com o itálico da serifada fazendo o papel da voz que explica.</p>
+      </div>
+    </div>
+
+    <div class="apps">
+      <figure>
+        <div class="post"><span class="f"><span>Dassah<sup style="color:#E07A9B">*</sup></span><span>2/5</span></span><div style="display:grid;gap:5cqw"><span class="num">82<sup>*</sup></span><span class="fn">*em cada 100 pequenos negócios já vendem no WhatsApp. Seu relatório precisa contar essas conversas.</span></div><span class="src">Sebrae, Pulso dos Pequenos Negócios, 12ª edição</span></div>
+        <figcaption>Post do Instagram, 1080 × 1350. O asterisco liga o número à fonte.</figcaption>
+      </figure>
+      <figure>
+        <div class="cards">
+          <div class="card front"><span class="wm">Dassah<sup>*</sup></span><span class="fn">*Hadassa, Ester 2:7</span></div>
+          <div class="card back"><div><b>Victoria Lima</b>Estratégia e comunicação<br>hello.dassahco@gmail.com</div></div>
+        </div>
+        <figcaption>Cartão de visita, 85 × 55 mm. O verso em amora inteira.</figcaption>
+      </figure>
+    </div>
+
+    <div class="verdict">
+      <div><h4>O que esse caminho diz</h4><p>Inteligência, critério e método. É o mais editorial dos três, com cara de estúdio de estratégia.</p></div>
+      <div><h4>Risco</h4><p>Pode parecer frio se o texto não for bom. O asterisco como marca já foi usado por outras empresas; a força está na nota com a origem, que é só da Dassah.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="close gutter">
+  <div class="wrap">
+    <h2>Como escolher</h2>
+    <div class="table-wrap">
+      <table class="cmp">
+        <thead><tr><th></th><th>A. O Selo</th><th>B. A Murta</th><th>C. A Nota</th></tr></thead>
+        <tbody>
+          <tr><th>Parte da história</th><td>Ester e o documento selado, estrela de Davi</td><td>Hadassa, a murta</td><td>A redução para Dassah, a estrela em seis pontas</td></tr>
+          <tr><th>Sensação</th><td>Compromisso, autoridade discreta</td><td>Cuidado, proximidade, autoria</td><td>Critério, inteligência, método</td></tr>
+          <tr><th>Fala melhor com</th><td>Média empresa e FEE</td><td>Renata e pequeno negócio</td><td>Os dois, se o texto for forte</td></tr>
+          <tr><th>Combina com</th><td>Lacre, relevo seco, papel de carta</td><td>Papel com textura, relevo, fotografia de mãos</td><td>Muito branco, números grandes, notas</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Para a próxima rodada, me ajudam estas respostas:</p>
+    <ol class="qs">
+      <li>Qual caminho chegou mais perto, mesmo que só em parte? E o que nele não funciona?</li>
+      <li>Duas ou três marcas, de qualquer área, que tenham a sensação de boutique que você imagina. Instagram, site ou Behance servem.</li>
+      <li>Alguma cor que você quer muito ou que não suporta?</li>
+      <li>A estrela de Davi precisa aparecer de forma reconhecível, ou pode ficar só como origem escondida na geometria?</li>
+    </ol>
+  </div>
+</section>
