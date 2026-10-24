@@ -1,0 +1,748 @@
+<title>Guia de Marca Dassah</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&family=Spectral:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap">
+<style>
+/* Layout: lombada fixa à esquerda com os capítulos, texto numa coluna de leitura, faixas de cor inteira só nos momentos de revelação. */
+:root {
+  /* Cores de marca: fixas, não mudam com o tema (usadas nas peças) */
+  --b-estame: #F3F4EF;
+  --b-baga: #1E1B33;
+  --b-murta: #1D4A3E;
+  --b-susa: #2350C8;
+  --b-folha: #CFDDD2;
+  --b-cinza: #5E6660;
+  --b-noite: #0E211C;
+
+  /* Tokens da página (tema claro) */
+  --bg: #F3F4EF;
+  --fg: #1E1B33;
+  --muted: #5E6660;
+  --line: #CBD3CC;
+  --surface: #E6EBE5;
+  --brand: #1D4A3E;
+  --accent: #2350C8;
+  --on-brand: #F3F4EF;
+
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --text: "Spectral", Georgia, "Times New Roman", serif;
+
+  --s1: 0.875rem; --s2: 1.0625rem; --s3: 1.375rem; --s4: 1.875rem; --s5: 2.75rem; --s6: clamp(2.75rem, 7vw, 5.5rem);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E211C; --fg: #F3F4EF; --muted: #A7B3AB; --line: #284139; --surface: #15302A;
+    --brand: #CFDDD2; --accent: #8FA8FF; --on-brand: #0E211C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E211C; --fg: #F3F4EF; --muted: #A7B3AB; --line: #284139; --surface: #15302A;
+  --brand: #CFDDD2; --accent: #8FA8FF; --on-brand: #0E211C; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--text); font-size: var(--s2); line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--display); font-weight: 600; line-height: 1.08; margin: 0; text-wrap: balance; }
+h2 { font-size: var(--s5); font-variation-settings: "wdth" 125; letter-spacing: -0.02em; }
+h3 { font-size: var(--s3); font-variation-settings: "wdth" 112; letter-spacing: -0.01em; }
+h4 { font-size: var(--s2); font-variation-settings: "wdth" 100; font-weight: 600; }
+p { margin: 0; max-width: 64ch; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.small { font-family: var(--display); font-size: var(--s1); font-variation-settings: "wdth" 100; color: var(--muted); line-height: 1.45; }
+.lead { font-size: var(--s3); line-height: 1.45; font-weight: 300; max-width: 40ch; }
+.pend { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--fg); padding: 0 .3em; border-radius: 3px; font-family: var(--display); font-size: .82em; white-space: nowrap; }
+
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Abertura */
+.hero { background: var(--b-murta); color: var(--b-estame); }
+.hero-in { max-width: 1240px; margin: 0 auto; padding-block: clamp(40px, 8vw, 96px); display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(24px, 5vw, 72px); align-items: center; }
+.hero-in > * { min-width: 0; }
+.hero .meta { font-family: var(--display); font-size: var(--s1); color: var(--b-folha); }
+.wordmark { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; letter-spacing: -0.035em; line-height: .9; }
+.hero .wordmark { font-size: var(--s6); margin-block: 18px 28px; }
+.hero .thesis { font-family: var(--text); font-size: var(--s4); font-weight: 300; line-height: 1.25; max-width: 18ch; }
+.hero .sub { margin-top: 24px; color: var(--b-folha); max-width: 44ch; }
+.hero canvas { width: 100%; aspect-ratio: 1; max-width: 520px; justify-self: end; display: block; }
+
+/* Corpo */
+.book { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 56px; padding-block: 64px 96px; }
+.spine { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; }
+.spine ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.spine a { font-family: var(--display); font-size: var(--s1); color: var(--muted); text-decoration: none; display: block; padding: 2px 0; }
+.spine a:hover { color: var(--fg); }
+.chapters { display: grid; gap: 112px; min-width: 0; }
+section { display: grid; gap: 28px; scroll-margin-top: 24px; }
+section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); padding-top: 18px; }
+.cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+.cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+.cols-2 > *, .cols-3 > * { min-width: 0; }
+.stack { display: grid; gap: 10px; }
+
+/* Raiz */
+.root-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+.root-grid > div { padding: 22px 22px 26px 0; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.root-grid > div + div { padding-left: 22px; border-left: 1px solid var(--line); }
+.root-word { font-family: var(--display); font-variation-settings: "wdth" 125; font-size: var(--s4); font-weight: 500; letter-spacing: -0.02em; }
+
+/* Plataforma */
+.platform { display: grid; grid-template-columns: 180px minmax(0, 1fr); border-top: 1px solid var(--line); }
+.platform > dt, .platform > dd { padding: 18px 0; border-bottom: 1px solid var(--line); margin: 0; }
+.platform > dt { font-family: var(--display); font-size: var(--s1); font-weight: 600; color: var(--muted); padding-right: 16px; }
+.big-idea { background: var(--surface); padding: clamp(24px, 4vw, 44px); display: grid; gap: 12px; }
+.big-idea .q { font-family: var(--display); font-variation-settings: "wdth" 125; font-size: var(--s5); font-weight: 500; letter-spacing: -0.025em; line-height: 1.02; color: var(--brand); }
+
+/* Arquétipos */
+.arch { border: 1px solid var(--line); padding: 22px; display: grid; gap: 10px; align-content: start; }
+.arch.pick { border-color: var(--brand); border-width: 2px; padding: 21px; }
+.arch .tag { font-family: var(--display); font-size: var(--s1); color: var(--accent); }
+
+/* Voz */
+.axis { display: grid; gap: 6px; }
+.axis .ends { display: flex; justify-content: space-between; font-family: var(--display); font-size: var(--s1); color: var(--muted); }
+.axis .track { position: relative; height: 2px; background: var(--line); margin-block: 8px; }
+.axis .dot { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--brand); transform: translate(-50%, -50%); }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.pair > div { padding: 18px 20px 20px 0; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.pair > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.pair .lbl { font-family: var(--display); font-size: var(--s1); font-weight: 600; }
+.pair .no .lbl { color: var(--muted); }
+.pair .no p { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent); text-decoration-thickness: 1px; }
+.pair .yes .lbl { color: var(--brand); }
+.trait { display: grid; gap: 14px; }
+.lex { display: flex; flex-wrap: wrap; gap: 8px; }
+.lex span { font-family: var(--display); font-size: var(--s1); padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; }
+.lex.off span { color: var(--muted); text-decoration: line-through; }
+.lex.on span { border-color: var(--brand); color: var(--brand); }
+
+/* Manifesto */
+.manifesto { background: var(--b-noite); color: var(--b-estame); }
+.manifesto-in { max-width: 1240px; margin: 0 auto; padding-block: clamp(56px, 9vw, 120px); display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 56px; }
+.manifesto-in > * { min-width: 0; }
+.manifesto h2 { color: var(--b-estame); font-size: var(--s4); }
+.manifesto .body { display: grid; gap: 22px; }
+.manifesto p { font-size: var(--s3); font-weight: 300; line-height: 1.5; max-width: 46ch; }
+.manifesto .name { font-family: var(--display); color: var(--b-folha); font-size: var(--s1); }
+
+/* Logo */
+.logo-stage { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+.logo-stage > * { min-width: 0; }
+.plate { display: grid; place-items: center; padding: clamp(28px, 5vw, 56px); min-height: 240px; position: relative; }
+.plate.light { background: var(--b-estame); color: var(--b-murta); border: 1px solid var(--line); }
+.plate.dark { background: var(--b-murta); color: var(--b-estame); }
+.plate.ink { background: var(--b-baga); color: var(--b-estame); }
+.plate.folha { background: var(--b-folha); color: var(--b-murta); }
+.lockup { display: flex; align-items: center; gap: .32em; font-size: clamp(2.2rem, 6vw, 4rem); }
+.lockup canvas { width: 1.05em; height: 1.05em; display: block; }
+.lockup .wordmark { font-size: 1em; }
+.plate .cap { position: absolute; left: 14px; bottom: 10px; font-family: var(--display); font-size: .75rem; opacity: .75; }
+.lockups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.lockups .plate { min-height: 180px; }
+.clear { position: relative; display: inline-flex; padding: .5em; outline: 1px dashed var(--accent); outline-offset: 0; }
+.wrong { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.wrong figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.wrong .plate { min-height: 120px; padding: 18px; overflow: hidden; }
+.wrong .lockup { font-size: 1.6rem; }
+.x { position: absolute; inset: 0; pointer-events: none; }
+.x::before, .x::after { content: ""; position: absolute; left: 50%; top: 50%; width: 140%; height: 1.5px; background: #C2402F; transform-origin: center; }
+.x::before { transform: translate(-50%, -50%) rotate(28deg); }
+.x::after { transform: translate(-50%, -50%) rotate(-28deg); }
+
+/* Cor */
+.swatches { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1fr 1fr; gap: 12px; }
+.sw { display: grid; grid-template-rows: 150px auto; min-width: 0; }
+.sw .chip { padding: 14px; font-family: var(--display); font-size: var(--s1); display: flex; align-items: flex-end; }
+.sw .info { padding: 12px 0; display: grid; gap: 2px; }
+.sw .info b { font-family: var(--display); font-weight: 600; font-size: var(--s2); }
+.sw .info span { font-family: var(--display); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ratio { display: flex; height: 44px; }
+.ratio div { display: grid; place-items: center; font-family: var(--display); font-size: .75rem; }
+.contrast { width: 100%; border-collapse: collapse; font-family: var(--display); font-size: var(--s1); font-variant-numeric: tabular-nums; }
+.contrast th, .contrast td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+.contrast th { color: var(--muted); font-weight: 500; }
+.contrast .sample { display: inline-block; padding: 3px 10px; border-radius: 3px; }
+.table-wrap { overflow-x: auto; }
+
+/* Tipografia */
+.specimen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.spec { border: 1px solid var(--line); padding: 24px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.spec .glyph { font-size: clamp(3.5rem, 9vw, 6rem); line-height: 1; }
+.scale { display: grid; border-top: 1px solid var(--line); }
+.scale > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.scale .k { font-family: var(--display); font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scale .v { min-width: 0; overflow-wrap: anywhere; }
+
+/* Elemento e imagem */
+.burst-rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.burst-rules figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.burst-rules .plate { aspect-ratio: 1; min-height: 0; padding: 0; }
+.burst-rules canvas { width: 100%; height: 100%; display: block; }
+
+/* Aplicações */
+.apps { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+.apps > figure, .apps > .stack { margin: 0; display: grid; gap: 10px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.apps figure { min-width: 0; }
+.a4 { aspect-ratio: 210 / 297; background: var(--b-estame); color: var(--b-baga); border: 1px solid var(--line); position: relative; overflow: hidden; container-type: inline-size; }
+.a4 .top { position: absolute; inset: 0 0 auto 0; height: 58%; background: var(--b-murta); }
+.a4 .top canvas { position: absolute; right: -14%; top: -12%; width: 78%; aspect-ratio: 1; }
+.a4 .brand { position: absolute; left: 7%; top: 6%; display: flex; gap: .3em; align-items: center; color: var(--b-estame); font-size: 4.6cqw; }
+.a4 .brand canvas { width: 1.05em; height: 1.05em; position: static; }
+.a4 .ttl { position: absolute; left: 7%; right: 7%; top: 63%; display: grid; gap: 2.2cqw; }
+.a4 .ttl .k { font-family: var(--display); font-size: 2.4cqw; color: var(--b-cinza); }
+.a4 .ttl .h { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; font-size: 7.4cqw; letter-spacing: -0.03em; line-height: 1; }
+.a4 .ttl .s { font-family: var(--text); font-size: 3.2cqw; font-weight: 300; line-height: 1.35; max-width: 30ch; }
+.a4 .foot { position: absolute; left: 7%; right: 7%; bottom: 4.5%; display: flex; justify-content: space-between; font-family: var(--display); font-size: 2.1cqw; color: var(--b-cinza); }
+.post-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.post { aspect-ratio: 4 / 5; position: relative; overflow: hidden; container-type: inline-size; padding: 9% 8%; display: grid; align-content: space-between; min-width: 0; }
+.post .h { font-family: var(--display); font-variation-settings: "wdth" 118; font-weight: 560; font-size: 10.5cqw; letter-spacing: -0.025em; line-height: 1.02; }
+.post .b { font-family: var(--text); font-size: 6.2cqw; line-height: 1.35; font-weight: 300; }
+.post .f { font-family: var(--display); font-size: 4.6cqw; display: flex; justify-content: space-between; }
+.post canvas { position: absolute; width: 64%; aspect-ratio: 1; right: -20%; top: 14%; }
+.post > span { position: relative; z-index: 1; }
+.p1 { background: var(--b-murta); color: var(--b-estame); }
+.p2 { background: var(--b-estame); color: var(--b-baga); border: 1px solid var(--line); }
+.p3 { background: var(--b-folha); color: var(--b-murta); }
+.sig { background: var(--b-estame); color: var(--b-baga); border: 1px solid var(--line); padding: 22px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; font-family: var(--display); font-size: .9rem; line-height: 1.45; }
+.sig canvas { width: 44px; height: 44px; }
+.sig b { font-weight: 600; display: block; font-size: 1rem; }
+.sig .m { color: var(--b-cinza); }
+.wa { background: var(--surface); padding: 22px; display: grid; gap: 10px; }
+.wa .bubble { background: var(--bg); padding: 14px 16px; border-radius: 4px 14px 14px 14px; max-width: 46ch; font-family: var(--display); font-size: .95rem; line-height: 1.5; }
+
+/* Nunca */
+.never { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.never > div { border-top: 1px solid var(--line); padding: 14px 0; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; }
+.never .mk { font-family: var(--display); color: #C2402F; font-weight: 600; }
+.why { display: grid; border-top: 1px solid var(--line); }
+.why > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.why .d { color: var(--muted); }
+.todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; counter-reset: t; }
+.todo li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
+.todo li::before { content: ""; width: 14px; height: 14px; border: 1.5px solid var(--fg); border-radius: 3px; margin-top: .35em; }
+
+footer.end { border-top: 1px solid var(--line); }
+footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+@media (max-width: 980px) {
+  .book { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .spine { display: none; }
+  .manifesto-in { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .hero-in { grid-template-columns: minmax(0, 1fr); }
+  .hero canvas { justify-self: start; max-width: 340px; }
+  .swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wrong { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .cols-2, .cols-3, .root-grid, .pair, .logo-stage, .lockups, .specimen, .burst-rules, .apps, .never, .why > div { grid-template-columns: minmax(0, 1fr); }
+  .root-grid > div + div, .pair > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .platform { grid-template-columns: minmax(0, 1fr); }
+  .platform > dt { border-bottom: 0; padding-bottom: 0; }
+  .scale > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .post-row { grid-template-columns: minmax(0, 1fr); max-width: 360px; }
+  .chapters { gap: 80px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero canvas { animation: rise 1.2s cubic-bezier(.2,.7,.1,1) both; }
+  @keyframes rise { from { opacity: .35; transform: scale(.94); } to { opacity: 1; transform: none; } }
+}
+</style>
+
+<div class="hero gutter">
+  <div class="hero-in">
+    <div>
+      <div class="meta">Guia de marca, versão 1, outubro de 2026</div>
+      <div class="wordmark" aria-label="Dassah">Dassah</div>
+      <p class="thesis">O que já é seu, dito com clareza.</p>
+      <p class="sub">Este guia define como a Dassah Co pensa, fala e aparece. Ele serve para quem escreve uma legenda, monta uma proposta ou apresenta para a diretoria de uma empresa grande.</p>
+    </div>
+    <canvas class="burst" data-seed="11" data-n="64" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" aria-label="Símbolo da Dassah: a flor da murta"></canvas>
+  </div>
+</div>
+
+<div class="book gutter">
+  <nav class="spine" aria-label="Capítulos">
+    <ol>
+      <li><a href="#raiz">A raiz</a></li>
+      <li><a href="#plataforma">Plataforma</a></li>
+      <li><a href="#arquetipo">Arquétipo</a></li>
+      <li><a href="#voz">Voz</a></li>
+      <li><a href="#manifesto">Manifesto visual</a></li>
+      <li><a href="#logo">Logo</a></li>
+      <li><a href="#cor">Cor</a></li>
+      <li><a href="#tipografia">Tipografia</a></li>
+      <li><a href="#elemento">Elemento e imagem</a></li>
+      <li><a href="#aplicacoes">Aplicações</a></li>
+      <li><a href="#nunca">O que nunca fazemos</a></li>
+      <li><a href="#pendencias">Pendências</a></li>
+    </ol>
+  </nav>
+
+  <div class="chapters">
+
+    <section id="raiz">
+      <header>
+        <h2>A raiz</h2>
+        <p class="lead">O nome vem de Hadassa, o nome hebraico de Ester. A história dela dá à marca três ideias, e é delas que sai cada decisão deste guia.</p>
+      </header>
+      <div class="root-grid">
+        <div>
+          <span class="root-word">Murta</span>
+          <p>Hadassa quer dizer murta, um arbusto que fica verde o ano inteiro. Quando a folha é amassada, ela solta o perfume que já estava ali. É o que a Dassah faz com uma marca.</p>
+        </div>
+        <div>
+          <span class="root-word">Estrela</span>
+          <p>Ester é associada à estrela, o ponto que orienta quem está perdido no escuro. Toda entrega da Dassah termina numa direção: você está aqui, vamos para lá.</p>
+        </div>
+        <div>
+          <span class="root-word">O tempo certo</span>
+          <p>Ester guardou quem era até o momento de se revelar, "para um tempo como este". Marca não se inventa. Ela é revelada quando o dono está pronto para sustentá-la.</p>
+        </div>
+      </div>
+      <p>Usamos essa história como estrutura, não como enfeite. Ela aparece na forma do símbolo e no jeito de falar. Coroa, pergaminho, versículo na peça e dourado ficam fora. Quem conhece a história percebe. Quem não conhece sente coerência.</p>
+    </section>
+
+    <section id="plataforma">
+      <header>
+        <h2>Plataforma</h2>
+        <p class="lead">Escrita a partir do que a Dassah já entrega aos clientes, nas palavras dos próprios materiais.</p>
+      </header>
+      <div class="big-idea">
+        <span class="small">Ideia central</span>
+        <p class="q">Revelar o que já é seu.</p>
+        <p>Num documento para uma cliente, a Dassah escreveu: "ninguém tirou o que já é seu. Só não fica mais escondido o negócio". Essa frase é a marca inteira. A Dassah não fabrica uma persona nova. Ela encontra o que a pessoa ou a empresa já é e coloca isso numa frase que outra pessoa entende em três segundos.</p>
+      </div>
+      <dl class="platform">
+        <dt>Propósito</dt>
+        <dd>Fazer com que pessoas e empresas sejam reconhecidas pelo que realmente são, e não pelo que um template diz que deveriam ser.</dd>
+        <dt>Posicionamento</dt>
+        <dd>Para líderes, empresárias e organizações que já têm substância mas não conseguem mostrá-la, a Dassah Co é a consultoria de branding e comunicação que traduz essência em direção prática. Ela trabalha com o rigor de quem esteve dentro de grandes empresas e com a escuta de quem senta do lado. <span class="pend">confirmar</span></dd>
+        <dt>Promessa</dt>
+        <dd>Você sai sabendo a frase que a sua marca precisa caber, e o que fazer na segunda-feira para sustentá-la.</dd>
+        <dt>Prova</dt>
+        <dd>A trajetória da Victoria em Itaú, Globo e Kimberly-Clark, e em agência para Samsung e Coca-Cola. Método de diagnóstico e tradução aplicado em marcas pessoais, empresas, institutos e ministérios.</dd>
+        <dt>Método</dt>
+        <dd>Escutar o que existe. Traduzir em uma frase. Dar a direção com prazo. Medir pelo sinal certo, e não pelo número bonito.</dd>
+        <dt>Valores</dt>
+        <dd>Verdade antes de estética. Clareza antes de volume. Proximidade com padrão profissional. A fé é raiz, nunca slogan. <span class="pend">confirmar</span></dd>
+      </dl>
+    </section>
+
+    <section id="arquetipo">
+      <header>
+        <h2>Arquétipo</h2>
+        <p class="lead">Três ângulos possíveis. A recomendação está marcada, mas a escolha é da Victoria.</p>
+      </header>
+      <div class="cols-3">
+        <div class="arch pick">
+          <span class="tag">Recomendado</span>
+          <h3>A Sábia, com traço de Cuidadora</h3>
+          <p>Ganha autoridade pela clareza, não pelo volume. Combina com o "vou traduzir" que já aparece nos documentos. A Cuidadora traz a escuta e o "conte comigo".</p>
+          <p class="small">Risco: soar professoral. Corrigimos com exemplos concretos e frases curtas.</p>
+        </div>
+        <div class="arch">
+          <span class="tag">Alternativa para média empresa</span>
+          <h3>A Governante</h3>
+          <p>Ordem, padrão e controle de qualidade. Fala melhor com diretoria e com contratos de FEE.</p>
+          <p class="small">Risco: ficar fria e distante do pequeno empreendedor, que hoje é boa parte da base.</p>
+        </div>
+        <div class="arch">
+          <span class="tag">Mais ousado</span>
+          <h3>A Maga</h3>
+          <p>Promete transformação e revelação, colado na história de Ester.</p>
+          <p class="small">Risco: promessa de resultado e tom místico. É o terreno mais ocupado por mentorias de "virada de chave".</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="voz">
+      <header>
+        <h2>Voz</h2>
+        <p class="lead">A Dassah fala como uma consultora sênior que senta do lado do dono do negócio. Concreta, próxima, sem jargão de agência.</p>
+      </header>
+
+      <div class="cols-2">
+        <div class="axis"><div class="ends"><span>Formal</span><span>Coloquial</span></div><div class="track"><span class="dot" style="left:42%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Técnica</span><span>Simples</span></div><div class="track"><span class="dot" style="left:76%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Contida</span><span>Entusiasmada</span></div><div class="track"><span class="dot" style="left:28%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Séria</span><span>Bem-humorada</span></div><div class="track"><span class="dot" style="left:34%"></span></div></div>
+      </div>
+
+      <div class="trait">
+        <h3>Fala em português</h3>
+        <p>Todo termo técnico é traduzido na mesma frase. Se a cliente precisaria de um dicionário, a frase está errada.</p>
+        <div class="pair">
+          <div class="no"><span class="lbl">Não assim</span><p>Vamos estruturar seu posicionamento estratégico e potencializar o engajamento da sua audiência.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Vamos achar a frase que o seu perfil precisa caber. Depois, fazer as pessoas certas responderem.</p></div>
+        </div>
+      </div>
+
+      <div class="trait">
+        <h3>Concreta</h3>
+        <p>Números, horários, nomes e cenas reais no lugar de adjetivos. É o que faz a cliente se reconhecer.</p>
+        <div class="pair">
+          <div class="no"><span class="lbl">Não assim</span><p>Seu perfil tem muito potencial, mas precisa de mais consistência e alinhamento.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>559 pessoas te seguem. Quase todas já te conhecem da vida real. Quem abre o perfil não descobre que você tem empresa.</p></div>
+        </div>
+      </div>
+
+      <div class="trait">
+        <h3>Próxima, com padrão</h3>
+        <p>Trata pelo nome, admite que pode reescrever, e mesmo assim entrega com prazo, escopo e critério.</p>
+        <div class="pair">
+          <div class="no"><span class="lbl">Não assim</span><p>Estamos juntas nessa jornada! Qualquer dúvida é só chamar 💛✨</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Se alguma frase deste material não sair da sua boca, a gente reescreve na hora. A primeira versão sobe na terça.</p></div>
+        </div>
+      </div>
+
+      <div class="trait">
+        <h3>Sempre com direção</h3>
+        <p>Toda peça termina dizendo onde estamos, para onde vamos e qual é o próximo passo.</p>
+        <div class="pair">
+          <div class="no"><span class="lbl">Não assim</span><p>Ficamos à disposição para dar andamento quando for melhor para você.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Para começar, só isto: você escolhe a bio até sexta. Na semana seguinte sobe o primeiro vídeo.</p></div>
+        </div>
+      </div>
+
+      <div class="cols-2">
+        <div class="stack">
+          <h4>Palavras que usamos</h4>
+          <div class="lex on"><span>traduzir</span><span>direção</span><span>a frase</span><span>o que já é seu</span><span>prova</span><span>rotina</span><span>sinal</span><span>segunda-feira</span><span>em português</span></div>
+        </div>
+        <div class="stack">
+          <h4>Palavras que evitamos</h4>
+          <div class="lex off"><span>jornada</span><span>potencializar</span><span>alavancar</span><span>essência</span><span>autêntico</span><span>empoderada</span><span>conteúdo de valor</span><span>próximo nível</span><span>construir histórias</span></div>
+        </div>
+      </div>
+      <div class="stack">
+        <h4>Construções proibidas</h4>
+        <p>Aberturas como "Em um mundo cada vez mais...". A fórmula "não é apenas X, é Y" e "mais do que X, Y". Três adjetivos seguidos só pelo ritmo. Emoji decorativo. Pergunta retórica como chamada ("Vamos juntos?"). Promessa vaga de resultado. São as marcas mais comuns de texto feito por IA, e uma consultoria de comunicação não pode tê-las.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="manifesto gutter" id="manifesto">
+  <div class="manifesto-in">
+    <h2>Manifesto visual</h2>
+    <div class="body">
+      <span class="name">Estame</span>
+      <p>A flor da murta tem cinco pétalas pequenas e, no centro, uma explosão de filamentos finos, cada um com um ponto na ponta. Vista de perto, parece uma estrela. É a nossa imagem: muitos fios, uma origem só.</p>
+      <p>A identidade é feita de linha e de espaço. Linha fina, nunca contorno pesado. Muito campo de cor, quase nada de ornamento. O verde da folha de murta é o chão. O azul esmaltado dos tijolos de Susa, o palácio onde Ester viveu, é o único ponto de luz.</p>
+      <p>Em cada peça, só uma coisa se revela. Um filamento mais longo, uma palavra grande, um número. O resto fica quieto e alinhado para que essa coisa apareça. Se tudo chama atenção, nada foi revelado.</p>
+      <p>A tipografia larga dá o peso de instituição. A serifada de leitura dá a voz de quem escreve à mão para o cliente. As duas convivem sem disputa.</p>
+    </div>
+  </div>
+</div>
+
+<div class="book gutter" style="padding-top:96px">
+  <div aria-hidden="true"></div>
+  <div class="chapters">
+
+    <section id="logo">
+      <header>
+        <h2>Logo</h2>
+        <p class="lead">Símbolo da flor da murta e logotipo em grotesca larga. O nome aparece como "Dassah". O "Co" fica para assinatura e documentos.</p>
+      </header>
+      <div class="logo-stage">
+        <div class="plate light">
+          <div class="lockup"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div>
+          <span class="cap">Assinatura principal</span>
+        </div>
+        <div class="plate dark">
+          <canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1" style="width:120px;height:120px"></canvas>
+          <span class="cap">Símbolo, para avatar e selo</span>
+        </div>
+      </div>
+      <div class="lockups">
+        <div class="plate ink"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Sobre baga</span></div>
+        <div class="plate folha"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Sobre folha</span></div>
+        <div class="plate light"><div class="clear"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div></div><span class="cap">Área de proteção: metade da altura do símbolo</span></div>
+      </div>
+      <div class="cols-2">
+        <p>Tamanho mínimo: 18 mm de largura no impresso e 96 px no digital para a assinatura completa. O símbolo sozinho vai até 24 px. Abaixo disso, use só o nome.</p>
+        <p>O desenho aqui é a direção. Antes de ir para a gráfica, o logotipo precisa ser vetorizado e ajustado letra a letra (espaçamento entre "ss" e o terminal do "h"). <span class="pend">confirmar</span></p>
+      </div>
+      <h3>Usos errados</h3>
+      <div class="wrong">
+        <figure><div class="plate light"><div class="lockup"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark" style="color:#B8925A">Dassah</span></div><span class="x"></span></div><figcaption class="small">Dourado ou metalizado</figcaption></figure>
+        <figure><div class="plate light"><div class="lockup"><span class="wordmark" style="transform:scaleX(.6);transform-origin:left">Dassah</span></div><span class="x"></span></div><figcaption class="small">Distorcer ou condensar</figcaption></figure>
+        <figure><div class="plate light" style="background:linear-gradient(120deg,#7b5cff,#3fa7ff)"><div class="lockup" style="color:#fff"><span class="wordmark">Dassah</span></div><span class="x"></span></div><figcaption class="small">Degradê ou fundo sem contraste</figcaption></figure>
+        <figure><div class="plate light"><div class="lockup"><span class="wordmark" style="font-family:'Brush Script MT',cursive;font-weight:400;letter-spacing:0">Dassah</span></div><span class="x"></span></div><figcaption class="small">Trocar por letra cursiva</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="cor">
+      <header>
+        <h2>Cor</h2>
+        <p class="lead">Verde de murta como chão, azul de Susa como o único ponto de luz. Sem bege, sem dourado.</p>
+      </header>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:var(--b-murta);color:var(--b-estame)">Principal</div><div class="info"><b>Murta</b><span>#1D4A3E</span><span>RGB 29 74 62</span><span>CMYK 61 0 16 71</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--b-estame);color:var(--b-baga);border:1px solid var(--line)">Fundo</div><div class="info"><b>Estame</b><span>#F3F4EF</span><span>RGB 243 244 239</span><span>CMYK 0 0 2 4</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--b-baga);color:var(--b-estame)">Texto</div><div class="info"><b>Baga</b><span>#1E1B33</span><span>RGB 30 27 51</span><span>CMYK 41 47 0 80</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--b-folha);color:var(--b-murta)">Apoio</div><div class="info"><b>Folha</b><span>#CFDDD2</span><span>RGB 207 221 210</span><span>CMYK 6 0 5 13</span></div></div>
+        <div class="sw"><div class="chip" style="background:var(--b-susa);color:var(--b-estame)">Destaque</div><div class="info"><b>Susa</b><span>#2350C8</span><span>RGB 35 80 200</span><span>CMYK 82 60 0 22</span></div></div>
+      </div>
+      <p class="small">CMYK aproximado. Fechar com prova de cor na gráfica. <span class="pend">confirmar</span></p>
+      <div class="stack">
+        <h4>Proporção de uso numa peça</h4>
+        <div class="ratio" role="img" aria-label="Estame 50%, Murta 30%, Baga 12%, Folha 6%, Susa 2%">
+          <div style="flex:50;background:var(--b-estame);color:var(--b-baga);border:1px solid var(--line)">Estame 50</div>
+          <div style="flex:30;background:var(--b-murta);color:var(--b-estame)">Murta 30</div>
+          <div style="flex:12;background:var(--b-baga);color:var(--b-estame)">12</div>
+          <div style="flex:6;background:var(--b-folha);color:var(--b-murta)"></div>
+          <div style="flex:2;background:var(--b-susa)"></div>
+        </div>
+        <p>O azul Susa nunca passa de um detalhe por peça: o filamento de destaque, um link, um número. Se aparecer em dois lugares, um deles sai.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="contrast">
+          <thead><tr><th>Par aprovado</th><th>Contraste</th><th>WCAG</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sample" style="background:var(--b-estame);color:var(--b-baga);border:1px solid var(--line)">Baga sobre Estame</span></td><td>15,1 : 1</td><td>AAA</td></tr>
+            <tr><td><span class="sample" style="background:var(--b-murta);color:var(--b-estame)">Estame sobre Murta</span></td><td>9,0 : 1</td><td>AAA</td></tr>
+            <tr><td><span class="sample" style="background:var(--b-folha);color:var(--b-murta)">Murta sobre Folha</span></td><td>7,1 : 1</td><td>AAA</td></tr>
+            <tr><td><span class="sample" style="background:var(--b-estame);color:var(--b-susa);border:1px solid var(--line)">Susa sobre Estame</span></td><td>6,2 : 1</td><td>AA</td></tr>
+            <tr><td><span class="sample" style="background:var(--b-estame);color:var(--b-cinza);border:1px solid var(--line)">Cinza sobre Estame</span></td><td>5,4 : 1</td><td>AA</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tipografia">
+      <header>
+        <h2>Tipografia</h2>
+        <p class="lead">Duas famílias com papéis separados. As duas são livres para uso comercial (licença OFL) e estão no Google Fonts.</p>
+      </header>
+      <div class="specimen">
+        <div class="spec">
+          <span class="small">Títulos, números e assinatura</span>
+          <span class="glyph" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;letter-spacing:-0.03em">Aa Rr</span>
+          <h3>Archivo, largura expandida</h3>
+          <p>Uma grotesca com eixo de largura. Na versão larga ela ocupa espaço como sinalização de instituição. É o peso de empresa grande.</p>
+        </div>
+        <div class="spec">
+          <span class="small">Textos, propostas e citações</span>
+          <span class="glyph" style="font-family:var(--text);font-weight:300">Aa <i>Rr</i></span>
+          <h3 style="font-family:var(--text);font-weight:500;font-variation-settings:normal">Spectral</h3>
+          <p>Serifada de leitura feita para tela, com itálico de verdade. É a voz de quem escreve uma carta para o cliente.</p>
+        </div>
+      </div>
+      <div class="scale">
+        <div><span class="k">Display 88 / 0,9</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;font-size:clamp(2.2rem,6vw,3.6rem);letter-spacing:-0.035em;line-height:.95">Para um tempo como este</span></div>
+        <div><span class="k">Título 44 / 1,05</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:600;font-size:var(--s5);letter-spacing:-0.02em;line-height:1.05">O momento da marca</span></div>
+        <div><span class="k">Subtítulo 22 / 1,2</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 112;font-weight:600;font-size:var(--s3)">Onde queremos chegar</span></div>
+        <div><span class="k">Abertura 22 / 1,45</span><span class="v" style="font-family:var(--text);font-weight:300;font-size:var(--s3)">Você já tem a história. Falta a frase que outra pessoa entende em três segundos.</span></div>
+        <div><span class="k">Texto 17 / 1,6</span><span class="v">O diagnóstico olha o que você já publica, o que as pessoas respondem e o que fica escondido. Depois disso, a gente escreve a direção.</span></div>
+        <div><span class="k">Legenda 14 / 1,45</span><span class="v small" style="color:var(--fg)">Dassah Co, proposta para Camila Sabino, outubro de 2026</span></div>
+      </div>
+      <p>Regras: rótulos em caixa baixa, nunca em caixa-alta espaçada. Uma palavra destacada em itálico ou cor dentro do título não existe na Dassah. Linhas de texto com no máximo 65 caracteres. Títulos alinhados à esquerda.</p>
+    </section>
+
+    <section id="elemento">
+      <header>
+        <h2>Elemento e imagem</h2>
+        <p class="lead">A flor da murta é o único elemento gráfico. Ela muda de densidade conforme o papel da peça.</p>
+      </header>
+      <div class="burst-rules">
+        <figure><div class="plate dark"><canvas class="burst" data-seed="5" data-n="90" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div><figcaption class="small">Capa e abertura: flor cheia, recortada pela borda.</figcaption></figure>
+        <figure><div class="plate light"><canvas class="burst" data-seed="5" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta"></canvas></div><figcaption class="small">Interno: flor aberta, com um filamento em azul Susa.</figcaption></figure>
+        <figure><div class="plate folha"><canvas class="burst" data-seed="5" data-n="14" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta"></canvas></div><figcaption class="small">Detalhe e selo: poucos fios, quase um desenho técnico.</figcaption></figure>
+      </div>
+      <div class="cols-2">
+        <div class="stack">
+          <h4>Fotografia</h4>
+          <p>Gente trabalhando de verdade: a mão marcando um papel, a reunião vista de lado, o bastidor antes da gravação. Luz natural lateral, cor levemente dessaturada para conviver com o verde. Nada de banco de imagem, notebook com xícara de café ou mulher sorrindo para a câmera com braços cruzados.</p>
+        </div>
+        <div class="stack">
+          <h4>Grid</h4>
+          <p>A4: margem de 18 mm e 12 colunas. Post de 1080 × 1350: margem de 88 px e 6 colunas. Slide 16:9: margem de 96 px e 12 colunas. Texto sempre alinhado à esquerda. O centro da página fica para a flor, nunca para o parágrafo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="aplicacoes">
+      <header>
+        <h2>Aplicações</h2>
+        <p class="lead">O sistema em peças reais, com texto real.</p>
+      </header>
+      <div class="apps">
+        <figure>
+          <div class="a4">
+            <div class="top"><canvas class="burst" data-seed="7" data-n="90" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div>
+            <div class="brand"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1"></canvas><span class="wordmark">Dassah</span></div>
+            <div class="ttl">
+              <span class="k">Proposta para Camila Sabino</span>
+              <span class="h">O que já é seu, em uma frase</span>
+              <span class="s">Posicionamento, conteúdo e mídia kit para os próximos 90 dias.</span>
+            </div>
+            <div class="foot"><span>Dassah Co</span><span>Outubro de 2026</span></div>
+          </div>
+          <figcaption class="small">Capa de proposta, A4. Alimenta a skill de propostas.</figcaption>
+        </figure>
+        <div class="stack" style="gap:28px">
+          <figure style="margin:0;display:grid;gap:10px">
+            <div class="post-row">
+              <div class="post p1"><span class="f"><span>Dassah</span><span>1/5</span></span><span class="h">Seu perfil parece cinco contas.</span><canvas class="burst" data-seed="3" data-n="70" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div>
+              <div class="post p2"><span class="f"><span>Dassah</span><span>2/5</span></span><span class="b">Frase pronta, treino, família, culto e um vídeo da fábrica que parece catálogo. Quem chega não sabe por que deveria ficar.</span><span></span></div>
+              <div class="post p3"><span class="f"><span>Dassah</span><span>5/5</span></span><span class="h">Uma frase. Quatro pilares. Trinta dias.</span><span class="b" style="font-size:5.2cqw">Diagnóstico de 30 min: link na bio.</span></div>
+            </div>
+            <figcaption class="small">Carrossel do Instagram, 1080 × 1350.</figcaption>
+          </figure>
+          <figure style="margin:0;display:grid;gap:10px">
+            <div class="sig">
+              <canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas>
+              <div><b>Victoria Lima</b><span class="m">Estratégia de marca e comunicação</span><br>Dassah Co<br><span class="m">hello.dassahco@gmail.com</span></div>
+            </div>
+            <figcaption class="small">Assinatura de e-mail.</figcaption>
+          </figure>
+          <figure style="margin:0;display:grid;gap:10px">
+            <div class="wa"><div class="bubble">Oi, Camila. Terminei a leitura do seu perfil e deixei tudo num documento curto, com o que fica e o que muda. Se alguma frase não parecer você, eu reescrevo. Consegue ver até quinta? Se fizer sentido, a bio nova sobe na segunda.</div></div>
+            <figcaption class="small">Mensagem de envio no WhatsApp.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="nunca">
+      <header>
+        <h2>O que a Dassah nunca faz</h2>
+        <p class="lead">Uma marca de grande porte se protege pelo que recusa. Esta lista vale para a Dassah e para o que ela entrega em seu nome.</p>
+      </header>
+      <div class="never">
+        <div><span class="mk">×</span><p>Fundo bege ou creme com serifada clássica e detalhe dourado.</p></div>
+        <div><span class="mk">×</span><p>Cormorant, Playfair ou letra cursiva de "assinatura".</p></div>
+        <div><span class="mk">×</span><p>Rótulo em caixa-alta espaçada em cima de todo título.</p></div>
+        <div><span class="mk">×</span><p>Metadados com pontinhos no meio, como "A · B · C".</p></div>
+        <div><span class="mk">×</span><p>Numeração 01, 02, 03 em conteúdo que não é uma sequência.</p></div>
+        <div><span class="mk">×</span><p>Seta "→" no fim de botão ou chamada.</p></div>
+        <div><span class="mk">×</span><p>Cards iguais arredondados com sombra cinza e degradê.</p></div>
+        <div><span class="mk">×</span><p>Arcos, blobs, raminho em traço fino e mockup sobre mármore.</p></div>
+        <div><span class="mk">×</span><p>Emoji decorativo e "✨" em texto profissional.</p></div>
+        <div><span class="mk">×</span><p>Versículo ou oração usados como slogan de venda.</p></div>
+      </div>
+      <h3>Por que isto não parece feito por IA</h3>
+      <div class="why">
+        <div><p class="d">O padrão de IA para consultoria feminina é creme, serifada e dourado.</p><p>Usamos o verde de uma planta específica e o azul de um palácio específico, os dois vindos do nome.</p></div>
+        <div><p class="d">O padrão de IA usa Inter, Poppins ou Montserrat.</p><p>Usamos uma grotesca em largura expandida, pouco vista em marcas de branding no Brasil.</p></div>
+        <div><p class="d">O padrão de IA decora com ícones genéricos e formas orgânicas.</p><p>Temos um único elemento, desenhado a partir da flor que dá nome à marca.</p></div>
+        <div><p class="d">O texto de IA é abstrato e cheio de "jornada" e "essência".</p><p>A voz foi tirada dos documentos reais da Dassah, com números, horários e nomes.</p></div>
+      </div>
+    </section>
+
+    <section id="pendencias">
+      <header>
+        <h2>Pendências</h2>
+        <p class="lead">O que precisa de decisão antes da versão final.</p>
+      </header>
+      <ul class="todo">
+        <li><p>Aprovar a frase de posicionamento e a ideia central "Revelar o que já é seu".</p></li>
+        <li><p>Escolher o arquétipo: Sábia com Cuidadora, Governante ou Maga.</p></li>
+        <li><p>Definir o quanto a fé aparece na comunicação da própria Dassah, e não só na dos clientes.</p></li>
+        <li><p>Confirmar o uso do nome: "Dassah" no logo e "Dassah Co" na assinatura.</p></li>
+        <li><p>Vetorizar e refinar o logotipo e o símbolo com um designer de tipos.</p></li>
+        <li><p>Fazer prova de cor impressa para fechar os valores CMYK.</p></li>
+        <li><p>Enviar os arquivos da pasta do Drive com a teoria da marca. O conector não conseguiu listar a pasta, então este guia usou a skill de propostas e os documentos de clientes assinados pela Dassah.</p></li>
+      </ul>
+    </section>
+
+  </div>
+</div>
+
+<footer class="end gutter">
+  <div class="in"><span class="small">Dassah Co, guia de marca, versão 1</span><span class="small">Outubro de 2026</span></div>
+</footer>
+
+<script>
+(function () {
+  function rng(seed) {
+    return function () {
+      seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function cssVar(el, name) {
+    return getComputedStyle(el).getPropertyValue(name).trim() || '#000';
+  }
+  function draw(cv) {
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var r = rng(parseInt(cv.dataset.seed || '1', 10));
+    var n = parseInt(cv.dataset.n || '60', 10);
+    var mark = cv.dataset.mark === '1';
+    var color = cssVar(cv, cv.dataset.color || '--fg');
+    var accent = cssVar(cv, cv.dataset.accent || '--accent');
+    var focus = cssVar(cv, cv.dataset.focus || '--fg');
+    if (mark) { drawMark(ctx, w, h, color, accent, focus); return; }
+    var cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 * (mark ? 0.96 : 0.92);
+    var lw = mark ? Math.max(1, R / 22) : Math.max(0.8, R / 170);
+    var dotR = mark ? R / 9 : Math.max(1.4, R / 75);
+    var hero = Math.floor(n * 0.62);
+    ctx.lineCap = 'round';
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2 + (r() - 0.5) * (mark ? 0.05 : 0.11);
+      var len = mark ? R * (0.62 + 0.3 * r()) : R * (0.42 + 0.5 * Math.pow(r(), 0.7));
+      var start = R * (mark ? 0.12 : 0.07);
+      var isHero = i === hero;
+      if (isHero) len = R;
+      var c = isHero ? accent : color;
+      var x0 = cx + Math.cos(a) * start, y0 = cy + Math.sin(a) * start;
+      var x1 = cx + Math.cos(a) * (len - dotR), y1 = cy + Math.sin(a) * (len - dotR);
+      ctx.strokeStyle = c; ctx.lineWidth = isHero ? lw * 1.3 : lw;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * len - Math.cos(a) * dotR, cy + Math.sin(a) * len - Math.sin(a) * dotR, isHero ? dotR * 1.5 : dotR * (0.75 + 0.5 * r()), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = focus;
+    ctx.beginPath(); ctx.arc(cx, cy, R * (mark ? 0.1 : 0.035), 0, Math.PI * 2); ctx.fill();
+  }
+  // Símbolo: versão regular e desenhada da flor, 16 filamentos em dois comprimentos e um em destaque.
+  function drawMark(ctx, w, h, color, accent, focus) {
+    var cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2;
+    var n = 16, lw = Math.max(1, R * 0.07), dot = R * 0.1;
+    ctx.lineCap = 'round';
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2;
+      var isHero = i === 10;
+      var len = isHero ? R * 0.98 : (i % 2 ? R * 0.66 : R * 0.86);
+      var c = isHero ? accent : color;
+      var d = isHero ? dot * 1.25 : dot;
+      ctx.strokeStyle = c; ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * R * 0.2, cy + Math.sin(a) * R * 0.2);
+      ctx.lineTo(cx + Math.cos(a) * (len - d), cy + Math.sin(a) * (len - d));
+      ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (len - d), cy + Math.sin(a) * (len - d), d, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = focus;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.12, 0, Math.PI * 2); ctx.fill();
+  }
+  var all = Array.prototype.slice.call(document.querySelectorAll('canvas.burst'));
+  function drawAll() { all.forEach(draw); }
+  if ('ResizeObserver' in window) {
+    var ro = new ResizeObserver(function (entries) { entries.forEach(function (e) { draw(e.target); }); });
+    all.forEach(function (c) { ro.observe(c); });
+  }
+  drawAll();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawAll);
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawAll); } catch (e) {}
+  new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
