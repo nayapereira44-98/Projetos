@@ -23,7 +23,7 @@
   --surface: #E6EBE5;
   --brand: #1D4A3E;
   --accent: #2350C8;
-  --on-brand: #F3F4EF;
+  --warn: #B23A2A;
 
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --text: "Spectral", Georgia, "Times New Roman", serif;
@@ -34,12 +34,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0E211C; --fg: #F3F4EF; --muted: #A7B3AB; --line: #284139; --surface: #15302A;
-    --brand: #CFDDD2; --accent: #8FA8FF; --on-brand: #0E211C; color-scheme: dark;
+    --brand: #CFDDD2; --accent: #8FA8FF; --warn: #F08A7A; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0E211C; --fg: #F3F4EF; --muted: #A7B3AB; --line: #284139; --surface: #15302A;
-  --brand: #CFDDD2; --accent: #8FA8FF; --on-brand: #0E211C; color-scheme: dark;
+  --brand: #CFDDD2; --accent: #8FA8FF; --warn: #F08A7A; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -56,8 +56,9 @@ p { margin: 0; max-width: 64ch; }
 a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .small { font-family: var(--display); font-size: var(--s1); font-variation-settings: "wdth" 100; color: var(--muted); line-height: 1.45; }
-.lead { font-size: var(--s3); line-height: 1.45; font-weight: 300; max-width: 40ch; }
+.lead { font-size: var(--s3); line-height: 1.45; font-weight: 300; max-width: 42ch; }
 .pend { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--fg); padding: 0 .3em; border-radius: 3px; font-family: var(--display); font-size: .82em; white-space: nowrap; }
+blockquote { margin: 0; padding-left: 18px; border-left: 2px solid var(--brand); font-style: italic; max-width: 60ch; }
 
 .gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
@@ -69,7 +70,7 @@ a { color: var(--accent); }
 .wordmark { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; letter-spacing: -0.035em; line-height: .9; }
 .hero .wordmark { font-size: var(--s6); margin-block: 18px 28px; }
 .hero .thesis { font-family: var(--text); font-size: var(--s4); font-weight: 300; line-height: 1.25; max-width: 18ch; }
-.hero .sub { margin-top: 24px; color: var(--b-folha); max-width: 44ch; }
+.hero .sub { margin-top: 24px; color: var(--b-folha); max-width: 46ch; }
 .hero canvas { width: 100%; aspect-ratio: 1; max-width: 520px; justify-self: end; display: block; }
 
 /* Corpo */
@@ -87,10 +88,18 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .stack { display: grid; gap: 10px; }
 
 /* Raiz */
-.root-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+.root-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); }
 .root-grid > div { padding: 22px 22px 26px 0; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .root-grid > div + div { padding-left: 22px; border-left: 1px solid var(--line); }
 .root-word { font-family: var(--display); font-variation-settings: "wdth" 125; font-size: var(--s4); font-weight: 500; letter-spacing: -0.02em; }
+.values { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.values > div { padding: 14px 14px 0 0; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.values b { font-family: var(--display); font-weight: 600; }
+.values span { font-size: .95rem; color: var(--muted); }
+.cs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.cs > div { background: var(--surface); padding: 16px; display: grid; gap: 4px; min-width: 0; }
+.cs b { font-family: var(--display); font-variation-settings: "wdth" 120; font-size: var(--s3); font-weight: 560; color: var(--brand); }
+.cs span { font-size: .95rem; }
 
 /* Plataforma */
 .platform { display: grid; grid-template-columns: 180px minmax(0, 1fr); border-top: 1px solid var(--line); }
@@ -98,6 +107,10 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .platform > dt { font-family: var(--display); font-size: var(--s1); font-weight: 600; color: var(--muted); padding-right: 16px; }
 .big-idea { background: var(--surface); padding: clamp(24px, 4vw, 44px); display: grid; gap: 12px; }
 .big-idea .q { font-family: var(--display); font-variation-settings: "wdth" 125; font-size: var(--s5); font-weight: 500; letter-spacing: -0.025em; line-height: 1.02; color: var(--brand); }
+.isnot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.isnot ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.isnot li { border-top: 1px solid var(--line); padding: 10px 0; }
+.isnot .no li { color: var(--muted); }
 
 /* Arquétipos */
 .arch { border: 1px solid var(--line); padding: 22px; display: grid; gap: 10px; align-content: start; }
@@ -109,6 +122,13 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .axis .ends { display: flex; justify-content: space-between; font-family: var(--display); font-size: var(--s1); color: var(--muted); }
 .axis .track { position: relative; height: 2px; background: var(--line); margin-block: 8px; }
 .axis .dot { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--brand); transform: translate(-50%, -50%); }
+.axis .dot.alt { background: transparent; border: 2px solid var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-family: var(--display); font-size: var(--s1); color: var(--muted); align-items: center; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; }
+.two-lang { width: 100%; border-collapse: collapse; }
+.two-lang th, .two-lang td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
+.two-lang thead th { font-family: var(--display); font-size: var(--s1); font-weight: 600; border-bottom: 2px solid var(--fg); }
+.two-lang tbody th { font-family: var(--display); font-size: var(--s1); font-weight: 600; color: var(--muted); width: 130px; }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .pair > div { padding: 18px 20px 20px 0; display: grid; gap: 8px; align-content: start; min-width: 0; }
 .pair > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
@@ -121,6 +141,26 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .lex span { font-family: var(--display); font-size: var(--s1); padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; }
 .lex.off span { color: var(--muted); text-decoration: line-through; }
 .lex.on span { border-color: var(--brand); color: var(--brand); }
+
+/* Selos de evidência */
+.seals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.seals > div { padding: 18px 18px 18px 0; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.seals > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+.seal { display: inline-flex; align-items: center; gap: 8px; font-family: var(--display); font-size: var(--s1); font-weight: 600; }
+.seal svg { width: 18px; height: 18px; flex: none; }
+.seal canvas { width: 18px; height: 18px; flex: none; }
+
+/* Antes e depois */
+.shift { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.shift figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+.shift .frame { aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
+.shift .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shift .frame.new { background: var(--b-estame); color: var(--b-murta); }
+.keep { width: 100%; border-collapse: collapse; }
+.keep th, .keep td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-bottom: 1px solid var(--line); }
+.keep thead th { font-family: var(--display); font-size: var(--s1); font-weight: 600; border-bottom: 2px solid var(--fg); }
+.keep td:first-child { font-family: var(--display); font-weight: 600; width: 22%; }
+.keep td:nth-child(2) { color: var(--muted); }
 
 /* Manifesto */
 .manifesto { background: var(--b-noite); color: var(--b-estame); }
@@ -142,16 +182,17 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .lockup { display: flex; align-items: center; gap: .32em; font-size: clamp(2.2rem, 6vw, 4rem); }
 .lockup canvas { width: 1.05em; height: 1.05em; display: block; }
 .lockup .wordmark { font-size: 1em; }
+.lockup .co { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 400; font-size: .32em; letter-spacing: 0; align-self: flex-end; margin-bottom: .2em; margin-left: -.1em; }
 .plate .cap { position: absolute; left: 14px; bottom: 10px; font-family: var(--display); font-size: .75rem; opacity: .75; }
 .lockups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .lockups .plate { min-height: 180px; }
-.clear { position: relative; display: inline-flex; padding: .5em; outline: 1px dashed var(--accent); outline-offset: 0; }
+.clear { position: relative; display: inline-flex; padding: .5em; outline: 1px dashed var(--accent); }
 .wrong { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .wrong figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
 .wrong .plate { min-height: 120px; padding: 18px; overflow: hidden; }
 .wrong .lockup { font-size: 1.6rem; }
 .x { position: absolute; inset: 0; pointer-events: none; }
-.x::before, .x::after { content: ""; position: absolute; left: 50%; top: 50%; width: 140%; height: 1.5px; background: #C2402F; transform-origin: center; }
+.x::before, .x::after { content: ""; position: absolute; left: 50%; top: 50%; width: 140%; height: 1.5px; background: #C2402F; }
 .x::before { transform: translate(-50%, -50%) rotate(28deg); }
 .x::after { transform: translate(-50%, -50%) rotate(-28deg); }
 
@@ -188,24 +229,27 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 /* Aplicações */
 .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
 .apps > figure, .apps > .stack { margin: 0; display: grid; gap: 10px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
-.apps figure { min-width: 0; }
+.apps figure { min-width: 0; margin: 0; display: grid; gap: 10px; }
 .a4 { aspect-ratio: 210 / 297; background: var(--b-estame); color: var(--b-baga); border: 1px solid var(--line); position: relative; overflow: hidden; container-type: inline-size; }
-.a4 .top { position: absolute; inset: 0 0 auto 0; height: 58%; background: var(--b-murta); }
+.a4 .top { position: absolute; inset: 0 0 auto 0; height: 58%; background: var(--b-murta); overflow: hidden; }
 .a4 .top canvas { position: absolute; right: -14%; top: -12%; width: 78%; aspect-ratio: 1; }
 .a4 .brand { position: absolute; left: 7%; top: 6%; display: flex; gap: .3em; align-items: center; color: var(--b-estame); font-size: 4.6cqw; }
 .a4 .brand canvas { width: 1.05em; height: 1.05em; position: static; }
-.a4 .ttl { position: absolute; left: 7%; right: 7%; top: 63%; display: grid; gap: 2.2cqw; }
+.a4 .ttl { position: absolute; left: 7%; right: 7%; top: 61.5%; display: grid; gap: 2cqw; }
 .a4 .ttl .k { font-family: var(--display); font-size: 2.4cqw; color: var(--b-cinza); }
-.a4 .ttl .h { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; font-size: 7.4cqw; letter-spacing: -0.03em; line-height: 1; }
-.a4 .ttl .s { font-family: var(--text); font-size: 3.2cqw; font-weight: 300; line-height: 1.35; max-width: 30ch; }
+.a4 .ttl .h { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; font-size: 5.8cqw; letter-spacing: -0.03em; line-height: 1.02; }
+.a4 .ttl .s { font-family: var(--text); font-size: 3.2cqw; font-weight: 300; line-height: 1.35; max-width: 32ch; }
 .a4 .foot { position: absolute; left: 7%; right: 7%; bottom: 4.5%; display: flex; justify-content: space-between; font-family: var(--display); font-size: 2.1cqw; color: var(--b-cinza); }
 .post-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .post { aspect-ratio: 4 / 5; position: relative; overflow: hidden; container-type: inline-size; padding: 9% 8%; display: grid; align-content: space-between; min-width: 0; }
-.post .h { font-family: var(--display); font-variation-settings: "wdth" 118; font-weight: 560; font-size: 10.5cqw; letter-spacing: -0.025em; line-height: 1.02; }
+.post > span, .post > div { position: relative; z-index: 1; }
+.post .h { font-family: var(--display); font-variation-settings: "wdth" 118; font-weight: 560; font-size: 10cqw; letter-spacing: -0.025em; line-height: 1.02; }
+.post .num { font-family: var(--display); font-variation-settings: "wdth" 125; font-weight: 560; font-size: 30cqw; letter-spacing: -0.04em; line-height: .9; }
 .post .b { font-family: var(--text); font-size: 6.2cqw; line-height: 1.35; font-weight: 300; }
-.post .f { font-family: var(--display); font-size: 4.6cqw; display: flex; justify-content: space-between; }
+.post .f { font-family: var(--display); font-size: 4.6cqw; display: flex; justify-content: space-between; align-items: center; gap: 2cqw; }
+.post .src { font-family: var(--display); font-size: 4.2cqw; display: flex; align-items: center; gap: 2.5cqw; }
+.post .src svg { width: 5cqw; height: 5cqw; flex: none; }
 .post canvas { position: absolute; width: 64%; aspect-ratio: 1; right: -20%; top: 14%; }
-.post > span { position: relative; z-index: 1; }
 .p1 { background: var(--b-murta); color: var(--b-estame); }
 .p2 { background: var(--b-estame); color: var(--b-baga); border: 1px solid var(--line); }
 .p3 { background: var(--b-folha); color: var(--b-murta); }
@@ -216,14 +260,18 @@ section > header { display: grid; gap: 14px; border-top: 2px solid var(--fg); pa
 .wa { background: var(--surface); padding: 22px; display: grid; gap: 10px; }
 .wa .bubble { background: var(--bg); padding: 14px 16px; border-radius: 4px 14px 14px 14px; max-width: 46ch; font-family: var(--display); font-size: .95rem; line-height: 1.5; }
 
+/* Referências */
+.refs { display: grid; border-top: 1px solid var(--line); }
+.refs > div { display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.refs > div > * { min-width: 0; }
+.refs b { font-family: var(--display); font-weight: 600; display: block; }
+.refs .repo { font-family: var(--display); font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+
 /* Nunca */
 .never { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
 .never > div { border-top: 1px solid var(--line); padding: 14px 0; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; }
-.never .mk { font-family: var(--display); color: #C2402F; font-weight: 600; }
-.why { display: grid; border-top: 1px solid var(--line); }
-.why > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
-.why .d { color: var(--muted); }
-.todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; counter-reset: t; }
+.never .mk { font-family: var(--display); color: var(--warn); font-weight: 600; }
+.todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .todo li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
 .todo li::before { content: ""; width: 14px; height: 14px; border: 1.5px solid var(--fg); border-radius: 3px; margin-top: .35em; }
 
@@ -237,11 +285,14 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
   .hero-in { grid-template-columns: minmax(0, 1fr); }
   .hero canvas { justify-self: start; max-width: 340px; }
   .swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .wrong { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wrong, .seals, .cs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seals > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .values { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .refs > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 }
 @media (max-width: 720px) {
-  .cols-2, .cols-3, .root-grid, .pair, .logo-stage, .lockups, .specimen, .burst-rules, .apps, .never, .why > div { grid-template-columns: minmax(0, 1fr); }
-  .root-grid > div + div, .pair > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .cols-2, .cols-3, .root-grid, .pair, .logo-stage, .lockups, .specimen, .burst-rules, .apps, .never, .isnot, .shift, .seals, .values, .cs { grid-template-columns: minmax(0, 1fr); }
+  .root-grid > div + div, .pair > div + div, .seals > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
   .platform { grid-template-columns: minmax(0, 1fr); }
   .platform > dt { border-bottom: 0; padding-bottom: 0; }
   .scale > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -254,13 +305,21 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
 }
 </style>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="seal-a" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="currentColor"/></symbol>
+    <symbol id="seal-b" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/></symbol>
+    <symbol id="seal-h" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/></symbol>
+  </defs>
+</svg>
+
 <div class="hero gutter">
   <div class="hero-in">
     <div>
-      <div class="meta">Guia de marca, versão 1, outubro de 2026</div>
+      <div class="meta">Guia de marca, versão 2, outubro de 2026</div>
       <div class="wordmark" aria-label="Dassah">Dassah</div>
-      <p class="thesis">O que já é seu, dito com clareza.</p>
-      <p class="sub">Este guia define como a Dassah Co pensa, fala e aparece. Ele serve para quem escreve uma legenda, monta uma proposta ou apresenta para a diretoria de uma empresa grande.</p>
+      <p class="thesis">Menos excesso, mais intenção.</p>
+      <p class="sub">Este guia define como a Dassah Co. pensa, fala e aparece. Ele parte do documento de origem do nome, da Estratégia Macro de Comunicação e do Documento Base, e vale para quem escreve um Reels para a Renata ou uma proposta de FEE para uma diretoria.</p>
     </div>
     <canvas class="burst" data-seed="11" data-n="64" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" aria-label="Símbolo da Dassah: a flor da murta"></canvas>
   </div>
@@ -273,12 +332,15 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
       <li><a href="#plataforma">Plataforma</a></li>
       <li><a href="#arquetipo">Arquétipo</a></li>
       <li><a href="#voz">Voz</a></li>
+      <li><a href="#selos">Selos de evidência</a></li>
+      <li><a href="#transicao">Da marca atual à nova</a></li>
       <li><a href="#manifesto">Manifesto visual</a></li>
       <li><a href="#logo">Logo</a></li>
       <li><a href="#cor">Cor</a></li>
       <li><a href="#tipografia">Tipografia</a></li>
       <li><a href="#elemento">Elemento e imagem</a></li>
       <li><a href="#aplicacoes">Aplicações</a></li>
+      <li><a href="#referencias">Referências</a></li>
       <li><a href="#nunca">O que nunca fazemos</a></li>
       <li><a href="#pendencias">Pendências</a></li>
     </ol>
@@ -289,49 +351,74 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <section id="raiz">
       <header>
         <h2>A raiz</h2>
-        <p class="lead">O nome vem de Hadassa, o nome hebraico de Ester. A história dela dá à marca três ideias, e é delas que sai cada decisão deste guia.</p>
+        <p class="lead">O nome vem de Hadassa, o nome hebraico de Ester. A referência bíblica é a origem simbólica da marca, não uma afirmação sobre o significado literal da palavra.</p>
       </header>
+      <blockquote>"Este criara a Hadassa (que é Ester), filha de seu tio." Ester 2:7</blockquote>
       <div class="root-grid">
         <div>
-          <span class="root-word">Murta</span>
-          <p>Hadassa quer dizer murta, um arbusto que fica verde o ano inteiro. Quando a folha é amassada, ela solta o perfume que já estava ali. É o que a Dassah faz com uma marca.</p>
+          <span class="root-word">Hadassa</span>
+          <p>Significa murta, uma planta de origem bíblica que fica verde o ano inteiro. Ester precisou agir com sabedoria, discernimento e coragem num momento decisivo. É dessa história que a marca tira seus valores.</p>
         </div>
         <div>
-          <span class="root-word">Estrela</span>
-          <p>Ester é associada à estrela, o ponto que orienta quem está perdido no escuro. Toda entrega da Dassah termina numa direção: você está aqui, vamos para lá.</p>
+          <span class="root-word">Dassah</span>
+          <p>Uma redução autoral de Hadassa. Mantém a origem e fica mais curta, fácil de dizer em português e forte no papel. A própria redução é a filosofia da marca: menos excesso, mais intenção.</p>
         </div>
         <div>
-          <span class="root-word">O tempo certo</span>
-          <p>Ester guardou quem era até o momento de se revelar, "para um tempo como este". Marca não se inventa. Ela é revelada quando o dono está pronto para sustentá-la.</p>
+          <span class="root-word">Co.</span>
+          <p>Abreviação de company que, na Dassah, quer dizer construção em companhia. Marcas não se constroem sozinhas. O Co. também deixa a marca crescer para além de um serviço só.</p>
         </div>
       </div>
-      <p>Usamos essa história como estrutura, não como enfeite. Ela aparece na forma do símbolo e no jeito de falar. Coroa, pergaminho, versículo na peça e dourado ficam fora. Quem conhece a história percebe. Quem não conhece sente coerência.</p>
+      <div class="stack">
+        <h4>Os cinco valores que a história inspira</h4>
+        <div class="values">
+          <div><b>Essência</b><span>Saber quem se é em qualquer ambiente.</span></div>
+          <div><b>Sabedoria</b><span>Compreender antes de agir.</span></div>
+          <div><b>Coragem</b><span>Assumir o propósito diante do desafio.</span></div>
+          <div><b>Identidade</b><span>Construir sem perder a origem.</span></div>
+          <div><b>Propósito</b><span>Influência a serviço de algo maior.</span></div>
+        </div>
+      </div>
+      <div class="stack">
+        <h4>Os quatro sentidos do Co.</h4>
+        <div class="cs">
+          <div><b>Companhia</b><span>Caminhar ao lado de quem empreende.</span></div>
+          <div><b>Colaboração</b><span>Unir perspectivas para chegar à solução.</span></div>
+          <div><b>Construção</b><span>Transformar intenção em estrutura.</span></div>
+          <div><b>Conexão</b><span>Aproximar estratégia, identidade e comunicação.</span></div>
+        </div>
+      </div>
+      <p>Como a história entra na marca: como estrutura, nunca como enfeite. A murta vira o desenho do símbolo, a estrela vira o único ponto de luz, e "menos excesso" vira regra de layout. Versículo, coroa, ramo dourado e brilho de estrela ficam fora das peças. Quem conhece a história percebe. Quem não conhece sente coerência.</p>
     </section>
 
     <section id="plataforma">
       <header>
         <h2>Plataforma</h2>
-        <p class="lead">Escrita a partir do que a Dassah já entrega aos clientes, nas palavras dos próprios materiais.</p>
+        <p class="lead">Tudo o que está aqui já foi decidido nos documentos internos. O guia só organiza.</p>
       </header>
       <div class="big-idea">
         <span class="small">Ideia central</span>
-        <p class="q">Revelar o que já é seu.</p>
-        <p>Num documento para uma cliente, a Dassah escreveu: "ninguém tirou o que já é seu. Só não fica mais escondido o negócio". Essa frase é a marca inteira. A Dassah não fabrica uma persona nova. Ela encontra o que a pessoa ou a empresa já é e coloca isso numa frase que outra pessoa entende em três segundos.</p>
+        <p class="q">Menos excesso, mais intenção.</p>
+        <p>A frase nasceu para explicar por que Hadassa virou Dassah. Ela também resume o que a Dassah entrega: tirar do dono do negócio o excesso (post sem calendário, métrica de vaidade, jargão de agência) e deixar só o que tem razão de existir. É a regra que vale para o texto, para o design e para o escopo.</p>
       </div>
       <dl class="platform">
-        <dt>Propósito</dt>
-        <dd>Fazer com que pessoas e empresas sejam reconhecidas pelo que realmente são, e não pelo que um template diz que deveriam ser.</dd>
+        <dt>Assinatura conceitual</dt>
+        <dd>Essência que orienta. Estratégia que constrói. Beleza que comunica.</dd>
         <dt>Posicionamento</dt>
-        <dd>Para líderes, empresárias e organizações que já têm substância mas não conseguem mostrá-la, a Dassah Co é a consultoria de branding e comunicação que traduz essência em direção prática. Ela trabalha com o rigor de quem esteve dentro de grandes empresas e com a escuta de quem senta do lado. <span class="pend">confirmar</span></dd>
-        <dt>Promessa</dt>
-        <dd>Você sai sabendo a frase que a sua marca precisa caber, e o que fazer na segunda-feira para sustentá-la.</dd>
+        <dd>A Dassah é a parceira de tempo livre e de contatos reais para o pequeno negócio que já entendeu que não vai postar depois do expediente, e para a média empresa que quer crescer com governança, não com social media avulso.</dd>
+        <dt>Frase-mãe, linha pequena</dt>
+        <dd>"Você cuida do seu negócio. Nós cuidamos para ele aparecer e ser atrativo todos os dias." Complemento: você só aprova, no WhatsApp, e a métrica é contato, não curtida.</dd>
+        <dt>Frase-mãe, FEE</dt>
+        <dd>Fee fixo, time alocado, relatório executivo e governança mensal.</dd>
+        <dt>Narrativa</dt>
+        <dd>O peso, o erro comum, o corte Dassah, o alívio mensurável. Nome interno: "Sumir custa mais do que aparecer com método."</dd>
         <dt>Prova</dt>
-        <dd>A trajetória da Victoria em Itaú, Globo e Kimberly-Clark, e em agência para Samsung e Coca-Cola. Método de diagnóstico e tradução aplicado em marcas pessoais, empresas, institutos e ministérios.</dd>
-        <dt>Método</dt>
-        <dd>Escutar o que existe. Traduzir em uma frase. Dar a direção com prazo. Medir pelo sinal certo, e não pelo número bonito.</dd>
-        <dt>Valores</dt>
-        <dd>Verdade antes de estética. Clareza antes de volume. Proximidade com padrão profissional. A fé é raiz, nunca slogan. <span class="pend">confirmar</span></dd>
+        <dd>Método visível com selos de evidência, preço calculado contra o caixa real do cliente e a trajetória da Victoria em Itaú, Globo, Kimberly-Clark e agência para Samsung e Coca-Cola. Sem case inventado.</dd>
       </dl>
+      <div class="isnot">
+        <div class="stack"><h4>O que a Dassah é</h4><ul><li>Operação de presença que o cliente só aprova.</li><li>Tradutora de plataforma para linguagem de caixa.</li><li>Agência que mostra a fonte do argumento.</li></ul></div>
+        <div class="stack no"><h4>O que a Dassah não é</h4><ul><li>Social media freelancer com CNPJ.</li><li>Holding de jargão para MEI.</li><li>Casa de tráfego isolado.</li><li>Fábrica de 30 posts sem calendário.</li></ul></div>
+      </div>
+      <p>Sobre "grande porte": marca grande não é marca luxuosa. Itaú, Natura e Nubank parecem grandes porque são claras, consistentes e iguais em todo lugar. É esse padrão que a Dassah adota. A Estratégia Macro pede explicitamente "sem estética de agência de Paulista para MEI", e as duas coisas cabem juntas: rigor de sistema com linguagem de dono de negócio.</p>
     </section>
 
     <section id="arquetipo">
@@ -343,20 +430,20 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
         <div class="arch pick">
           <span class="tag">Recomendado</span>
           <h3>A Sábia, com traço de Cuidadora</h3>
-          <p>Ganha autoridade pela clareza, não pelo volume. Combina com o "vou traduzir" que já aparece nos documentos. A Cuidadora traz a escuta e o "conte comigo".</p>
-          <p class="small">Risco: soar professoral. Corrigimos com exemplos concretos e frases curtas.</p>
+          <p>Sabedoria e discernimento são o centro da história de Ester. A Cuidadora vem do Co.: companhia e alívio. Combina com "agência que mostra a fonte" e com "você só aprova".</p>
+          <p class="small">Risco: soar professoral para a Renata. Corrigimos com frase curta e cena da rotina.</p>
         </div>
         <div class="arch">
-          <span class="tag">Alternativa para média empresa</span>
+          <span class="tag">Reforço para FEE</span>
           <h3>A Governante</h3>
-          <p>Ordem, padrão e controle de qualidade. Fala melhor com diretoria e com contratos de FEE.</p>
-          <p class="small">Risco: ficar fria e distante do pequeno empreendedor, que hoje é boa parte da base.</p>
+          <p>Ordem, escopo, SLA e governança. É a camada que aparece no LinkedIn e na proposta formal.</p>
+          <p class="small">Risco: se vazar para o Instagram, vira a "holding de jargão para MEI" que a Dassah diz não ser.</p>
         </div>
         <div class="arch">
           <span class="tag">Mais ousado</span>
-          <h3>A Maga</h3>
-          <p>Promete transformação e revelação, colado na história de Ester.</p>
-          <p class="small">Risco: promessa de resultado e tom místico. É o terreno mais ocupado por mentorias de "virada de chave".</p>
+          <h3>A Heroína</h3>
+          <p>Coragem para agir no momento decisivo, o lado mais dramático de Ester.</p>
+          <p class="small">Risco: promessa de virada e tom de superação. Briga com "sem promessa sem fonte".</p>
         </div>
       </div>
     </section>
@@ -364,65 +451,122 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <section id="voz">
       <header>
         <h2>Voz</h2>
-        <p class="lead">A Dassah fala como uma consultora sênior que senta do lado do dono do negócio. Concreta, próxima, sem jargão de agência.</p>
+        <p class="lead">Uma voz, duas linguagens, zero vazamento. A personalidade é a mesma. O vocabulário muda conforme quem está do outro lado.</p>
       </header>
 
+      <div class="legend"><span><i style="background:var(--brand)"></i>Linguagem Renata (MEI)</span><span><i style="border:2px solid var(--accent)"></i>Linguagem Ricardo e Fernanda (FEE)</span></div>
       <div class="cols-2">
-        <div class="axis"><div class="ends"><span>Formal</span><span>Coloquial</span></div><div class="track"><span class="dot" style="left:42%"></span></div></div>
-        <div class="axis"><div class="ends"><span>Técnica</span><span>Simples</span></div><div class="track"><span class="dot" style="left:76%"></span></div></div>
-        <div class="axis"><div class="ends"><span>Contida</span><span>Entusiasmada</span></div><div class="track"><span class="dot" style="left:28%"></span></div></div>
-        <div class="axis"><div class="ends"><span>Séria</span><span>Bem-humorada</span></div><div class="track"><span class="dot" style="left:34%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Formal</span><span>Coloquial</span></div><div class="track"><span class="dot" style="left:66%"></span><span class="dot alt" style="left:30%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Técnica</span><span>Simples</span></div><div class="track"><span class="dot" style="left:86%"></span><span class="dot alt" style="left:44%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Contida</span><span>Entusiasmada</span></div><div class="track"><span class="dot" style="left:36%"></span><span class="dot alt" style="left:20%"></span></div></div>
+        <div class="axis"><div class="ends"><span>Séria</span><span>Bem-humorada</span></div><div class="track"><span class="dot" style="left:42%"></span><span class="dot alt" style="left:22%"></span></div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="two-lang">
+          <thead><tr><th></th><th>MEI: Carla, Renata, Bruno, Camila</th><th>FEE: Ricardo, Fernanda</th></tr></thead>
+          <tbody>
+            <tr><th>Promessa</th><td>Tempo livre, perfil vivo e contato no mês.</td><td>Previsibilidade, escopo e governança.</td></tr>
+            <tr><th>Tom</th><td>Alívio, clareza, frase curta, sem jargão.</td><td>Profissional, com SLA e relatório executivo.</td></tr>
+            <tr><th>Prova</th><td>Dado de mercado com selo e, quando houver, case do mesmo porte.</td><td>Método, escopo, time alocado e dashboard.</td></tr>
+            <tr><th>Chamada</th><td>Chamar no WhatsApp para um diagnóstico de 20 a 30 minutos.</td><td>Pedir proposta formal ou reunião de escopo.</td></tr>
+            <tr><th>Canal</th><td>Instagram e WhatsApp.</td><td>LinkedIn, indicação e proposta.</td></tr>
+            <tr><th>Palavras banidas</th><td>Fee, FTE, governança, squad, dashboard, SLA.</td><td>"Baratinho", "mão na massa", "a gente se vira no Zap".</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="trait">
-        <h3>Fala em português</h3>
-        <p>Todo termo técnico é traduzido na mesma frase. Se a cliente precisaria de um dicionário, a frase está errada.</p>
+        <h3>Nomeia a dor com precisão</h3>
+        <p>Fala da rotina como quem vive a rotina. Hora, lugar, cena.</p>
         <div class="pair">
-          <div class="no"><span class="lbl">Não assim</span><p>Vamos estruturar seu posicionamento estratégico e potencializar o engajamento da sua audiência.</p></div>
-          <div class="yes"><span class="lbl">Assim</span><p>Vamos achar a frase que o seu perfil precisa caber. Depois, fazer as pessoas certas responderem.</p></div>
+          <div class="no"><span class="lbl">Não assim</span><p>Sabemos que empreender é desafiador e que manter a presença digital exige muita dedicação.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Postar depois do expediente não é estratégia. É sobra.</p></div>
         </div>
       </div>
 
       <div class="trait">
-        <h3>Concreta</h3>
-        <p>Números, horários, nomes e cenas reais no lugar de adjetivos. É o que faz a cliente se reconhecer.</p>
+        <h3>Traduz a plataforma para o caixa</h3>
+        <p>Todo número vira uma frase da rotina e termina em ação.</p>
         <div class="pair">
-          <div class="no"><span class="lbl">Não assim</span><p>Seu perfil tem muito potencial, mas precisa de mais consistência e alinhamento.</p></div>
-          <div class="yes"><span class="lbl">Assim</span><p>559 pessoas te seguem. Quase todas já te conhecem da vida real. Quem abre o perfil não descobre que você tem empresa.</p></div>
+          <div class="no"><span class="lbl">Não assim</span><p>Potencialize seu engajamento e alcance resultados extraordinários com estratégias que convertem.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>82 em cada 100 pequenos negócios já vendem no WhatsApp. Seu relatório precisa contar essas conversas, não as curtidas.</p></div>
+        </div>
+      </div>
+
+      <div class="trait">
+        <h3>Diz o que não faz</h3>
+        <p>Autoridade de restrição: recusar com clareza constrói mais crédito do que prometer tudo.</p>
+        <div class="pair">
+          <div class="no"><span class="lbl">Não assim</span><p>Somos uma agência full service com atendimento humanizado e criativos que convertem.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Não vendemos tráfego para perfil parado. Primeiro o perfil volta a respirar. Depois o anúncio.</p></div>
         </div>
       </div>
 
       <div class="trait">
         <h3>Próxima, com padrão</h3>
-        <p>Trata pelo nome, admite que pode reescrever, e mesmo assim entrega com prazo, escopo e critério.</p>
+        <p>Companhia de verdade, e mesmo assim com prazo, escopo e próximo passo.</p>
         <div class="pair">
           <div class="no"><span class="lbl">Não assim</span><p>Estamos juntas nessa jornada! Qualquer dúvida é só chamar 💛✨</p></div>
-          <div class="yes"><span class="lbl">Assim</span><p>Se alguma frase deste material não sair da sua boca, a gente reescreve na hora. A primeira versão sobe na terça.</p></div>
-        </div>
-      </div>
-
-      <div class="trait">
-        <h3>Sempre com direção</h3>
-        <p>Toda peça termina dizendo onde estamos, para onde vamos e qual é o próximo passo.</p>
-        <div class="pair">
-          <div class="no"><span class="lbl">Não assim</span><p>Ficamos à disposição para dar andamento quando for melhor para você.</p></div>
-          <div class="yes"><span class="lbl">Assim</span><p>Para começar, só isto: você escolhe a bio até sexta. Na semana seguinte sobe o primeiro vídeo.</p></div>
+          <div class="yes"><span class="lbl">Assim</span><p>Você só aprova. Se alguma frase não parecer você, a gente reescreve. O calendário do mês 1 fica pronto em 7 dias.</p></div>
         </div>
       </div>
 
       <div class="cols-2">
         <div class="stack">
           <h4>Palavras que usamos</h4>
-          <div class="lex on"><span>traduzir</span><span>direção</span><span>a frase</span><span>o que já é seu</span><span>prova</span><span>rotina</span><span>sinal</span><span>segunda-feira</span><span>em português</span></div>
+          <div class="lex on"><span>você só aprova</span><span>contato</span><span>orçamento</span><span>agendamento</span><span>caixa</span><span>vitrine</span><span>método</span><span>fonte</span><span>em companhia</span></div>
         </div>
         <div class="stack">
-          <h4>Palavras que evitamos</h4>
-          <div class="lex off"><span>jornada</span><span>potencializar</span><span>alavancar</span><span>essência</span><span>autêntico</span><span>empoderada</span><span>conteúdo de valor</span><span>próximo nível</span><span>construir histórias</span></div>
+          <h4>Palavras que evitamos em público</h4>
+          <div class="lex off"><span>jornada</span><span>potencializar</span><span>alavancar</span><span>transformar</span><span>criativos que convertem</span><span>atendimento humanizado</span><span>time apaixonado</span><span>próximo nível</span></div>
         </div>
       </div>
       <div class="stack">
+        <h4>Essência, propósito e autenticidade</h4>
+        <p>São valores internos da marca e aparecem no documento de origem. Em peça pública, só entram com prova do lado, numa frase concreta. "Marca com essência" sozinha não diz nada. "Seu perfil volta a parecer o consultório que você tem" diz.</p>
+      </div>
+      <div class="stack">
         <h4>Construções proibidas</h4>
-        <p>Aberturas como "Em um mundo cada vez mais...". A fórmula "não é apenas X, é Y" e "mais do que X, Y". Três adjetivos seguidos só pelo ritmo. Emoji decorativo. Pergunta retórica como chamada ("Vamos juntos?"). Promessa vaga de resultado. São as marcas mais comuns de texto feito por IA, e uma consultoria de comunicação não pode tê-las.</p>
+        <p>Aberturas como "Em um mundo cada vez mais...". A fórmula "não é apenas X, é Y". Três adjetivos seguidos só pelo ritmo. Emoji decorativo. Pergunta retórica como chamada. Percentual sem fonte. Promessa de resultado. São as marcas mais comuns de texto feito por IA, e a Estratégia Macro já proíbe a maior parte delas.</p>
+      </div>
+    </section>
+
+    <section id="selos">
+      <header>
+        <h2>Selos de evidência</h2>
+        <p class="lead">A Estratégia Macro diz que a etiqueta "é o método que a Dassah vende". Então ela vira elemento da marca, desenhado, e não emoji colorido.</p>
+      </header>
+      <div class="seals">
+        <div><span class="seal" style="color:var(--brand)"><svg><use href="#seal-a"/></svg>Evidência A</span><p>Dado primário: Sebrae, IPEA, IBGE, IAB, Receita, DataReportal, LinkedIn. Pode virar número grande na peça.</p></div>
+        <div><span class="seal" style="color:var(--brand)"><svg><use href="#seal-b"/></svg>Evidência B</span><p>Benchmark consolidado. Pode aparecer, sempre com a faixa e a data.</p></div>
+        <div><span class="seal" style="color:var(--brand)"><canvas class="burst" data-seed="11" data-n="40" data-color="--brand" data-accent="--accent" data-focus="--brand" data-mark="1"></canvas>Síntese Dassah</span><p>Interpretação da Dassah a partir dos dados. Leva o símbolo da marca porque é a opinião assinada.</p></div>
+        <div><span class="seal" style="color:var(--muted)"><svg><use href="#seal-h"/></svg>Hipótese</span><p>Ainda em teste. Não aparece em peça pública como fato.</p></div>
+      </div>
+      <p>Regra de uso: um selo por peça, sempre ao lado da fonte escrita por extenso, no rodapé. O selo não substitui a fonte. Selo C de mercado vira ângulo, nunca estatística. Selo D não aparece.</p>
+    </section>
+
+    <section id="transicao">
+      <header>
+        <h2>Da marca atual à nova</h2>
+        <p class="lead">A identidade atual acerta nas ideias (a murta e a estrela) e erra na forma. Cada escolha dela está no centro do que hoje se reconhece como design feito por IA.</p>
+      </header>
+      <div class="shift">
+        <figure><div class="frame"><img src="data:image/jpeg;base64,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" alt="Logo atual da Dassah: letra serifada marrom, ramo dourado e estrela de quatro pontas sobre fundo creme"></div><figcaption class="small">Hoje: creme, serifada clássica, ramo e estrela dourados.</figcaption></figure>
+        <figure><div class="frame new"><div class="lockup" style="font-size:clamp(1.8rem,4.5vw,3rem)"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span><span class="co">Co.</span></div></div><figcaption class="small">Proposta: a mesma murta e a mesma estrela, num único desenho.</figcaption></figure>
+      </div>
+      <div class="table-wrap">
+        <table class="keep">
+          <thead><tr><th>Elemento</th><th>Hoje</th><th>Na nova marca</th></tr></thead>
+          <tbody>
+            <tr><td>Murta</td><td>Ramo de folhas em traço dourado, o desenho de folha mais repetido em marcas de consultoria e estética.</td><td>Fica a planta, muda o recorte: a flor da murta, que é só dela, com seus filamentos em estrela.</td></tr>
+            <tr><td>Estrela</td><td>Brilho de quatro pontas. É o mesmo ícone que os produtos de IA usam para marcar "gerado por IA".</td><td>Vira o filamento azul dentro da flor. A estrela orienta sem precisar ser desenhada.</td></tr>
+            <tr><td>Cor</td><td>Creme, marrom e dourado.</td><td>Verde de murta, branco de estame e um único azul. Nenhum dourado.</td></tr>
+            <tr><td>Tipografia</td><td>Bodoni Moda com floreio, Cormorant Garamond e Lato.</td><td>Archivo larga para títulos e Spectral para texto.</td></tr>
+            <tr><td>Detalhes</td><td>Divisor com ponto no meio, caixa-alta espaçada, vaso e tecido de mockup, assinatura cursiva.</td><td>Linha reta de 2 px, rótulo em caixa baixa, fotografia de bastidor real.</td></tr>
+            <tr><td>Descritor</td><td>"Comunicação estratégica" e "Comunicação que transforma".</td><td>"Estratégia e comunicação" ou nada. "Transforma" é promessa sem fonte. <span class="pend">confirmar</span></td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </div>
@@ -433,10 +577,10 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <h2>Manifesto visual</h2>
     <div class="body">
       <span class="name">Estame</span>
-      <p>A flor da murta tem cinco pétalas pequenas e, no centro, uma explosão de filamentos finos, cada um com um ponto na ponta. Vista de perto, parece uma estrela. É a nossa imagem: muitos fios, uma origem só.</p>
+      <p>A flor da murta tem cinco pétalas pequenas e, no centro, uma explosão de filamentos finos, cada um com um ponto na ponta. Vista de perto, parece uma estrela. É a nossa imagem: muitos fios, uma origem só. Muitas pessoas, construindo em companhia.</p>
       <p>A identidade é feita de linha e de espaço. Linha fina, nunca contorno pesado. Muito campo de cor, quase nada de ornamento. O verde da folha de murta é o chão. O azul esmaltado dos tijolos de Susa, o palácio onde Ester viveu, é o único ponto de luz.</p>
-      <p>Em cada peça, só uma coisa se revela. Um filamento mais longo, uma palavra grande, um número. O resto fica quieto e alinhado para que essa coisa apareça. Se tudo chama atenção, nada foi revelado.</p>
-      <p>A tipografia larga dá o peso de instituição. A serifada de leitura dá a voz de quem escreve à mão para o cliente. As duas convivem sem disputa.</p>
+      <p>Em cada peça, só uma coisa se revela. Um filamento mais longo, uma palavra grande, um número com fonte. O resto fica quieto e alinhado para que essa coisa apareça. Menos excesso, mais intenção.</p>
+      <p>A tipografia larga dá o peso de instituição. A serifada de leitura dá a voz de quem escreve para o cliente. As duas convivem sem disputa.</p>
     </div>
   </div>
 </div>
@@ -448,12 +592,12 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <section id="logo">
       <header>
         <h2>Logo</h2>
-        <p class="lead">Símbolo da flor da murta e logotipo em grotesca larga. O nome aparece como "Dassah". O "Co" fica para assinatura e documentos.</p>
+        <p class="lead">Símbolo da flor da murta e logotipo em grotesca larga. "Dassah" é a marca. "Co." acompanha na assinatura completa.</p>
       </header>
       <div class="logo-stage">
         <div class="plate light">
-          <div class="lockup"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div>
-          <span class="cap">Assinatura principal</span>
+          <div class="lockup"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span><span class="co">Co.</span></div>
+          <span class="cap">Assinatura completa</span>
         </div>
         <div class="plate dark">
           <canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1" style="width:120px;height:120px"></canvas>
@@ -461,19 +605,19 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
         </div>
       </div>
       <div class="lockups">
-        <div class="plate ink"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Sobre baga</span></div>
-        <div class="plate folha"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Sobre folha</span></div>
+        <div class="plate ink"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Reduzida, sobre baga</span></div>
+        <div class="plate folha"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div><span class="cap">Reduzida, sobre folha</span></div>
         <div class="plate light"><div class="clear"><div class="lockup" style="font-size:2.2rem"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark">Dassah</span></div></div><span class="cap">Área de proteção: metade da altura do símbolo</span></div>
       </div>
       <div class="cols-2">
-        <p>Tamanho mínimo: 18 mm de largura no impresso e 96 px no digital para a assinatura completa. O símbolo sozinho vai até 24 px. Abaixo disso, use só o nome.</p>
+        <p>Tamanho mínimo: 18 mm de largura no impresso e 96 px no digital para a assinatura. O símbolo sozinho vai até 24 px. O "Co." some abaixo de 140 px de largura.</p>
         <p>O desenho aqui é a direção. Antes de ir para a gráfica, o logotipo precisa ser vetorizado e ajustado letra a letra (espaçamento entre "ss" e o terminal do "h"). <span class="pend">confirmar</span></p>
       </div>
       <h3>Usos errados</h3>
       <div class="wrong">
         <figure><div class="plate light"><div class="lockup"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas><span class="wordmark" style="color:#B8925A">Dassah</span></div><span class="x"></span></div><figcaption class="small">Dourado ou metalizado</figcaption></figure>
         <figure><div class="plate light"><div class="lockup"><span class="wordmark" style="transform:scaleX(.6);transform-origin:left">Dassah</span></div><span class="x"></span></div><figcaption class="small">Distorcer ou condensar</figcaption></figure>
-        <figure><div class="plate light" style="background:linear-gradient(120deg,#7b5cff,#3fa7ff)"><div class="lockup" style="color:#fff"><span class="wordmark">Dassah</span></div><span class="x"></span></div><figcaption class="small">Degradê ou fundo sem contraste</figcaption></figure>
+        <figure><div class="plate light"><div class="lockup"><span style="font-size:.9em;color:#B8925A">✦</span><span class="wordmark">Dassah</span></div><span class="x"></span></div><figcaption class="small">Acrescentar brilho ou estrela</figcaption></figure>
         <figure><div class="plate light"><div class="lockup"><span class="wordmark" style="font-family:'Brush Script MT',cursive;font-weight:400;letter-spacing:0">Dassah</span></div><span class="x"></span></div><figcaption class="small">Trocar por letra cursiva</figcaption></figure>
       </div>
     </section>
@@ -519,14 +663,14 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <section id="tipografia">
       <header>
         <h2>Tipografia</h2>
-        <p class="lead">Duas famílias com papéis separados. As duas são livres para uso comercial (licença OFL) e estão no Google Fonts.</p>
+        <p class="lead">Duas famílias com papéis separados. As duas são livres para uso comercial (licença OFL) e estão no Google Fonts, então funcionam no Canva, no Google Docs e no site.</p>
       </header>
       <div class="specimen">
         <div class="spec">
           <span class="small">Títulos, números e assinatura</span>
-          <span class="glyph" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;letter-spacing:-0.03em">Aa Rr</span>
+          <span class="glyph" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;letter-spacing:-0.03em">Aa 82</span>
           <h3>Archivo, largura expandida</h3>
-          <p>Uma grotesca com eixo de largura. Na versão larga ela ocupa espaço como sinalização de instituição. É o peso de empresa grande.</p>
+          <p>Uma grotesca com eixo de largura. Na versão larga ela ocupa espaço como sinalização de instituição, e os números ficam fortes para os dados com selo.</p>
         </div>
         <div class="spec">
           <span class="small">Textos, propostas e citações</span>
@@ -536,14 +680,14 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
         </div>
       </div>
       <div class="scale">
-        <div><span class="k">Display 88 / 0,9</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;font-size:clamp(2.2rem,6vw,3.6rem);letter-spacing:-0.035em;line-height:.95">Para um tempo como este</span></div>
-        <div><span class="k">Título 44 / 1,05</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:600;font-size:var(--s5);letter-spacing:-0.02em;line-height:1.05">O momento da marca</span></div>
+        <div><span class="k">Display 88 / 0,9</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:560;font-size:clamp(2.2rem,6vw,3.6rem);letter-spacing:-0.035em;line-height:.95">Você só aprova</span></div>
+        <div><span class="k">Título 44 / 1,05</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 125;font-weight:600;font-size:var(--s5);letter-spacing:-0.02em;line-height:1.05">O momento do negócio</span></div>
         <div><span class="k">Subtítulo 22 / 1,2</span><span class="v" style="font-family:var(--display);font-variation-settings:'wdth' 112;font-weight:600;font-size:var(--s3)">Onde queremos chegar</span></div>
-        <div><span class="k">Abertura 22 / 1,45</span><span class="v" style="font-family:var(--text);font-weight:300;font-size:var(--s3)">Você já tem a história. Falta a frase que outra pessoa entende em três segundos.</span></div>
-        <div><span class="k">Texto 17 / 1,6</span><span class="v">O diagnóstico olha o que você já publica, o que as pessoas respondem e o que fica escondido. Depois disso, a gente escreve a direção.</span></div>
-        <div><span class="k">Legenda 14 / 1,45</span><span class="v small" style="color:var(--fg)">Dassah Co, proposta para Camila Sabino, outubro de 2026</span></div>
+        <div><span class="k">Abertura 22 / 1,45</span><span class="v" style="font-family:var(--text);font-weight:300;font-size:var(--s3)">O negócio até anda. O Instagram não. Sobrou para a noite, para o domingo, para quando der.</span></div>
+        <div><span class="k">Texto 17 / 1,6</span><span class="v">Em 30 dias o perfil deixa de parecer abandonado. No recorrente, você só aprova. No fim do mês, você conta conversa, não curtida.</span></div>
+        <div><span class="k">Legenda 14 / 1,45</span><span class="v small" style="color:var(--fg)">Fonte: Sebrae, Pulso dos Pequenos Negócios, 12ª edição, 2026</span></div>
       </div>
-      <p>Regras: rótulos em caixa baixa, nunca em caixa-alta espaçada. Uma palavra destacada em itálico ou cor dentro do título não existe na Dassah. Linhas de texto com no máximo 65 caracteres. Títulos alinhados à esquerda.</p>
+      <p>Regras: rótulos em caixa baixa, nunca em caixa-alta espaçada. Nada de destacar uma palavra do título com itálico ou outra cor. Linhas de texto com no máximo 65 caracteres. Títulos alinhados à esquerda.</p>
     </section>
 
     <section id="elemento">
@@ -559,11 +703,11 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
       <div class="cols-2">
         <div class="stack">
           <h4>Fotografia</h4>
-          <p>Gente trabalhando de verdade: a mão marcando um papel, a reunião vista de lado, o bastidor antes da gravação. Luz natural lateral, cor levemente dessaturada para conviver com o verde. Nada de banco de imagem, notebook com xícara de café ou mulher sorrindo para a câmera com braços cruzados.</p>
+          <p>Bastidor verdadeiro, como pede a Estratégia Macro: a dona do restaurante no balcão, a mão aprovando a peça no celular, o consultório com a agenda aberta. Luz natural lateral, cor levemente dessaturada para conviver com o verde. Nada de banco de imagem, vaso com ramo, tecido drapeado ou notebook com xícara de café. Saúde: nunca antes e depois.</p>
         </div>
         <div class="stack">
           <h4>Grid</h4>
-          <p>A4: margem de 18 mm e 12 colunas. Post de 1080 × 1350: margem de 88 px e 6 colunas. Slide 16:9: margem de 96 px e 12 colunas. Texto sempre alinhado à esquerda. O centro da página fica para a flor, nunca para o parágrafo.</p>
+          <p>A4: margem de 18 mm e 12 colunas. Post de 1080 × 1350: margem de 88 px e 6 colunas. Slide 16:9: margem de 96 px e 12 colunas. Texto sempre alinhado à esquerda. O centro da página fica para a flor ou para o número, nunca para o parágrafo.</p>
         </div>
       </div>
     </section>
@@ -571,7 +715,7 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     <section id="aplicacoes">
       <header>
         <h2>Aplicações</h2>
-        <p class="lead">O sistema em peças reais, com texto real.</p>
+        <p class="lead">O sistema em peças reais, com as mensagens da Estratégia Macro.</p>
       </header>
       <div class="apps">
         <figure>
@@ -579,61 +723,68 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
             <div class="top"><canvas class="burst" data-seed="7" data-n="90" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div>
             <div class="brand"><canvas class="burst" data-seed="11" data-n="40" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame" data-mark="1"></canvas><span class="wordmark">Dassah</span></div>
             <div class="ttl">
-              <span class="k">Proposta para Camila Sabino</span>
-              <span class="h">O que já é seu, em uma frase</span>
-              <span class="s">Posicionamento, conteúdo e mídia kit para os próximos 90 dias.</span>
+              <span class="k">Proposta de FEE Estratégico</span>
+              <span class="h">Escopo, time e governança para o próximo trimestre</span>
+              <span class="s">Fee e verba de mídia separados na primeira página, como manda o Documento Base.</span>
             </div>
-            <div class="foot"><span>Dassah Co</span><span>Outubro de 2026</span></div>
+            <div class="foot"><span>Dassah Co.</span><span>Outubro de 2026</span></div>
           </div>
-          <figcaption class="small">Capa de proposta, A4. Alimenta a skill de propostas.</figcaption>
+          <figcaption class="small">Capa de proposta FEE, A4.</figcaption>
         </figure>
         <div class="stack" style="gap:28px">
-          <figure style="margin:0;display:grid;gap:10px">
+          <figure>
             <div class="post-row">
-              <div class="post p1"><span class="f"><span>Dassah</span><span>1/5</span></span><span class="h">Seu perfil parece cinco contas.</span><canvas class="burst" data-seed="3" data-n="70" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div>
-              <div class="post p2"><span class="f"><span>Dassah</span><span>2/5</span></span><span class="b">Frase pronta, treino, família, culto e um vídeo da fábrica que parece catálogo. Quem chega não sabe por que deveria ficar.</span><span></span></div>
-              <div class="post p3"><span class="f"><span>Dassah</span><span>5/5</span></span><span class="h">Uma frase. Quatro pilares. Trinta dias.</span><span class="b" style="font-size:5.2cqw">Diagnóstico de 30 min: link na bio.</span></div>
+              <div class="post p1"><span class="f"><span>Dassah</span><span>1/5</span></span><span class="h">Postar depois do expediente não é estratégia. É sobra.</span><canvas class="burst" data-seed="3" data-n="70" data-color="--b-estame" data-accent="--b-folha" data-focus="--b-estame"></canvas></div>
+              <div class="post p2"><span class="f"><span>Dassah</span><span>2/5</span></span><div><div class="num" style="color:var(--b-murta)">82</div><span class="b">em cada 100 pequenos negócios já vendem no WhatsApp.</span></div><span class="src" style="color:var(--b-cinza)"><svg style="color:var(--b-murta)"><use href="#seal-a"/></svg>Sebrae, Pulso 12ª ed.</span></div>
+              <div class="post p3"><span class="f"><span>Dassah</span><span>5/5</span></span><span class="h">Você só aprova. No WhatsApp.</span><span class="b" style="font-size:5.2cqw">Diagnóstico de 20 min: chame no link da bio.</span></div>
             </div>
-            <figcaption class="small">Carrossel do Instagram, 1080 × 1350.</figcaption>
+            <figcaption class="small">Carrossel do Instagram para a Renata, 1080 × 1350. O selo A acompanha a fonte no slide do dado.</figcaption>
           </figure>
-          <figure style="margin:0;display:grid;gap:10px">
+          <figure>
             <div class="sig">
               <canvas class="burst" data-seed="11" data-n="40" data-color="--b-murta" data-accent="--b-susa" data-focus="--b-murta" data-mark="1"></canvas>
-              <div><b>Victoria Lima</b><span class="m">Estratégia de marca e comunicação</span><br>Dassah Co<br><span class="m">hello.dassahco@gmail.com</span></div>
+              <div><b>Victoria Lima</b><span class="m">Estratégia e comunicação</span><br>Dassah Co.<br><span class="m">hello.dassahco@gmail.com</span></div>
             </div>
             <figcaption class="small">Assinatura de e-mail.</figcaption>
           </figure>
-          <figure style="margin:0;display:grid;gap:10px">
-            <div class="wa"><div class="bubble">Oi, Camila. Terminei a leitura do seu perfil e deixei tudo num documento curto, com o que fica e o que muda. Se alguma frase não parecer você, eu reescrevo. Consegue ver até quinta? Se fizer sentido, a bio nova sobe na segunda.</div></div>
-            <figcaption class="small">Mensagem de envio no WhatsApp.</figcaption>
+          <figure>
+            <div class="wa"><div class="bubble">Oi, Renata. Antes de falar de pacote, queria entender o seu mês: quantos pedidos chegam pelo WhatsApp e quem posta hoje. São 20 minutos. Pode ser quinta às 15h?</div></div>
+            <figcaption class="small">Primeira resposta no WhatsApp: diagnóstico, não catálogo.</figcaption>
           </figure>
         </div>
+      </div>
+    </section>
+
+    <section id="referencias">
+      <header>
+        <h2>Referências</h2>
+        <p class="lead">Como as grandes marcas que publicam seus sistemas no GitHub organizam o que este guia organiza. Usamos a estrutura delas, não a aparência.</p>
+      </header>
+      <div class="refs">
+        <div><div><b>Mailchimp</b><span class="repo">mailchimp/content-style-guide</span></div><p>Separa voz, que nunca muda, de tom, que muda conforme a situação.</p><p>Virou "uma voz, duas linguagens": Renata e FEE com a mesma personalidade.</p></div>
+        <div><div><b>GOV.UK</b><span class="repo">alphagov/govuk-frontend</span></div><p>Linguagem simples como regra, com lista de palavras proibidas e motivo de cada uma.</p><p>Virou a lista de palavras banidas por público, com a explicação ao lado.</p></div>
+        <div><div><b>IBM Carbon</b><span class="repo">carbon-design-system/carbon</span></div><p>Cor, tipo e espaço definidos como tokens, usados igual em todo lugar.</p><p>Virou o sistema de cinco cores com proporção e pares de contraste aprovados.</p></div>
+        <div><div><b>Shopify Polaris</b><span class="repo">Shopify/polaris</span></div><p>Cada componente tem "faça" e "não faça" com exemplo real.</p><p>Virou os pares "assim / não assim" e os usos errados do logo.</p></div>
+        <div><div><b>GitHub Primer</b><span class="repo">primer/design</span></div><p>Um guia vivo, versionado, que a equipe consulta e atualiza.</p><p>Este guia também é versionado e fica no repositório da Dassah.</p></div>
       </div>
     </section>
 
     <section id="nunca">
       <header>
         <h2>O que a Dassah nunca faz</h2>
-        <p class="lead">Uma marca de grande porte se protege pelo que recusa. Esta lista vale para a Dassah e para o que ela entrega em seu nome.</p>
+        <p class="lead">Uma marca grande se protege pelo que recusa. Vale para a Dassah e para o que ela entrega em seu nome.</p>
       </header>
       <div class="never">
         <div><span class="mk">×</span><p>Fundo bege ou creme com serifada clássica e detalhe dourado.</p></div>
-        <div><span class="mk">×</span><p>Cormorant, Playfair ou letra cursiva de "assinatura".</p></div>
+        <div><span class="mk">×</span><p>Brilho de estrela de quatro pontas, o ícone padrão de "gerado por IA".</p></div>
+        <div><span class="mk">×</span><p>Ramo de folhas em traço fino, vaso, tecido drapeado e mockup sobre mármore.</p></div>
         <div><span class="mk">×</span><p>Rótulo em caixa-alta espaçada em cima de todo título.</p></div>
-        <div><span class="mk">×</span><p>Metadados com pontinhos no meio, como "A · B · C".</p></div>
+        <div><span class="mk">×</span><p>Divisor com ponto no meio e metadados com pontinhos entre palavras.</p></div>
         <div><span class="mk">×</span><p>Numeração 01, 02, 03 em conteúdo que não é uma sequência.</p></div>
-        <div><span class="mk">×</span><p>Seta "→" no fim de botão ou chamada.</p></div>
-        <div><span class="mk">×</span><p>Cards iguais arredondados com sombra cinza e degradê.</p></div>
-        <div><span class="mk">×</span><p>Arcos, blobs, raminho em traço fino e mockup sobre mármore.</p></div>
-        <div><span class="mk">×</span><p>Emoji decorativo e "✨" em texto profissional.</p></div>
+        <div><span class="mk">×</span><p>Emoji como etiqueta de método. Os selos são desenhados.</p></div>
+        <div><span class="mk">×</span><p>Percentual sem fonte e "nossos clientes crescem X%".</p></div>
+        <div><span class="mk">×</span><p>Linguagem de holding no feed da Renata.</p></div>
         <div><span class="mk">×</span><p>Versículo ou oração usados como slogan de venda.</p></div>
-      </div>
-      <h3>Por que isto não parece feito por IA</h3>
-      <div class="why">
-        <div><p class="d">O padrão de IA para consultoria feminina é creme, serifada e dourado.</p><p>Usamos o verde de uma planta específica e o azul de um palácio específico, os dois vindos do nome.</p></div>
-        <div><p class="d">O padrão de IA usa Inter, Poppins ou Montserrat.</p><p>Usamos uma grotesca em largura expandida, pouco vista em marcas de branding no Brasil.</p></div>
-        <div><p class="d">O padrão de IA decora com ícones genéricos e formas orgânicas.</p><p>Temos um único elemento, desenhado a partir da flor que dá nome à marca.</p></div>
-        <div><p class="d">O texto de IA é abstrato e cheio de "jornada" e "essência".</p><p>A voz foi tirada dos documentos reais da Dassah, com números, horários e nomes.</p></div>
       </div>
     </section>
 
@@ -643,13 +794,14 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
         <p class="lead">O que precisa de decisão antes da versão final.</p>
       </header>
       <ul class="todo">
-        <li><p>Aprovar a frase de posicionamento e a ideia central "Revelar o que já é seu".</p></li>
-        <li><p>Escolher o arquétipo: Sábia com Cuidadora, Governante ou Maga.</p></li>
-        <li><p>Definir o quanto a fé aparece na comunicação da própria Dassah, e não só na dos clientes.</p></li>
-        <li><p>Confirmar o uso do nome: "Dassah" no logo e "Dassah Co" na assinatura.</p></li>
-        <li><p>Vetorizar e refinar o logotipo e o símbolo com um designer de tipos.</p></li>
+        <li><p>Aprovar "Menos excesso, mais intenção" como ideia central da marca.</p></li>
+        <li><p>Escolher o arquétipo: Sábia com Cuidadora, Governante ou Heroína.</p></li>
+        <li><p>Decidir o descritor ao lado do logo, ou nenhum. "Comunicação que transforma" sai.</p></li>
+        <li><p>Padronizar a grafia: "Dassah Co." (com ponto) em vez de "DASSAH.CO", que aparece na Estratégia Macro.</p></li>
+        <li><p>Corrigir a frase-mãe, que aparece como "Nos cuidamos" sem acento na Estratégia Macro, e alinhar "Eu cuido" e "Nós cuidamos".</p></li>
+        <li><p>Vetorizar e refinar logotipo e símbolo com um designer de tipos.</p></li>
         <li><p>Fazer prova de cor impressa para fechar os valores CMYK.</p></li>
-        <li><p>Enviar os arquivos da pasta do Drive com a teoria da marca. O conector não conseguiu listar a pasta, então este guia usou a skill de propostas e os documentos de clientes assinados pela Dassah.</p></li>
+        <li><p>Atualizar a skill de propostas para trocar a paleta creme, ameixa e dourado pela nova.</p></li>
       </ul>
     </section>
 
@@ -657,7 +809,7 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
 </div>
 
 <footer class="end gutter">
-  <div class="in"><span class="small">Dassah Co, guia de marca, versão 1</span><span class="small">Outubro de 2026</span></div>
+  <div class="in"><span class="small">Dassah Co., guia de marca, versão 2</span><span class="small">Outubro de 2026</span></div>
 </footer>
 
 <script>
@@ -672,45 +824,6 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
   }
   function cssVar(el, name) {
     return getComputedStyle(el).getPropertyValue(name).trim() || '#000';
-  }
-  function draw(cv) {
-    var w = cv.clientWidth, h = cv.clientHeight;
-    if (!w || !h) return;
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    var ctx = cv.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    var r = rng(parseInt(cv.dataset.seed || '1', 10));
-    var n = parseInt(cv.dataset.n || '60', 10);
-    var mark = cv.dataset.mark === '1';
-    var color = cssVar(cv, cv.dataset.color || '--fg');
-    var accent = cssVar(cv, cv.dataset.accent || '--accent');
-    var focus = cssVar(cv, cv.dataset.focus || '--fg');
-    if (mark) { drawMark(ctx, w, h, color, accent, focus); return; }
-    var cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 * (mark ? 0.96 : 0.92);
-    var lw = mark ? Math.max(1, R / 22) : Math.max(0.8, R / 170);
-    var dotR = mark ? R / 9 : Math.max(1.4, R / 75);
-    var hero = Math.floor(n * 0.62);
-    ctx.lineCap = 'round';
-    for (var i = 0; i < n; i++) {
-      var a = (i / n) * Math.PI * 2 - Math.PI / 2 + (r() - 0.5) * (mark ? 0.05 : 0.11);
-      var len = mark ? R * (0.62 + 0.3 * r()) : R * (0.42 + 0.5 * Math.pow(r(), 0.7));
-      var start = R * (mark ? 0.12 : 0.07);
-      var isHero = i === hero;
-      if (isHero) len = R;
-      var c = isHero ? accent : color;
-      var x0 = cx + Math.cos(a) * start, y0 = cy + Math.sin(a) * start;
-      var x1 = cx + Math.cos(a) * (len - dotR), y1 = cy + Math.sin(a) * (len - dotR);
-      ctx.strokeStyle = c; ctx.lineWidth = isHero ? lw * 1.3 : lw;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      ctx.fillStyle = c;
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * len - Math.cos(a) * dotR, cy + Math.sin(a) * len - Math.sin(a) * dotR, isHero ? dotR * 1.5 : dotR * (0.75 + 0.5 * r()), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = focus;
-    ctx.beginPath(); ctx.arc(cx, cy, R * (mark ? 0.1 : 0.035), 0, Math.PI * 2); ctx.fill();
   }
   // Símbolo: versão regular e desenhada da flor, 16 filamentos em dois comprimentos e um em destaque.
   function drawMark(ctx, w, h, color, accent, focus) {
@@ -733,6 +846,45 @@ footer.end .in { max-width: 1240px; margin: 0 auto; padding-block: 28px 40px; di
     }
     ctx.fillStyle = focus;
     ctx.beginPath(); ctx.arc(cx, cy, R * 0.12, 0, Math.PI * 2); ctx.fill();
+  }
+  function draw(cv) {
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var color = cssVar(cv, cv.dataset.color || '--fg');
+    var accent = cssVar(cv, cv.dataset.accent || '--accent');
+    var focus = cssVar(cv, cv.dataset.focus || '--fg');
+    if (cv.dataset.mark === '1') { drawMark(ctx, w, h, color, accent, focus); return; }
+    var r = rng(parseInt(cv.dataset.seed || '1', 10));
+    var n = parseInt(cv.dataset.n || '60', 10);
+    var cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 * 0.92;
+    var lw = Math.max(0.8, R / 170);
+    var dotR = Math.max(1.4, R / 75);
+    var hero = Math.floor(n * 0.62);
+    ctx.lineCap = 'round';
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2 + (r() - 0.5) * 0.11;
+      var len = R * (0.42 + 0.5 * Math.pow(r(), 0.7));
+      var start = R * 0.07;
+      var isHero = i === hero;
+      if (isHero) len = R;
+      var c = isHero ? accent : color;
+      ctx.strokeStyle = c; ctx.lineWidth = isHero ? lw * 1.3 : lw;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * start, cy + Math.sin(a) * start);
+      ctx.lineTo(cx + Math.cos(a) * (len - dotR), cy + Math.sin(a) * (len - dotR));
+      ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * (len - dotR), cy + Math.sin(a) * (len - dotR), isHero ? dotR * 1.5 : dotR * (0.75 + 0.5 * r()), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = focus;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 0.035, 0, Math.PI * 2); ctx.fill();
   }
   var all = Array.prototype.slice.call(document.querySelectorAll('canvas.burst'));
   function drawAll() { all.forEach(draw); }
