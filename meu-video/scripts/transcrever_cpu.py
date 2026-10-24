@@ -30,7 +30,7 @@ segmentos, _ = modelo.transcribe(
     # contexto ajuda o modelo com nomes e termos médicos
     initial_prompt=os.environ.get(
         "CONTEXTO",
-        "Entrevista com Taise sobre câncer de mama triplo-negativo, quimioterapia e fé em Deus.",
+        "Entrevista com Taisa sobre câncer de mama triplo-negativo, quimioterapia e fé em Deus.",
     ),
 )
 

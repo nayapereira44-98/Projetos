@@ -26,7 +26,7 @@ export const ROTEIRO = {
   inicioSeg: 0.4,
   fimSeg: 375,
 
-  nome: "Taise",
+  nome: "Taisa",
   abertura: {
     rotulo: "UMA HISTÓRIA DE FÉ",
     subtitulo: "Fé, força e gratidão na caminhada contra o câncer de mama",

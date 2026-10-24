@@ -10,7 +10,7 @@ Uso: python3 scripts/legendas_revisadas.py
 import json
 
 FALAS = [
-    (0.9, 4.5, "Bom, pessoal, meu nome é Taise, tenho 38 anos."),
+    (0.9, 4.5, "Bom, pessoal, meu nome é Taisa, tenho 38 anos."),
     (4.7, 15.9, "No dia 17 de março, eu fui diagnosticada com câncer de mama triplo-negativo, grau 3."),
     (16.2, 19.3, "No caso, eu já estava no estágio de grau 3."),
     (29.6, 41.4, "Na época, eu senti muita tristeza, um vazio muito grande e um medo muito grande de morrer."),
