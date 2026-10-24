@@ -1,0 +1,297 @@
+<title>Dassah em Relevo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,300..500&family=Hanken+Grotesk:wght@400;500;600&family=Mrs+Saint+Delafield&display=swap">
+<style>
+/* Layout: prancha de apresentação escura, tom sobre tom. Uma ideia por faixa, aplicada em peça real logo em seguida. */
+:root {
+  --baga: #3A0E14;      /* fundo dominante, vinho achocolatado */
+  --vinho: #561821;     /* um degrau acima, para relevo e superfícies */
+  --areia: #EFE4D2;     /* texto sobre baga e papel claro */
+  --pedra: #CDBFAE;     /* areia em sombra, para apoio */
+  --lacre: #B3261E;     /* só na assinatura manuscrita */
+  --bg: var(--baga);
+  --fg: var(--areia);
+  --muted: #C7AFA6;
+  --line: #5E2730;
+
+  --display: "Instrument Serif", "Times New Roman", serif;
+  --mark: "Source Serif 4", Georgia, serif;
+  --ui: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --hand: "Mrs Saint Delafield", cursive;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--mark); font-size: 1.0625rem; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { margin: 0; font-weight: 400; line-height: 1.05; text-wrap: balance; }
+p { margin: 0; max-width: 62ch; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; }
+.ui { font-family: var(--ui); }
+.muted { color: var(--muted); }
+
+/* Papel com fibra: ruído suave sobre a cor */
+.paper { position: relative; isolation: isolate; }
+.paper::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .22; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+
+/* Relevo seco: a letra na cor do papel, só a luz desenha */
+.deboss-dark { color: var(--relevo-base, var(--baga)); text-shadow: -1px -1px 0 rgba(0,0,0,.55), 1px 1px 0 rgba(255,255,255,.10); }
+.deboss-light { color: var(--relevo-base, var(--areia)); text-shadow: 1px 1px 0 rgba(255,255,255,.85), -1px -1px 0 rgba(60,20,20,.22); }
+.emboss-tone { color: #2B090E; text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.4); }
+
+/* Marca */
+.wm { font-family: var(--mark); font-optical-sizing: auto; font-variation-settings: "opsz" 60; font-weight: 500; letter-spacing: -0.025em; line-height: .9; }
+.wm .ha { font-weight: 500; }
+
+/* Abertura */
+.hero .wrap { padding-block: clamp(64px, 11vw, 150px) clamp(48px, 8vw, 96px); display: grid; gap: 40px; }
+.hero .meta { font-family: var(--ui); font-size: .875rem; color: var(--muted); }
+.hero .wm { font-size: clamp(4.5rem, 17vw, 13rem); }
+.hero .wm .ha { --relevo-base: var(--baga); }
+.hero .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 5vw, 72px); }
+.hero .row > * { min-width: 0; }
+.hero .lead { font-size: 1.5rem; font-weight: 300; line-height: 1.4; max-width: 30ch; }
+
+/* Faixas de conteúdo */
+.band .wrap { padding-block: clamp(56px, 8vw, 104px); display: grid; gap: 36px; }
+.band.light { background: var(--areia); color: var(--baga); }
+.band.light .muted { color: #6E4A45; }
+.band.wine { background: var(--vinho); }
+.band h2 { font-family: var(--display); font-size: clamp(2.6rem, 6.5vw, 4.8rem); letter-spacing: -0.01em; }
+.band .kicker { font-family: var(--ui); font-size: .875rem; color: var(--muted); }
+.head { display: grid; gap: 12px; }
+
+/* Referências */
+.refs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.refs > div { padding: 18px 18px 0 0; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.refs > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+.refs b { font-family: var(--ui); font-weight: 600; font-size: .95rem; }
+.refs .take { color: var(--areia); }
+.refs .skip { font-size: .95rem; color: var(--muted); }
+
+/* Conceito */
+.concept { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 64px); align-items: center; }
+.concept > * { min-width: 0; }
+.proof { aspect-ratio: 4 / 3; background: var(--areia); display: grid; place-items: center; container-type: inline-size; }
+.proof .wm { font-size: 19cqw; color: var(--baga); }
+.proof .wm .ha { --relevo-base: var(--areia); }
+.concept .text { display: grid; gap: 16px; }
+.concept .text p { color: var(--baga); }
+
+/* Assinaturas */
+.lockups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.lockups figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.lockups figcaption { font-family: var(--ui); font-size: .8rem; color: var(--muted); }
+.plate { aspect-ratio: 1; display: grid; place-items: center; container-type: inline-size; padding: 10%; position: relative; }
+.plate.baga { background: var(--baga); }
+.plate.areia { background: var(--areia); color: var(--baga); }
+.plate.vinho { background: var(--vinho); }
+.plate .wm { font-size: 22cqw; }
+.plate .co { font-family: var(--ui); font-size: 5cqw; letter-spacing: .02em; margin-top: 3cqw; text-align: center; }
+.plate .ast { font-family: var(--mark); font-weight: 500; font-size: 60cqw; line-height: .6; height: 34cqw; }
+
+/* Cor */
+.swatches { display: grid; grid-template-columns: 2.4fr 1.4fr 1.4fr 1fr .5fr; min-height: 220px; }
+.swatches > div { padding: 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; font-family: var(--ui); font-size: .8rem; min-width: 0; }
+.swatches b { font-size: .95rem; font-weight: 600; }
+
+/* Tipografia */
+.types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.types > div { padding: 20px 20px 0 0; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.types > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.types .g { font-size: clamp(3rem, 7vw, 5rem); line-height: 1; }
+.types b { font-family: var(--ui); font-weight: 600; font-size: .95rem; }
+.types p { font-size: .95rem; color: var(--muted); }
+
+/* Aplicações */
+.apps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.apps figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.apps figcaption { font-family: var(--ui); font-size: .8rem; color: var(--muted); }
+.band.light figcaption { color: #6E4A45; }
+.stack { display: grid; gap: 20px; min-width: 0; }
+
+.cover { aspect-ratio: 210 / 297; background: var(--baga); container-type: inline-size; position: relative; overflow: hidden; }
+.cover .pattern { position: absolute; inset: -3% -4% auto -3%; display: grid; align-content: start; font-family: var(--display); font-size: 29cqw; line-height: .92; letter-spacing: .01em; white-space: nowrap; --relevo-base: var(--baga); }
+.cover .over { position: absolute; left: 9%; right: 9%; bottom: 8%; display: grid; gap: 3cqw; }
+.cover .over .wm { font-size: 9cqw; color: var(--areia); }
+.cover .over .t { font-family: var(--mark); font-size: 3.6cqw; line-height: 1.35; color: var(--pedra); max-width: 34ch; }
+.cover .over .hand { font-family: var(--hand); color: var(--lacre); font-size: 13cqw; line-height: .8; position: absolute; right: 0; bottom: 34cqw; transform: rotate(-6deg); }
+
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card { aspect-ratio: 85 / 55; container-type: inline-size; position: relative; overflow: hidden; display: grid; }
+.card.front { background: var(--vinho); place-items: center; }
+.card.front .wm { font-size: 17cqw; --relevo-base: var(--vinho); }
+.card.back { background: var(--areia); color: var(--baga); padding: 9%; align-content: space-between; outline: 1px solid #D6C6B0; outline-offset: -1px; }
+.card.back > div { font-family: var(--ui); font-size: 4.4cqw; line-height: 1.45; }
+.card.back .name { font-family: var(--mark); font-variation-settings: "opsz" 40; font-weight: 500; font-size: 7.2cqw; letter-spacing: -0.01em; display: block; }
+.card.back .hand { font-family: var(--hand); color: var(--lacre); font-size: 11cqw; line-height: .8; }
+
+.posts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.post { aspect-ratio: 4 / 5; container-type: inline-size; position: relative; overflow: hidden; display: grid; align-content: space-between; padding: 9%; }
+.post.p1 { background: var(--baga); color: var(--areia); }
+.post.p2 { background: var(--areia); color: var(--baga); outline: 1px solid #D6C6B0; outline-offset: -1px; }
+.post .top { display: flex; justify-content: space-between; align-items: baseline; }
+.post .top > div { font-family: var(--ui); font-size: 4.2cqw; }
+.post .top .wm { font-size: 6cqw; }
+.post .cap { font-family: var(--display); text-transform: uppercase; font-size: 21cqw; line-height: .86; letter-spacing: -0.005em; }
+.post .cap small { display: block; font-size: .5em; }
+.post .fn { font-family: var(--mark); font-style: italic; font-size: 5.4cqw; line-height: 1.35; max-width: 28ch; }
+.post .src { font-family: var(--ui); font-size: 3.6cqw; color: var(--muted); }
+.post.p2 .src { color: #6E4A45; }
+.post .num { font-family: var(--display); font-size: 52cqw; line-height: .8; letter-spacing: -0.02em; }
+.post .num sup { font-family: var(--mark); font-size: .3em; vertical-align: 1.5em; margin-left: .05em; }
+
+/* Regras */
+.rules { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.rules > div { border-top: 1px solid var(--line); padding: 14px 0; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; }
+.rules .mk { font-family: var(--ui); font-weight: 600; color: var(--muted); }
+.qs { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; max-width: 70ch; }
+.pend { font-family: var(--ui); font-size: .8em; background: rgba(239,228,210,.14); padding: 0 .35em; border-radius: 3px; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .refs, .types { grid-template-columns: 1fr 1fr; }
+  .refs > div:nth-child(3), .types > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .refs > div:nth-child(n+3), .types > div:nth-child(n+3) { margin-top: 18px; border-top: 1px solid var(--line); }
+  .concept, .apps, .hero .row { grid-template-columns: minmax(0, 1fr); }
+  .lockups { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .refs, .types, .rules, .lockups, .posts, .cards { grid-template-columns: minmax(0, 1fr); }
+  .refs > div, .types > div { padding-left: 0 !important; border-left: 0 !important; }
+  .refs > div + div, .types > div + div { margin-top: 18px; border-top: 1px solid var(--line); }
+  .swatches { grid-template-columns: 1fr 1fr; }
+  .swatches > div { min-height: 96px; }
+}
+</style>
+
+<header class="hero paper gutter">
+  <div class="wrap">
+    <span class="meta">Dassah Co., caminho C, rodada 3</span>
+    <div class="wm" aria-label="hadassah, com ha em relevo e dassah impresso"><span class="ha deboss-dark">ha</span>dassah</div>
+    <div class="row">
+      <p class="lead">A origem fica no papel, em relevo. Só quem toca percebe.</p>
+      <p class="muted">Hadassa virou Dassah: a marca tirou o excesso e guardou a origem. Esta direção faz isso de forma física. O "ha" é prensado no papel sem tinta. O "dassah" é impresso. A história está lá, mas não grita.</p>
+    </div>
+  </div>
+</header>
+
+<section class="band wine gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker">O que eu tirei das suas referências</span><h2>Quatro imagens, quatro decisões</h2></div>
+    <div class="refs">
+      <div><b>hanya.</b><p class="take">Marca toda em minúsculas, serifada, tom sobre tom em relevo. Vira a regra principal da Dassah.</p><p class="skip">Não copio o ponto final nem a escrita vertical, que são dela.</p></div>
+      <div><b>With Love</b><p class="take">Uma palavra repetida em relevo seco, e um único toque vermelho escrito à mão. Vira a capa de proposta e a assinatura.</p><p class="skip">O manuscrito tem que ser a letra real da Victoria, escaneada, nunca uma fonte cursiva.</p></div>
+      <div><b>Sand e Chocolate</b><p class="take">Serifada alta e condensada para títulos, e o par areia com vinho escuro.</p><p class="skip">Uso a condensada só em títulos grandes, nunca em texto corrido.</p></div>
+      <div><b>Deep Burgundy</b><p class="take">Textura de matéria: tricô, tecido, papel. A cor tem que parecer tocável.</p><p class="skip">Fotografia de textura entra como fundo de peça, não como mockup de tecido drapeado.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band light paper gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker" style="color:#6E4A45">O conceito</span><h2>A origem em relevo</h2></div>
+    <div class="concept">
+      <div class="proof"><div class="wm"><span class="ha deboss-light">ha</span>dassah</div></div>
+      <div class="text">
+        <p>O documento de origem diz: "Preservamos a conexão com a origem bíblica, mas construímos uma palavra mais curta." Esta direção mostra exatamente isso. Em toda peça importante (cartão, capa de proposta, envelope), o "ha" de Hadassa está prensado no papel, sem tinta.</p>
+        <p>No dia a dia digital, onde não existe relevo, a marca é só "dassah", em minúsculas. O asterisco do caminho C continua, agora com função clara: é a nota de fonte dos dados, o selo do método.</p>
+        <p class="muted" style="font-family:var(--ui);font-size:.9rem">Na gráfica: relevo seco (blind emboss) para o "ha", impressão tom sobre tom ou hot stamping vinho para o "dassah". Sem dourado.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band paper gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker">Assinaturas</span><h2>Uma marca, três versões</h2></div>
+    <div class="lockups">
+      <figure><div class="plate baga"><div style="display:grid;justify-items:center"><span class="wm">dassah</span><span class="co">co.</span></div></div><figcaption>Principal, digital: dassah co.</figcaption></figure>
+      <figure><div class="plate areia"><span class="wm"><span class="ha deboss-light">ha</span>dassah</span></div><figcaption>Impressa, com o "ha" em relevo seco</figcaption></figure>
+      <figure><div class="plate vinho"><span class="ast" aria-label="asterisco">*</span></div><figcaption>Selo de fonte e avatar, o asterisco (versão final com seis pontas, desenhada)</figcaption></figure>
+    </div>
+    <p class="muted">O desenho final das letras precisa de um designer de tipos: ajustar o par "ss", o terminal do "h" e o peso do asterisco. Aqui uso a Source Serif como base. <span class="pend">confirmar</span></p>
+  </div>
+</section>
+
+<section class="band wine gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker">Cor</span><h2>Tom sobre tom</h2></div>
+    <div class="swatches">
+      <div style="background:#3A0E14;color:#EFE4D2;box-shadow:inset 0 0 0 1px #5E2730"><b>Baga</b>#3A0E14<span>Fundo dominante</span></div>
+      <div style="background:#561821;color:#EFE4D2;box-shadow:inset 0 0 0 1px #6E2A34"><b>Vinho</b>#561821<span>Relevo e superfície</span></div>
+      <div style="background:#EFE4D2;color:#3A0E14"><b>Areia</b>#EFE4D2<span>Texto e papel claro</span></div>
+      <div style="background:#CDBFAE;color:#3A0E14"><b>Pedra</b>#CDBFAE<span>Apoio</span></div>
+      <div style="background:#B3261E;color:#EFE4D2"><b>Lacre</b><span>Só manuscrito</span></div>
+    </div>
+    <p>A marca vive no vinho. A areia é a cor da letra e do papel, nunca o fundo dominante de tudo, para não cair no creme genérico. O vermelho lacre aparece só na assinatura escrita à mão, uma vez por peça.</p>
+  </div>
+</section>
+
+<section class="band paper gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker">Tipografia</span><h2>Três vozes, cada uma no seu lugar</h2></div>
+    <div class="types">
+      <div><span class="g" style="font-family:var(--mark);font-variation-settings:'opsz' 60;font-weight:500;letter-spacing:-0.02em">dassah</span><b>Source Serif 4</b><p>Marca e texto. Serifada de leitura, com versões para tamanho grande e pequeno. Minúsculas na marca.</p></div>
+      <div><span class="g" style="font-family:var(--display);text-transform:uppercase">TEMPO</span><b>Instrument Serif</b><p>Títulos grandes, em caixa-alta condensada, como "Sand" e "Chocolate". Só a partir de 40 px.</p></div>
+      <div><span class="g" style="font-family:var(--hand);color:#E4574D">Victoria</span><b>A letra da Victoria</b><p>Assinatura e um toque por peça. Aqui está uma fonte provisória; o certo é escanear a letra dela. <span class="pend">provisório</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band light paper gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker" style="color:#6E4A45">Aplicações</span><h2>Como isso vira peça</h2></div>
+    <div class="apps">
+      <figure>
+        <div class="cover paper">
+          <div class="pattern" aria-hidden="true"><span class="deboss-dark">HADASSA</span><span class="deboss-dark">HADASSA</span><span class="deboss-dark">HADASSA</span><span class="deboss-dark">HADASSA</span><span class="deboss-dark">HADASSA</span></div>
+          <div class="over">
+            <span class="wm">dassah</span>
+            <span class="t">Proposta para Camila Sabino. Posicionamento e conteúdo para os próximos 90 dias.</span>
+            <span class="hand">com cuidado</span>
+          </div>
+        </div>
+        <figcaption>Capa de proposta, A4. "Hadassa" repetido em relevo seco, como na referência With Love; o toque vermelho é a letra da Victoria.</figcaption>
+      </figure>
+      <div class="stack">
+        <figure>
+          <div class="cards">
+            <div class="card front paper"><span class="wm"><span class="ha emboss-tone">ha</span><span class="emboss-tone">dassah</span></span></div>
+            <div class="card back"><div><span class="name">Victoria Lima</span>Estratégia e comunicação<br>hello.dassahco@gmail.com</div><span class="hand">Vic</span></div>
+          </div>
+          <figcaption>Cartão de visita, 85 × 55 mm. Frente toda em relevo, tom sobre tom no vinho.</figcaption>
+        </figure>
+        <figure>
+          <div class="posts">
+            <div class="post p1 paper"><div class="top"><span class="wm">dassah</span><div>1/5</div></div><span class="cap">Sumir<small>custa caro</small></span><span class="fn">Postar depois do expediente não é estratégia. É sobra.</span></div>
+            <div class="post p2 paper"><div class="top"><span class="wm">dassah</span><div>2/5</div></div><span class="num">82<sup>*</sup></span><div style="display:grid;gap:3cqw"><span class="fn">*em cada 100 pequenos negócios já vendem no WhatsApp.</span><span class="src">Sebrae, Pulso dos Pequenos Negócios, 12ª ed.</span></div></div>
+          </div>
+          <figcaption>Carrossel do Instagram, 1080 × 1350. O asterisco liga o número à fonte.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band gutter">
+  <div class="wrap">
+    <div class="head"><span class="kicker">Para não perder o rumo</span><h2>Regras desta direção</h2></div>
+    <div class="rules">
+      <div><span class="mk">1</span><p>A marca é sempre em minúsculas. "Dassah Co." com maiúsculas fica só em texto corrido.</p></div>
+      <div><span class="mk">2</span><p>O "ha" em relevo só existe no papel. No digital, nunca simular com sombra pesada.</p></div>
+      <div><span class="mk">3</span><p>Manuscrito vermelho uma vez por peça, e sempre a letra real da Victoria.</p></div>
+      <div><span class="mk">4</span><p>Condensada em caixa-alta só em títulos grandes. Rótulos pequenos ficam em caixa baixa.</p></div>
+      <div><span class="mk">5</span><p>Sem dourado, sem ramo, sem brilho de estrela. A riqueza vem do papel e do relevo.</p></div>
+      <div><span class="mk">6</span><p>Todo número com asterisco tem a fonte escrita na mesma peça.</p></div>
+    </div>
+    <div class="head" style="margin-top:24px"><h3 style="font-family:var(--display);font-size:2.2rem">Para a próxima rodada</h3></div>
+    <ol class="qs">
+      <li>A ideia do "ha" em relevo faz sentido para você, ou parece escondida demais?</li>
+      <li>O vinho está no tom certo, ou você quer mais chocolate (mais escuro) ou mais vermelho?</li>
+      <li>A Victoria topa escanear a própria letra para a assinatura e os toques em vermelho?</li>
+      <li>O asterisco segue como selo do método, ou a marca fica só com a palavra?</li>
+    </ol>
+  </div>
+</section>
