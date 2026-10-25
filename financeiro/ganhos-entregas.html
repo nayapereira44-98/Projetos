@@ -1,0 +1,665 @@
+<title>Ganhos das Entregas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: coluna única de leitura (resumo → plataformas → gráfico → lançamentos), com o formulário abrindo no topo */
+:root {
+  --bg: #eef2f4;
+  --panel: #ffffff;
+  --panel-2: #f6f8fa;
+  --fg: #142029;
+  --muted: #5a6875;
+  --line: #d9e1e7;
+  --accent: #17695a;
+  --accent-soft: #dcefe9;
+  --accent-fg: #ffffff;
+  --ok: #1d7f49;
+  --ok-soft: #dcf1e4;
+  --warn: #9a5c00;
+  --warn-soft: #fbecd2;
+  --bad: #b8322a;
+  --focus: #2f7de1;
+  --font-display: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1418; --panel: #162026; --panel-2: #1b262d; --fg: #e6edf1; --muted: #93a2ad; --line: #27343c;
+    --accent: #4fc3a1; --accent-soft: #173a33; --accent-fg: #06201a;
+    --ok: #5fd08e; --ok-soft: #173326; --warn: #f0b54f; --warn-soft: #3a2c12; --bad: #ff7a6e; --focus: #6aa8ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1418; --panel: #162026; --panel-2: #1b262d; --fg: #e6edf1; --muted: #93a2ad; --line: #27343c;
+  --accent: #4fc3a1; --accent-soft: #173a33; --accent-fg: #06201a;
+  --ok: #5fd08e; --ok-soft: #173326; --warn: #f0b54f; --warn-soft: #3a2c12; --bad: #ff7a6e; --focus: #6aa8ff;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 600; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.top p { margin: 4px 0 0; color: var(--muted); }
+
+button, .btn { font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 9px 14px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn-primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn-primary:hover { filter: brightness(1.06); border-color: var(--accent); }
+.btn-small { padding: 5px 10px; font-size: 0.82rem; border-radius: 8px; }
+.btn-danger { color: var(--bad); }
+.btn-danger.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.banner { padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-weight: 500; }
+
+/* Formulário */
+form.entry { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.field input, .field select { font: inherit; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); width: 100%; box-sizing: border-box; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.form-actions { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.form-msg { color: var(--bad); font-weight: 500; }
+.form-title { margin-bottom: 14px; }
+
+/* Períodos */
+.periods { display: flex; gap: 6px; flex-wrap: wrap; }
+.periods button { border-radius: 999px; padding: 6px 14px; font-size: 0.88rem; font-weight: 500; }
+.periods button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.kpi .value { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 1.45rem; font-weight: 600; letter-spacing: -0.02em; }
+.kpi.lead { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.kpi.lead .eyebrow, .kpi.lead .muted { color: var(--accent-fg); opacity: 0.85; }
+.kpi .sub { font-size: 0.82rem; color: var(--muted); }
+
+/* Plataformas */
+.plat-rows { display: grid; gap: 12px; }
+.plat-row { display: grid; grid-template-columns: minmax(110px, 1.2fr) 3fr auto; gap: 12px; align-items: center; }
+.plat-name { display: flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; }
+.plat-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.track { height: 10px; background: var(--panel-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+.track i { display: block; height: 100%; border-radius: 99px; }
+.plat-val { text-align: right; font-size: 0.9rem; }
+.plat-val small { display: block; color: var(--muted); font-size: 0.75rem; font-family: var(--font-body); }
+@media (max-width: 520px) { .plat-row { grid-template-columns: 1fr auto; } .plat-row .track { grid-column: 1 / -1; order: 3; } }
+
+/* Gráfico */
+.chart-box { position: relative; }
+.chart-box svg { display: block; width: 100%; height: auto; }
+.chart-box text { fill: var(--muted); font-family: var(--font-num); font-size: 10.5px; }
+.chart-box .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); padding: 8px 10px; border-radius: 8px; font-size: 0.8rem; line-height: 1.4; min-width: 120px; box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+.tip b { font-family: var(--font-display); }
+.tip .row { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-num); }
+
+/* Lançamentos */
+.list { display: grid; }
+.item { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
+.item:first-child { border-top: 0; }
+.date-block { width: 46px; text-align: center; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); padding: 4px 0; line-height: 1.1; }
+.date-block .d { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; display: block; }
+.date-block .m { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.item-main { min-width: 0; display: grid; gap: 3px; }
+.item-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.pill { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; letter-spacing: 0.02em; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.item-meta { font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+.item-val { text-align: right; font-weight: 600; font-size: 1.05rem; }
+.item-actions { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.empty { padding: 22px 6px; text-align: center; color: var(--muted); }
+
+@media (prefers-reduced-motion: no-preference) { .track i { transition: width .35s ease; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Financeiro · entregas</div>
+      <h1>Ganhos das entregas</h1>
+      <p>Quanto entrou de cada plataforma, quanto falta receber e quanto rende cada hora rodando.</p>
+    </div>
+    <button type="button" class="btn-primary" id="btn-novo">+ Novo ganho</button>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="panel" id="form-panel" hidden aria-labelledby="form-titulo">
+    <h2 class="form-title" id="form-titulo">Novo ganho</h2>
+    <form class="entry" id="form" novalidate>
+      <div class="field">
+        <label for="f-data">Data da entrega</label>
+        <input type="date" id="f-data" required>
+      </div>
+      <div class="field">
+        <label for="f-plat">Plataforma</label>
+        <select id="f-plat"></select>
+      </div>
+      <div class="field" id="wrap-nova" hidden>
+        <label for="f-nova">Nome da nova plataforma</label>
+        <input type="text" id="f-nova" placeholder="Ex.: iFood, Loggi, Amazon" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="f-valor">Valor (R$)</label>
+        <input type="text" id="f-valor" inputmode="decimal" placeholder="0,00" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="f-ini">Início</label>
+        <input type="time" id="f-ini">
+      </div>
+      <div class="field">
+        <label for="f-fim">Fim</label>
+        <input type="time" id="f-fim">
+      </div>
+      <div class="field">
+        <label for="f-horas">Horas trabalhadas</label>
+        <input type="text" id="f-horas" inputmode="decimal" placeholder="calculado pelo horário">
+      </div>
+      <div class="field">
+        <label for="f-status">Pagamento</label>
+        <select id="f-status">
+          <option value="recebido">Recebido</option>
+          <option value="a_receber">A receber</option>
+        </select>
+      </div>
+      <div class="field wide">
+        <label for="f-obs">Observação</label>
+        <input type="text" id="f-obs" maxlength="200" placeholder="Opcional: rota, nº de pacotes, gorjeta…">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-salvar">Salvar ganho</button>
+        <button type="button" id="btn-cancelar">Cancelar</button>
+        <span class="form-msg" id="form-msg" role="alert"></span>
+      </div>
+    </form>
+  </section>
+
+  <nav class="periods" aria-label="Período" id="periods">
+    <button type="button" data-p="mes">Este mês</button>
+    <button type="button" data-p="mes_passado">Mês passado</button>
+    <button type="button" data-p="30d">Últimos 30 dias</button>
+    <button type="button" data-p="tudo">Tudo</button>
+  </nav>
+
+  <section class="kpis" id="kpis" aria-label="Resumo do período">
+    <div class="kpi lead"><span class="eyebrow">Total no período</span><span class="value" id="k-total">—</span><span class="sub muted" id="k-total-sub">&nbsp;</span></div>
+    <div class="kpi"><span class="eyebrow">Recebido</span><span class="value" id="k-rec">—</span><span class="sub" id="k-rec-sub">&nbsp;</span></div>
+    <div class="kpi"><span class="eyebrow">A receber</span><span class="value" id="k-arec">—</span><span class="sub" id="k-arec-sub">&nbsp;</span></div>
+    <div class="kpi"><span class="eyebrow">Média por entrega</span><span class="value" id="k-media">—</span><span class="sub" id="k-media-sub">&nbsp;</span></div>
+    <div class="kpi"><span class="eyebrow">Ganho por hora</span><span class="value" id="k-hora">—</span><span class="sub" id="k-hora-sub">&nbsp;</span></div>
+  </section>
+
+  <section class="panel" id="sec-plat" aria-labelledby="t-plat">
+    <div class="panel-head"><h2 id="t-plat">Por plataforma</h2><span class="muted" id="plat-periodo"></span></div>
+    <div class="plat-rows" id="plat-rows"></div>
+  </section>
+
+  <section class="panel" id="sec-chart" aria-labelledby="t-chart">
+    <div class="panel-head"><h2 id="t-chart">Ganhos ao longo do tempo</h2><div class="legend" id="legend"></div></div>
+    <div class="chart-box" id="chart"></div>
+  </section>
+
+  <section class="panel" id="sec-lista" aria-labelledby="t-lista">
+    <div class="panel-head"><h2 id="t-lista">Lançamentos</h2><span class="muted" id="lista-count"></span></div>
+    <div class="list" id="lista"><div class="empty">Carregando ganhos…</div></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const NUM1 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const CORES = ['#e8562a', '#d9a400', '#3a66db', '#1d9e75', '#a855f7', '#db2777', '#0ea5b7', '#7c8a2b'];
+
+  const S = { ganhos: [], plats: [], periodo: 'mes', editId: null, db: null, carregado: false };
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- utilidades ----------
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (k === 'class') n.className = attrs[k];
+      else if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'style') n.setAttribute('style', attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    for (const c of kids) if (c != null) n.append(c);
+    return n;
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  const iso = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const parseISO = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const hoje = () => iso(new Date());
+  const parseValor = (s) => {
+    s = String(s || '').trim().replace(/[R$\s]/g, '');
+    if (!s) return NaN;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    return Number(s);
+  };
+  const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const platById = (id) => S.plats.find((p) => p.id === id) || { id, nome: id || 'Sem plataforma', cor: '#8a96a0' };
+
+  function horasEntre(ini, fim) {
+    if (!ini || !fim) return null;
+    const [h1, m1] = ini.split(':').map(Number);
+    const [h2, m2] = fim.split(':').map(Number);
+    let min = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (min <= 0) min += 24 * 60;
+    return Math.round(min / 6) / 10;
+  }
+
+  function intervalo(p) {
+    const now = new Date();
+    if (p === 'mes') return [iso(new Date(now.getFullYear(), now.getMonth(), 1)), iso(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+    if (p === 'mes_passado') return [iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)), iso(new Date(now.getFullYear(), now.getMonth(), 0))];
+    if (p === '30d') { const a = new Date(now); a.setDate(a.getDate() - 29); return [iso(a), iso(now)]; }
+    return null;
+  }
+  function rotuloPeriodo(p) {
+    const now = new Date();
+    if (p === 'mes') return MESES_LONGO[now.getMonth()] + ' de ' + now.getFullYear();
+    if (p === 'mes_passado') { const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return MESES_LONGO[d.getMonth()] + ' de ' + d.getFullYear(); }
+    if (p === '30d') return 'últimos 30 dias';
+    return 'todo o histórico';
+  }
+  function filtrados() {
+    const r = intervalo(S.periodo);
+    return S.ganhos
+      .filter((g) => !r || (g.data >= r[0] && g.data <= r[1]))
+      .sort((a, b) => (b.data.localeCompare(a.data)) || String(b.criadoEm || '').localeCompare(String(a.criadoEm || '')));
+  }
+
+  // ---------- render ----------
+  function render() {
+    document.querySelectorAll('#periods button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === S.periodo)));
+    const lista = filtrados();
+    renderKpis(lista);
+    renderPlats(lista);
+    renderChart(lista);
+    renderLista(lista);
+    renderSelect();
+  }
+
+  function renderKpis(l) {
+    const total = l.reduce((s, g) => s + g.valor, 0);
+    const rec = l.filter((g) => g.status !== 'a_receber');
+    const arec = l.filter((g) => g.status === 'a_receber');
+    const sRec = rec.reduce((s, g) => s + g.valor, 0);
+    const sArec = arec.reduce((s, g) => s + g.valor, 0);
+    const comHoras = l.filter((g) => typeof g.horas === 'number' && g.horas > 0);
+    const h = comHoras.reduce((s, g) => s + g.horas, 0);
+    const vh = comHoras.reduce((s, g) => s + g.valor, 0);
+    const n = l.length;
+    $('k-total').textContent = BRL.format(total);
+    $('k-total-sub').textContent = n === 1 ? '1 entrega · ' + rotuloPeriodo(S.periodo) : n + ' entregas · ' + rotuloPeriodo(S.periodo);
+    $('k-rec').textContent = BRL.format(sRec);
+    $('k-rec-sub').textContent = rec.length + (rec.length === 1 ? ' entrega paga' : ' entregas pagas');
+    $('k-arec').textContent = BRL.format(sArec);
+    $('k-arec-sub').textContent = arec.length ? arec.length + (arec.length === 1 ? ' pagamento pendente' : ' pagamentos pendentes') : 'nada pendente';
+    $('k-media').textContent = n ? BRL.format(total / n) : '—';
+    $('k-media-sub').textContent = n ? 'por entrega' : 'sem entregas no período';
+    $('k-hora').textContent = h ? BRL.format(vh / h) + '/h' : '—';
+    $('k-hora-sub').textContent = h ? 'em ' + NUM1.format(h) + ' h registradas' : 'informe o horário das entregas';
+  }
+
+  function renderPlats(l) {
+    $('plat-periodo').textContent = rotuloPeriodo(S.periodo);
+    const box = $('plat-rows');
+    box.replaceChildren();
+    const total = l.reduce((s, g) => s + g.valor, 0);
+    const por = new Map();
+    for (const g of l) {
+      const o = por.get(g.plataforma) || { valor: 0, n: 0 };
+      o.valor += g.valor; o.n += 1; por.set(g.plataforma, o);
+    }
+    // mostra também plataformas cadastradas sem ganhos no período
+    for (const p of S.plats) if (!por.has(p.id)) por.set(p.id, { valor: 0, n: 0 });
+    const rows = [...por.entries()].sort((a, b) => b[1].valor - a[1].valor);
+    if (!rows.length) { box.append(el('div', { class: 'empty', text: 'Nenhuma plataforma cadastrada ainda.' })); return; }
+    for (const [id, o] of rows) {
+      const p = platById(id);
+      const pct = total ? (o.valor / total) * 100 : 0;
+      box.append(el('div', { class: 'plat-row' },
+        el('div', { class: 'plat-name' }, el('span', { class: 'dot', style: 'background:' + p.cor }), el('span', { text: p.nome })),
+        el('div', { class: 'track' }, el('i', { style: 'width:' + pct.toFixed(1) + '%;background:' + p.cor })),
+        el('div', { class: 'plat-val num' }, BRL.format(o.valor),
+          el('small', { text: o.n + (o.n === 1 ? ' entrega' : ' entregas') + (total ? ' · ' + NUM1.format(pct) + '%' : '') }))
+      ));
+    }
+  }
+
+  function buckets(l) {
+    const r = intervalo(S.periodo);
+    let ini, fim;
+    if (r) { [ini, fim] = r; }
+    else if (l.length) { ini = l[l.length - 1].data; fim = l[0].data; }
+    else return { tipo: 'dia', chaves: [] };
+    const a = parseISO(ini), b = parseISO(fim);
+    const dias = Math.round((b - a) / 864e5) + 1;
+    if (dias > 62) {
+      const chaves = [];
+      const d = new Date(a.getFullYear(), a.getMonth(), 1);
+      while (d <= b) { chaves.push(d.getFullYear() + '-' + pad(d.getMonth() + 1)); d.setMonth(d.getMonth() + 1); }
+      return { tipo: 'mes', chaves };
+    }
+    // garante ao menos 7 dias visíveis em "Tudo"
+    const start = new Date(a);
+    if (!r && dias < 7) start.setDate(start.getDate() - (7 - dias));
+    const chaves = [];
+    for (const d = new Date(start); d <= b; d.setDate(d.getDate() + 1)) chaves.push(iso(d));
+    return { tipo: 'dia', chaves };
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 100;
+    const e = Math.pow(10, Math.floor(Math.log10(v)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (m * e >= v) return m * e;
+    return 10 * e;
+  }
+
+  function renderChart(l) {
+    const box = $('chart');
+    box.replaceChildren();
+    const leg = $('legend');
+    leg.replaceChildren();
+    const { tipo, chaves } = buckets(l);
+    if (!l.length || !chaves.length) { box.append(el('div', { class: 'empty', text: 'Sem ganhos no período para desenhar.' })); return; }
+
+    const platIds = [...new Set(l.map((g) => g.plataforma))];
+    platIds.sort((a, b) => S.plats.findIndex((p) => p.id === a) - S.plats.findIndex((p) => p.id === b));
+    for (const id of platIds) { const p = platById(id); leg.append(el('span', null, el('span', { class: 'dot', style: 'background:' + p.cor }), p.nome)); }
+
+    const idx = new Map(chaves.map((k, i) => [k, i]));
+    const dados = chaves.map(() => ({}));
+    for (const g of l) {
+      const k = tipo === 'mes' ? g.data.slice(0, 7) : g.data;
+      const i = idx.get(k);
+      if (i == null) continue;
+      dados[i][g.plataforma] = (dados[i][g.plataforma] || 0) + g.valor;
+    }
+    const totais = dados.map((d) => Object.values(d).reduce((s, v) => s + v, 0));
+    const max = niceMax(Math.max(...totais));
+
+    const W = Math.max(280, box.clientWidth || 600);
+    const H = W < 500 ? 200 : 240;
+    const m = { t: 10, r: 6, b: 24, l: 52 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const step = iw / chaves.length;
+    const bw = Math.max(2, Math.min(36, step * 0.7));
+    const y = (v) => m.t + ih - (v / max) * ih;
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const s = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+    const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Ganhos por ' + (tipo === 'mes' ? 'mês' : 'dia') + ', empilhados por plataforma' });
+
+    for (let i = 0; i <= 4; i++) {
+      const v = (max / 4) * i, yy = y(v);
+      svg.append(s('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'grid' }));
+      const t = s('text', { x: m.l - 6, y: yy + 3.5, 'text-anchor': 'end' });
+      t.textContent = 'R$ ' + (v >= 1000 ? NUM1.format(v / 1000) + 'k' : Math.round(v));
+      svg.append(t);
+    }
+
+    const rotulo = (k) => {
+      if (tipo === 'mes') { const [yy, mm] = k.split('-'); return MESES[Number(mm) - 1] + '/' + yy.slice(2); }
+      const d = parseISO(k); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+    };
+    const cada = Math.max(1, Math.ceil(chaves.length / Math.floor(iw / 46)));
+
+    chaves.forEach((k, i) => {
+      const cx = m.l + step * i + step / 2;
+      let acc = 0;
+      for (const id of platIds) {
+        const v = dados[i][id];
+        if (!v) continue;
+        const y0 = y(acc), y1 = y(acc + v);
+        svg.append(s('rect', { x: cx - bw / 2, y: y1, width: bw, height: Math.max(1, y0 - y1), fill: platById(id).cor, rx: Math.min(3, bw / 4) }));
+        acc += v;
+      }
+      if (i % cada === 0) {
+        const t = s('text', { x: cx, y: H - 7, 'text-anchor': 'middle' });
+        t.textContent = rotulo(k);
+        svg.append(t);
+      }
+      const hit = s('rect', { x: m.l + step * i, y: m.t, width: step, height: ih, fill: 'transparent' });
+      hit.addEventListener('pointerenter', () => mostrarTip(i, cx));
+      hit.addEventListener('pointerleave', esconderTip);
+      svg.append(hit);
+    });
+    box.append(svg);
+
+    const tip = el('div', { class: 'tip' });
+    tip.hidden = true;
+    box.append(tip);
+    function mostrarTip(i, cx) {
+      if (!totais[i]) { tip.hidden = true; return; }
+      const titulo = tipo === 'mes' ? (function () { const [yy, mm] = chaves[i].split('-'); return MESES_LONGO[Number(mm) - 1] + ' ' + yy; })()
+        : parseISO(chaves[i]).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+      tip.replaceChildren(el('b', { text: titulo }));
+      for (const id of platIds) if (dados[i][id]) tip.append(el('div', { class: 'row' }, el('span', { text: platById(id).nome }), el('span', { text: BRL.format(dados[i][id]) })));
+      if (platIds.filter((id) => dados[i][id]).length > 1) tip.append(el('div', { class: 'row' }, el('span', { text: 'Total' }), el('span', { text: BRL.format(totais[i]) })));
+      tip.hidden = false;
+      const scale = box.clientWidth / W;
+      const tw = tip.offsetWidth;
+      let left = cx * scale - tw / 2;
+      left = Math.max(0, Math.min(box.clientWidth - tw, left));
+      tip.style.left = left + 'px';
+      tip.style.top = Math.max(0, y(totais[i]) * scale - tip.offsetHeight - 8) + 'px';
+    }
+    function esconderTip() { tip.hidden = true; }
+  }
+
+  function renderLista(l) {
+    const box = $('lista');
+    box.replaceChildren();
+    $('lista-count').textContent = l.length ? l.length + (l.length === 1 ? ' lançamento' : ' lançamentos') : '';
+    if (!S.carregado && S.db) { box.append(el('div', { class: 'empty', text: 'Carregando ganhos…' })); return; }
+    if (!l.length) {
+      box.append(el('div', { class: 'empty', text: S.ganhos.length ? 'Nenhum ganho neste período. Escolha outro período acima.' : 'Nenhum ganho lançado ainda. Toque em “+ Novo ganho” para registrar a primeira entrega.' }));
+      return;
+    }
+    for (const g of l) {
+      const p = platById(g.plataforma);
+      const d = parseISO(g.data);
+      const meta = [];
+      if (g.inicio && g.fim) meta.push(g.inicio + '–' + g.fim);
+      if (typeof g.horas === 'number' && g.horas > 0) meta.push(NUM1.format(g.horas) + ' h · ' + BRL.format(g.valor / g.horas) + '/h');
+      if (g.obs) meta.push(g.obs);
+      const pend = g.status === 'a_receber';
+
+      const acoes = el('div', { class: 'item-actions' });
+      if (pend) {
+        const bRec = el('button', { type: 'button', class: 'btn-small', text: 'Marcar como recebido' });
+        bRec.addEventListener('click', () => salvarDoc(g.id, Object.assign({}, semId(g), { status: 'recebido' })));
+        acoes.append(bRec);
+      }
+      const bEd = el('button', { type: 'button', class: 'btn-small', text: 'Editar' });
+      bEd.addEventListener('click', () => abrirForm(g));
+      const bDel = el('button', { type: 'button', class: 'btn-small btn-danger', text: 'Excluir' });
+      let timer = null;
+      bDel.addEventListener('click', async () => {
+        if (!bDel.classList.contains('armed')) {
+          bDel.classList.add('armed'); bDel.textContent = 'Confirmar exclusão';
+          timer = setTimeout(() => { bDel.classList.remove('armed'); bDel.textContent = 'Excluir'; }, 4000);
+          return;
+        }
+        clearTimeout(timer);
+        try { await S.db.collection('ganhos').doc(g.id).delete(); } catch (e) { aviso('Não foi possível excluir: ' + (e && e.message || 'erro')); }
+      });
+      acoes.append(bEd, bDel);
+
+      box.append(el('div', { class: 'item' },
+        el('div', { class: 'date-block' }, el('span', { class: 'd', text: pad(d.getDate()) }), el('span', { class: 'm', text: MESES[d.getMonth()] })),
+        el('div', { class: 'item-main' },
+          el('div', { class: 'item-line' },
+            el('span', { class: 'chip' }, el('span', { class: 'dot', style: 'background:' + p.cor }), p.nome),
+            el('span', { class: 'pill ' + (pend ? 'warn' : 'ok'), text: pend ? 'A receber' : 'Recebido' })),
+          meta.length ? el('div', { class: 'item-meta', text: meta.join(' · ') }) : null),
+        el('div', { class: 'item-val num', text: BRL.format(g.valor) }),
+        S.db ? acoes : null
+      ));
+    }
+  }
+
+  function renderSelect() {
+    const sel = $('f-plat');
+    const atual = sel.value;
+    sel.replaceChildren();
+    for (const p of S.plats) sel.append(new Option(p.nome, p.id));
+    sel.append(new Option('+ Nova plataforma…', '__nova'));
+    if (atual && [...sel.options].some((o) => o.value === atual)) sel.value = atual;
+    $('wrap-nova').hidden = sel.value !== '__nova';
+  }
+
+  // ---------- formulário ----------
+  const semId = (g) => { const o = Object.assign({}, g); delete o.id; return o; };
+
+  function abrirForm(g) {
+    S.editId = g ? g.id : null;
+    $('form-titulo').textContent = g ? 'Editar ganho' : 'Novo ganho';
+    $('btn-salvar').textContent = g ? 'Salvar alterações' : 'Salvar ganho';
+    $('form-msg').textContent = '';
+    renderSelect();
+    $('f-data').value = g ? g.data : hoje();
+    $('f-plat').value = g ? g.plataforma : (S.plats[0] ? S.plats[0].id : '__nova');
+    $('f-nova').value = '';
+    $('f-valor').value = g ? String(g.valor).replace('.', ',') : '';
+    $('f-ini').value = g && g.inicio || '';
+    $('f-fim').value = g && g.fim || '';
+    $('f-horas').value = g && typeof g.horas === 'number' ? String(g.horas).replace('.', ',') : '';
+    $('f-status').value = g ? (g.status || 'recebido') : 'recebido';
+    $('f-obs').value = g && g.obs || '';
+    $('wrap-nova').hidden = $('f-plat').value !== '__nova';
+    $('form-panel').hidden = false;
+    $('form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('f-valor').focus({ preventScroll: true });
+  }
+  function fecharForm() { $('form-panel').hidden = true; S.editId = null; }
+
+  function atualizaHoras() {
+    const h = horasEntre($('f-ini').value, $('f-fim').value);
+    if (h != null) $('f-horas').value = String(h).replace('.', ',');
+  }
+  $('f-ini').addEventListener('change', atualizaHoras);
+  $('f-fim').addEventListener('change', atualizaHoras);
+  $('f-plat').addEventListener('change', () => { $('wrap-nova').hidden = $('f-plat').value !== '__nova'; if (!$('wrap-nova').hidden) $('f-nova').focus(); });
+  $('btn-novo').addEventListener('click', () => abrirForm(null));
+  $('btn-cancelar').addEventListener('click', fecharForm);
+
+  async function salvarDoc(id, body) {
+    try {
+      if (id) await S.db.collection('ganhos').doc(id).set(body);
+      else await S.db.collection('ganhos').add(body);
+      return true;
+    } catch (e) {
+      const msg = e && e.code === 'invalid_argument' ? 'Você não tem permissão para alterar este painel.' : 'Não foi possível salvar. Tente de novo em instantes.';
+      aviso(msg);
+      $('form-msg').textContent = msg;
+      return false;
+    }
+  }
+
+  $('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const msg = $('form-msg');
+    msg.textContent = '';
+    if (!S.db) { msg.textContent = 'Sem conexão com o armazenamento.'; return; }
+    const data = $('f-data').value;
+    const valor = parseValor($('f-valor').value);
+    let plat = $('f-plat').value;
+    const horasTxt = $('f-horas').value.trim();
+    const horas = horasTxt ? parseValor(horasTxt) : horasEntre($('f-ini').value, $('f-fim').value);
+    if (!data) { msg.textContent = 'Informe a data da entrega.'; return; }
+    if (!(valor > 0)) { msg.textContent = 'Informe um valor maior que zero, por exemplo 155,00.'; return; }
+    if (horasTxt && !(horas > 0)) { msg.textContent = 'Horas trabalhadas deve ser um número, por exemplo 4 ou 3,5.'; return; }
+
+    const btn = $('btn-salvar');
+    btn.disabled = true;
+    try {
+      if (plat === '__nova') {
+        const nome = $('f-nova').value.trim();
+        if (!nome) { msg.textContent = 'Digite o nome da nova plataforma.'; return; }
+        const existente = S.plats.find((p) => p.nome.toLowerCase() === nome.toLowerCase());
+        if (existente) plat = existente.id;
+        else {
+          plat = slug(nome) || ('plataforma-' + Date.now());
+          const cor = CORES[S.plats.length % CORES.length];
+          try { await S.db.collection('plataformas').doc(plat).set({ nome, cor, ordem: S.plats.length }); }
+          catch (e) { msg.textContent = 'Não foi possível criar a plataforma.'; return; }
+        }
+      }
+      const atual = S.editId ? S.ganhos.find((g) => g.id === S.editId) : null;
+      const body = {
+        data, plataforma: plat, valor: Math.round(valor * 100) / 100,
+        inicio: $('f-ini').value || null, fim: $('f-fim').value || null,
+        horas: horas > 0 ? Math.round(horas * 100) / 100 : null,
+        status: $('f-status').value, obs: $('f-obs').value.trim() || null,
+        criadoEm: atual && atual.criadoEm || new Date().toISOString(),
+      };
+      if (await salvarDoc(S.editId, body)) fecharForm();
+    } finally { btn.disabled = false; }
+  });
+
+  document.getElementById('periods').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-p]');
+    if (!b) return;
+    S.periodo = b.dataset.p;
+    try { localStorage.setItem('ganhos-periodo', S.periodo); } catch (_) {}
+    render();
+  });
+  try { const p = localStorage.getItem('ganhos-periodo'); if (p) S.periodo = p; } catch (_) {}
+
+  function aviso(t) { const b = $('banner'); b.textContent = t; b.hidden = !t; }
+
+  let rz = null;
+  new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => renderChart(filtrados()), 120); }).observe($('chart'));
+
+  render();
+
+  // ---------- dados ----------
+  (async () => {
+    const db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+    if (!db) {
+      aviso('Não foi possível abrir os dados do painel. Abra esta página no claude.ai com a sua conta para ver e lançar ganhos.');
+      $('btn-novo').disabled = true;
+      S.carregado = true;
+      render();
+      return;
+    }
+    S.db = db;
+    const falha = () => aviso('A conexão com os dados caiu. Recarregue a página.');
+    db.collection('plataformas').onSnapshot((snap) => {
+      S.plats = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))
+        .sort((a, b) => (a.ordem ?? 99) - (b.ordem ?? 99) || a.nome.localeCompare(b.nome));
+      render();
+    }, falha);
+    db.collection('ganhos').onSnapshot((snap) => {
+      S.ganhos = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))
+        .filter((g) => typeof g.data === 'string' && typeof g.valor === 'number');
+      S.carregado = true;
+      render();
+    }, falha);
+  })();
+})();
+</script>
