@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT-START -->
+<title>Rota Certa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: uma coluna estreita de painel de motorista; cartão "próxima parada" fixo no topo, lista de placas numeradas abaixo. */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #16191d;
+  --muted: #5b6168;
+  --line: #d9dcd6;
+  --accent: #d9480f;
+  --accent-ink: #ffffff;
+  --plate: #1f3b2d;
+  --plate-ink: #f5f7f2;
+  --ok: #2b8a3e;
+  --ok-soft: #e3f2e6;
+  --warn-soft: #fff1e6;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+    --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
+    --ok: #5fcf75; --ok-soft: #1b2e20; --warn-soft: #2e2017; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+  --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
+  --ok: #5fcf75; --ok-soft: #1b2e20; --warn-soft: #2e2017; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top small { display: block; color: var(--muted); font-size: 0.85rem; }
+button, .btn {
+  font: 700 1rem var(--font-body); border-radius: 10px; border: 2px solid var(--ink);
+  background: var(--surface); color: var(--ink); padding: 10px 14px; cursor: pointer;
+  text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px;
+}
+.btn.primary, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.dark { background: var(--plate); border-color: var(--plate); color: var(--plate-ink); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.empty { background: var(--surface); border: 2px dashed var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.empty ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.notice { padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); font-size: 0.92rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.stat b { display: block; font: 800 1.5rem var(--font-display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 0.82rem; }
+details.cfg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+details.cfg summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.cfg-grid { display: grid; gap: 12px; padding-top: 10px; }
+.cfg-grid label { display: grid; gap: 4px; font-size: 0.9rem; color: var(--muted); }
+select, input[type=range], input[type=number] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 44px; width: 100%; }
+.next {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--plate); color: var(--plate-ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+.next .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8; }
+.next .addr { font: 800 1.25rem/1.2 var(--font-display); }
+.next .meta { font-size: 0.9rem; opacity: 0.9; }
+.next .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.next .btn { border-color: var(--plate-ink); background: transparent; color: var(--plate-ink); }
+.next .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.legs { display: flex; flex-wrap: wrap; gap: 8px; }
+.legs .btn { font-size: 0.9rem; min-height: 44px; }
+.legs .btn.done { opacity: 0.45; }
+canvas { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: block; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.stop { display: grid; grid-template-columns: 52px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.stop.same-street { border-top-left-radius: 4px; }
+.stop.delivered { opacity: 0.5; }
+.stop.current { border: 2px solid var(--accent); }
+.plate { background: var(--plate); color: var(--plate-ink); border-radius: 8px; font: 800 1.35rem var(--font-display); display: grid; place-items: center; height: 52px; font-variant-numeric: tabular-nums; }
+.stop.delivered .plate { background: var(--ok); }
+.body { min-width: 0; display: grid; gap: 6px; }
+.street { font-weight: 700; }
+.sub { color: var(--muted); font-size: 0.88rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.78rem var(--font-data); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--muted); }
+.chip.hot { border-color: var(--accent); color: var(--accent); }
+.chip.count { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.pk { font: 500 0.8rem var(--font-data); color: var(--muted); overflow-wrap: anywhere; }
+.pk li { margin: 2px 0; }
+.pk ul { margin: 4px 0 0; padding-left: 1.1em; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions .btn, .actions button { min-height: 40px; padding: 6px 12px; font-size: 0.88rem; }
+.actions button.ok { border-color: var(--ok); color: var(--ok); }
+.stop.delivered .actions button.ok { background: var(--ok); color: var(--surface); }
+.foot { color: var(--muted); font-size: 0.82rem; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 20; }
+@media (prefers-reduced-motion: no-preference) { .stop { transition: opacity .2s; } }
+</style>
+</head>
+<body>
+<!-- BODY-START -->
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rota Certa</h1>
+      <small id="subtitle">Roteirizador de entregas a partir da planilha da rota</small>
+    </div>
+    <label class="btn primary" for="file">Abrir planilha</label>
+    <input id="file" type="file" accept=".xlsx">
+  </header>
+
+  <section id="empty" class="empty">
+    <h2>Como funciona</h2>
+    <ol>
+      <li>No aplicativo, exporte a rota do dia em Excel (.xlsx) e toque em <b>Abrir planilha</b>.</li>
+      <li>Pacotes do mesmo endereço ou do mesmo prédio viram uma parada só, mesmo que a etiqueta traga números de parada diferentes.</li>
+      <li>A ordem é recalculada para andar menos, terminando uma rua antes de passar para a próxima.</li>
+      <li>Siga a próxima parada pelo Waze ou Google Maps e marque <b>Entregue</b>. O progresso fica salvo neste aparelho.</li>
+    </ol>
+    <p class="sub">A planilha é lida aqui no seu aparelho. Nenhum dado é enviado para servidor, exceto as coordenadas usadas para medir as distâncias pelas ruas quando o serviço está disponível.</p>
+  </section>
+
+  <div id="app" hidden>
+    <div class="wrap">
+      <div id="warn" class="notice" hidden></div>
+      <div class="stats" id="stats"></div>
+
+      <details class="cfg" id="cfg">
+        <summary>Ajustes da rota</summary>
+        <div class="cfg-grid">
+          <label for="start">Começar por
+            <select id="start"></select>
+          </label>
+          <label for="radius">Juntar pacotes a até <b id="radiusVal">20</b> m de distância numa parada
+            <input id="radius" type="range" min="0" max="80" step="5" value="20">
+          </label>
+          <label for="legSize">Paradas por trecho no Google Maps
+            <input id="legSize" type="number" min="2" max="10" value="10">
+          </label>
+          <button id="recalc" class="primary" type="button">Recalcular rota</button>
+          <button id="reset" type="button">Limpar entregas marcadas</button>
+        </div>
+      </details>
+
+      <section class="next" id="next" aria-live="polite"></section>
+
+      <div>
+        <h2 style="margin-bottom:8px">Rota inteira no Google Maps</h2>
+        <div class="legs" id="legs"></div>
+      </div>
+
+      <canvas id="map" width="1200" height="900" aria-label="Desenho da rota"></canvas>
+
+      <div class="top">
+        <h2>Paradas</h2>
+        <button id="copy" type="button">Copiar lista</button>
+      </div>
+      <div class="list" id="list"></div>
+      <p class="foot" id="foot"></p>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+// CORE-START
+const Core = (() => {
+  const R = 6371000;
+  function hav(a, b) {
+    const toR = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * toR, dLng = (b.lng - a.lng) * toR;
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  function stripAccents(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+
+  // "R Antônio Carlos Neves , 168" -> { street: "antonio carlos neves", number: "168" }
+  function parseAddress(addr) {
+    let s = stripAccents(String(addr || "")).toLowerCase().replace(/\s+/g, " ").trim();
+    const parts = s.split(",").map(p => p.trim());
+    let street = parts[0] || "";
+    let number = "";
+    const tail = street.match(/^(.*?)\s+(\d+[a-z]?)$/);
+    if (tail) { street = tail[1]; number = tail[2]; }
+    if (!number && parts[1]) { const m = parts[1].match(/^(\d+[a-z]?)\b/); if (m) number = m[1]; }
+    street = street
+      .replace(/\(.*?\)/g, " ")
+      .replace(/^(r|rua)\.?\s+/, "")
+      .replace(/^(av|avenida)\.?\s+/, "")
+      .replace(/^(al|alameda)\.?\s+/, "")
+      .replace(/^(tv|travessa)\.?\s+/, "")
+      .replace(/\b(dr|doutor)\.?\s+/g, "")
+      .replace(/\bdes(embargador)?\.?\s+/g, "")
+      .replace(/\bcpo\b/g, "campo")
+      .replace(/\b(d[aeo]s?)\b/g, " ")
+      .replace(/[^a-z0-9 ]/g, " ")
+      .replace(/\s+/g, " ").trim();
+    return { street, number };
+  }
+
+  const HEADERS = {
+    at: ["at id"], seq: ["sequence", "sequencia"], stop: ["stop", "parada"], tn: ["spx tn", "tracking", "tn"],
+    address: ["destination address", "endereco", "address"], bairro: ["bairro", "neighborhood"],
+    city: ["city", "cidade"], cep: ["zipcode/postal code", "zipcode", "cep"], lat: ["latitude", "lat"], lng: ["longitude", "lng", "lon"],
+  };
+
+  function parseRows(rows) {
+    let hi = rows.findIndex(r => r && r.some(c => /latitude/i.test(String(c || ""))));
+    if (hi < 0) throw new Error("Não achei a coluna Latitude. Confira se é a planilha exportada da rota.");
+    const head = rows[hi].map(c => stripAccents(String(c || "")).toLowerCase().trim());
+    const col = {};
+    for (const [k, names] of Object.entries(HEADERS)) col[k] = head.findIndex(h => names.includes(h));
+    if (col.lat < 0 || col.lng < 0 || col.address < 0) throw new Error("Faltam colunas de endereço ou coordenadas.");
+    const num = v => { const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
+    const pkgs = [];
+    const bad = [];
+    rows.slice(hi + 1).forEach((r, i) => {
+      if (!r || r.every(c => c == null || c === "")) return;
+      const g = k => (col[k] >= 0 ? r[col[k]] : null);
+      const p = {
+        row: hi + i + 2, at: g("at") ? String(g("at")) : "", seq: num(g("seq")), shopeeStop: num(g("stop")),
+        tn: String(g("tn") || ""), address: String(g("address") || "").trim(), bairro: String(g("bairro") || "").trim(),
+        city: String(g("city") || "").trim(), cep: String(g("cep") || ""), lat: num(g("lat")), lng: num(g("lng")),
+      };
+      if (p.lat == null || p.lng == null || Math.abs(p.lat) < 0.01) { bad.push(p); return; }
+      Object.assign(p, parseAddress(p.address));
+      pkgs.push(p);
+    });
+    return { pkgs, bad };
+  }
+
+  // Junta pacotes do mesmo endereço (rua + número) ou a até `radius` metros.
+  function groupStops(pkgs, radius) {
+    const parent = pkgs.map((_, i) => i);
+    const find = i => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const join = (a, b) => { parent[find(a)] = find(b); };
+    const byKey = new Map();
+    pkgs.forEach((p, i) => {
+      if (p.street && p.number) {
+        const k = p.street + "|" + p.number;
+        if (byKey.has(k)) join(i, byKey.get(k)); else byKey.set(k, i);
+      }
+    });
+    for (let i = 0; i < pkgs.length; i++)
+      for (let j = i + 1; j < pkgs.length; j++)
+        if (hav(pkgs[i], pkgs[j]) <= radius) join(i, j);
+    const groups = new Map();
+    pkgs.forEach((p, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(p); });
+    return [...groups.values()].map((list, id) => {
+      list.sort((a, b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
+      const lat = list.reduce((s, p) => s + p.lat, 0) / list.length;
+      const lng = list.reduce((s, p) => s + p.lng, 0) / list.length;
+      const streetCount = {};
+      list.forEach(p => { streetCount[p.street] = (streetCount[p.street] || 0) + 1; });
+      const street = Object.entries(streetCount).sort((a, b) => b[1] - a[1])[0][0];
+      const label = list[0].address.split(",").slice(0, 2).join(",").replace(/\s+,/g, ",").trim();
+      const numbers = [...new Set(list.map(p => p.number).filter(Boolean))];
+      const shopeeStops = [...new Set(list.map(p => p.shopeeStop).filter(v => v != null))].sort((a, b) => a - b);
+      const minSeq = Math.min(...list.map(p => p.seq ?? 1e9));
+      return { id, lat, lng, pkgs: list, street, label, numbers, shopeeStops, minSeq, bairro: list[0].bairro };
+    });
+  }
+
+  // Custo entre paradas: distância (rua ou reta x1,35) + penalidade ao trocar de rua.
+  function buildCost(points, roadMatrix, streetPenalty) {
+    const n = points.length;
+    const C = Array.from({ length: n }, () => new Float64Array(n));
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const d = roadMatrix ? roadMatrix[i][j] : hav(points[i], points[j]) * 1.35;
+        const pen = points[i].street && points[j].street && points[i].street !== points[j].street ? streetPenalty : 0;
+        C[i][j] = d + pen;
+      }
+    return C;
+  }
+
+  function pathCost(C, t) { let s = 0; for (let i = 1; i < t.length; i++) s += C[t[i - 1]][t[i]]; return s; }
+
+  function rng(seed) { let x = seed >>> 0 || 1; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+  // Caminho aberto saindo do nó `start`, sem voltar. Vizinho mais próximo + 2-opt + Or-opt, com reinícios.
+  function solve(C, start, restarts = 40) {
+    const n = C.length;
+    if (n <= 2) return [...Array(n).keys()].sort((a, b) => (a === start ? -1 : b === start ? 1 : 0));
+    const rand = rng(12345);
+    let best = null, bestCost = Infinity;
+    for (let r = 0; r < restarts; r++) {
+      const left = new Set([...Array(n).keys()]); left.delete(start);
+      const t = [start];
+      while (left.size) {
+        const cur = t[t.length - 1];
+        const cand = [...left].sort((a, b) => C[cur][a] - C[cur][b]);
+        const pick = r === 0 ? cand[0] : cand[rand() < 0.75 || cand.length === 1 ? 0 : 1];
+        t.push(pick); left.delete(pick);
+      }
+      improve(C, t);
+      const c = pathCost(C, t);
+      if (c < bestCost - 1e-9) { bestCost = c; best = t.slice(); }
+    }
+    return best;
+  }
+
+  function improve(C, t) {
+    const n = t.length;
+    let improved = true, guard = 0;
+    while (improved && guard++ < 200) {
+      improved = false;
+      // 2-opt (reverte t[i..j]); custo recalculado no trecho por causa de ruas de mão única
+      for (let i = 1; i < n - 1; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const before = C[t[i - 1]][t[i]] + (j + 1 < n ? C[t[j]][t[j + 1]] : 0) + segCost(C, t, i, j);
+          const after = C[t[i - 1]][t[j]] + (j + 1 < n ? C[t[i]][t[j + 1]] : 0) + segCostRev(C, t, i, j);
+          if (after < before - 1e-6) { reverse(t, i, j); improved = true; }
+        }
+      }
+      // Or-opt: move blocos de 1 a 3 paradas para outra posição
+      for (let len = 1; len <= 3; len++) {
+        for (let i = 1; i + len <= n; i++) {
+          const seg = t.slice(i, i + len);
+          const rest = t.slice(0, i).concat(t.slice(i + len));
+          const base = pathCost(C, t);
+          let bestPos = -1, bestVal = base - 1e-6;
+          for (let k = 1; k <= rest.length; k++) {
+            if (k === i) continue;
+            const cand = rest.slice(0, k).concat(seg, rest.slice(k));
+            const v = pathCost(C, cand);
+            if (v < bestVal) { bestVal = v; bestPos = k; }
+          }
+          if (bestPos >= 0) {
+            const cand = rest.slice(0, bestPos).concat(seg, rest.slice(bestPos));
+            for (let q = 0; q < n; q++) t[q] = cand[q];
+            improved = true;
+          }
+        }
+      }
+    }
+  }
+  function segCost(C, t, i, j) { let s = 0; for (let k = i; k < j; k++) s += C[t[k]][t[k + 1]]; return s; }
+  function segCostRev(C, t, i, j) { let s = 0; for (let k = j; k > i; k--) s += C[t[k]][t[k - 1]]; return s; }
+  function reverse(t, i, j) { while (i < j) { const x = t[i]; t[i] = t[j]; t[j] = x; i++; j--; } }
+
+  function distOf(points, order, roadMatrix) {
+    let s = 0;
+    for (let i = 1; i < order.length; i++) {
+      const a = order[i - 1], b = order[i];
+      s += roadMatrix ? roadMatrix[a][b] : hav(points[a], points[b]) * 1.35;
+    }
+    return s;
+  }
+
+  const ll = p => p.lat.toFixed(6) + "," + p.lng.toFixed(6);
+  const links = {
+    waze: p => "https://waze.com/ul?ll=" + ll(p) + "&navigate=yes",
+    gmaps: p => "https://www.google.com/maps/dir/?api=1&destination=" + ll(p) + "&travelmode=driving",
+    gmapsLeg: stops => {
+      const dest = stops[stops.length - 1];
+      const wps = stops.slice(0, -1).map(ll).join("|");
+      return "https://www.google.com/maps/dir/?api=1&destination=" + ll(dest) + (wps ? "&waypoints=" + encodeURIComponent(wps) : "") + "&travelmode=driving";
+    },
+  };
+
+  return { hav, parseAddress, parseRows, groupStops, buildCost, solve, pathCost, distOf, links };
+})();
+if (typeof module !== "undefined") module.exports = Core;
+// CORE-END
+
+(() => {
+  if (typeof document === "undefined") return;
+  const $ = id => document.getElementById(id);
+  const state = { pkgs: [], stops: [], order: [], roadMatrix: null, delivered: new Set(), at: "", file: "", gps: null };
+
+  // Leitor .xlsx mínimo: lê o diretório central do zip e descompacta com DecompressionStream nativo.
+  async function readXlsxFile(file) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const dv = new DataView(buf.buffer);
+    let eocd = -1;
+    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error("O arquivo não parece ser um .xlsx.");
+    const count = dv.getUint16(eocd + 10, true);
+    let p = dv.getUint32(eocd + 16, true);
+    const entries = {};
+    for (let k = 0; k < count; k++) {
+      const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true);
+      const nLen = dv.getUint16(p + 28, true), xLen = dv.getUint16(p + 30, true), cLen = dv.getUint16(p + 32, true);
+      const off = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nLen));
+      entries[name] = { method, size, off };
+      p += 46 + nLen + xLen + cLen;
+    }
+    const read = async name => {
+      const e = entries[name];
+      if (!e) return null;
+      const start = e.off + 30 + dv.getUint16(e.off + 26, true) + dv.getUint16(e.off + 28, true);
+      const raw = buf.subarray(start, start + e.size);
+      if (e.method === 0) return new TextDecoder().decode(raw);
+      const ds = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return await new Response(ds).text();
+    };
+    const xml = s => new DOMParser().parseFromString(s, "application/xml");
+    const shared = [];
+    const ss = await read("xl/sharedStrings.xml");
+    if (ss) for (const si of xml(ss).getElementsByTagName("si")) shared.push([...si.getElementsByTagName("t")].map(t => t.textContent).join(""));
+    const sheetName = Object.keys(entries).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];
+    const doc = xml(await read(sheetName));
+    const rows = [];
+    for (const r of doc.getElementsByTagName("row")) {
+      const row = [];
+      for (const c of r.getElementsByTagName("c")) {
+        const ref = c.getAttribute("r") || "";
+        const letters = ref.replace(/\d+/g, "");
+        const ci = letters ? [...letters].reduce((s, ch) => s * 26 + ch.charCodeAt(0) - 64, 0) - 1 : row.length;
+        const t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0]?.textContent;
+        let val = null;
+        if (t === "s") val = shared[+v];
+        else if (t === "inlineStr") val = [...c.getElementsByTagName("t")].map(x => x.textContent).join("");
+        else if (t === "str" || t === "b") val = v ?? null;
+        else if (v != null && v !== "") val = isNaN(+v) ? v : +v;
+        row[ci] = val;
+      }
+      rows[(+r.getAttribute("r") || rows.length + 1) - 1] = row;
+    }
+    return Array.from(rows, r => r || []);
+  }
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  const toast = msg => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2200); };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const km = m => (m / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " km";
+  const deliveredKey = () => "rota-certa:" + (state.at || state.file);
+
+  $("file").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const rows = await readXlsxFile(f);
+      const { pkgs, bad } = Core.parseRows(rows);
+      if (!pkgs.length) throw new Error("A planilha não tem pacotes com coordenadas.");
+      state.pkgs = pkgs; state.bad = bad; state.file = f.name; state.at = pkgs[0].at;
+      state.delivered = new Set(store.get(deliveredKey()) || []);
+      $("subtitle").textContent = f.name.replace(/\.xlsx$/i, "") + (state.at ? " · " + state.at : "");
+      $("empty").hidden = true; $("app").hidden = false;
+      await plan();
+    } catch (err) {
+      toast(err.message || "Não consegui ler a planilha.");
+    } finally { e.target.value = ""; }
+  });
+
+  $("radius").addEventListener("input", e => ($("radiusVal").textContent = e.target.value));
+  $("recalc").addEventListener("click", () => plan());
+  $("reset").addEventListener("click", () => { state.delivered.clear(); store.set(deliveredKey(), []); render(); toast("Entregas desmarcadas"); });
+  $("start").addEventListener("change", async e => {
+    if (e.target.value === "gps") {
+      try {
+        state.gps = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(
+          p => res({ lat: p.coords.latitude, lng: p.coords.longitude, street: "" }), rej, { enableHighAccuracy: true, timeout: 10000 }));
+      } catch { toast("Localização indisponível aqui. Escolha uma parada para começar."); e.target.value = "shopee"; state.gps = null; return; }
+    }
+    plan();
+  });
+  $("legSize").addEventListener("change", () => render());
+  $("copy").addEventListener("click", async () => {
+    const txt = state.order.map((s, i) => `${i + 1}. ${s.label} (${s.pkgs.length} pct; Shopee ${s.shopeeStops.join(", ") || "sem nº"})\n   ${s.pkgs.map(p => p.tn).join(" ")}`).join("\n");
+    try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); } catch { toast("Não foi possível copiar neste navegador"); }
+  });
+
+  async function roadTable(points) {
+    if (points.length > 100) return null;
+    const coords = points.map(p => p.lng.toFixed(6) + "," + p.lat.toFixed(6)).join(";");
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+    try {
+      const r = await fetch("https://router.project-osrm.org/table/v1/driving/" + coords + "?annotations=distance", { signal: ctl.signal });
+      const j = await r.json();
+      if (j.code !== "Ok" || !j.distances) return null;
+      if (j.distances.some(row => row.some(v => v == null))) return null;
+      return j.distances;
+    } catch { return null; } finally { clearTimeout(tm); }
+  }
+
+  async function plan() {
+    const radius = +$("radius").value;
+    const stops = Core.groupStops(state.pkgs, radius);
+    state.stops = stops;
+    fillStartSelect(stops);
+    const sel = $("start").value;
+    const points = stops.slice();
+    let startIdx;
+    if (sel === "gps" && state.gps) { points.push(state.gps); startIdx = points.length - 1; }
+    else if (sel && sel.startsWith("s")) startIdx = stops.findIndex(s => s.key === sel.slice(1));
+    if (startIdx == null || startIdx < 0) startIdx = stops.reduce((b, s, i) => (s.minSeq < stops[b].minSeq ? i : b), 0);
+
+    $("foot").textContent = "Calculando distâncias pelas ruas…";
+    const road = await roadTable(points);
+    state.roadMatrix = road;
+    const C = Core.buildCost(points, road, road ? 40 : 60);
+    const order = Core.solve(C, startIdx);
+    const shopee = [...stops.keys()].sort((a, b) => stops[a].minSeq - stops[b].minSeq);
+    if (sel === "gps" && state.gps) shopee.unshift(points.length - 1);
+    state.order = order.filter(i => i < stops.length).map(i => stops[i]);
+    state.stats = {
+      ours: Core.distOf(points, order, road),
+      shopee: Core.distOf(points, shopee, road),
+      road: !!road,
+    };
+    $("foot").textContent = road
+      ? "Distâncias medidas pelas ruas (OpenStreetMap / OSRM), respeitando mão única."
+      : "Distâncias estimadas em linha reta com fator de ruas. O serviço de rotas não respondeu ou foi bloqueado neste navegador.";
+    render();
+  }
+
+  function fillStartSelect(stops) {
+    const sel = $("start"); const cur = sel.value;
+    stops.forEach(s => (s.key = s.pkgs[0].tn));
+    const sorted = stops.slice().sort((a, b) => a.minSeq - b.minSeq);
+    sel.innerHTML = `<option value="shopee">Primeira parada da Shopee</option><option value="gps">Minha localização atual</option>` +
+      sorted.map(s => `<option value="s${esc(s.key)}">${esc(s.label)}${s.shopeeStops.length ? " (Shopee " + s.shopeeStops[0] + ")" : ""}</option>`).join("");
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : "shopee";
+  }
+
+  function isDone(s) { return s.pkgs.every(p => state.delivered.has(p.tn)); }
+
+  function render() {
+    const o = state.order;
+    const shopeeStopCount = new Set(state.pkgs.map(p => p.shopeeStop).filter(v => v != null)).size;
+    const unseq = state.pkgs.filter(p => p.seq == null).length;
+    const save = state.stats.shopee - state.stats.ours;
+    $("stats").innerHTML = [
+      [state.pkgs.length, "pacotes"],
+      [o.length, `paradas reais (Shopee: ${shopeeStopCount}${unseq ? " + " + unseq + " sem nº" : ""})`],
+      [km(state.stats.ours), state.stats.road ? "percurso pelas ruas" : "percurso estimado"],
+      [save > 50 ? "−" + km(save) : "≈", "comparado à ordem da Shopee"],
+    ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+
+    const warn = [];
+    if (state.bad && state.bad.length) warn.push(`${state.bad.length} pacote(s) sem coordenadas ficaram fora da rota: ${state.bad.map(p => p.tn).join(", ")}.`);
+    if (unseq) warn.push(`${unseq} pacote(s) vieram sem número de sequência e foram encaixados na rota pelo endereço.`);
+    $("warn").hidden = !warn.length; $("warn").textContent = warn.join(" ");
+
+    const nextIdx = o.findIndex(s => !isDone(s));
+    const n = o[nextIdx];
+    if (n) {
+      $("next").hidden = false;
+      $("next").innerHTML = `
+        <div class="eyebrow">Próxima parada · ${nextIdx + 1} de ${o.length} · ${o.filter(isDone).length} entregues</div>
+        <div class="addr">${esc(n.label)}</div>
+        <div class="meta">${n.pkgs.length} pacote${n.pkgs.length > 1 ? "s" : ""} · ${esc(n.bairro)}${n.shopeeStops.length ? " · Shopee " + n.shopeeStops.join(", ") : ""}</div>
+        <div class="row">
+          <a class="btn primary" href="${Core.links.waze(n)}" target="_blank" rel="noopener">Waze</a>
+          <a class="btn" href="${Core.links.gmaps(n)}" target="_blank" rel="noopener">Maps</a>
+          <button class="btn" type="button" data-done="${nextIdx}">Entregue</button>
+        </div>`;
+    } else {
+      $("next").innerHTML = `<div class="addr">Rota concluída</div><div class="meta">Todas as ${o.length} paradas foram marcadas como entregues.</div>`;
+    }
+
+    const size = Math.max(2, Math.min(10, +$("legSize").value || 10));
+    const legs = [];
+    for (let i = 0; i < o.length; i += size) legs.push([i, Math.min(o.length, i + size)]);
+    $("legs").innerHTML = legs.map(([a, b]) => {
+      const done = o.slice(a, b).every(isDone);
+      return `<a class="btn${done ? " done" : ""}" href="${Core.links.gmapsLeg(o.slice(a, b))}" target="_blank" rel="noopener">Paradas ${a + 1}–${b}</a>`;
+    }).join("");
+
+    $("list").innerHTML = o.map((s, i) => {
+      const done = isDone(s);
+      const same = i > 0 && o[i - 1].street === s.street;
+      const multi = s.shopeeStops.length > 1;
+      const pk = s.pkgs.map(p => {
+        const extra = p.address.split(",").slice(2).join(",").trim();
+        return `<li>${esc(p.tn)}${p.shopeeStop != null ? " · Shopee " + p.shopeeStop : " · sem nº"}${extra ? " · " + esc(extra) : ""}</li>`;
+      }).join("");
+      return `<article class="stop${done ? " delivered" : ""}${i === nextIdx ? " current" : ""}${same ? " same-street" : ""}">
+        <div class="plate">${i + 1}</div>
+        <div class="body">
+          <div class="street">${esc(s.label)}${s.numbers.length > 1 ? " <span class='sub'>(nº " + esc(s.numbers.join(", ")) + ")</span>" : ""}</div>
+          <div class="sub">${esc(s.bairro)}${same ? " · mesma rua da anterior" : ""}</div>
+          <div class="chips">
+            <span class="chip count">${s.pkgs.length} pct</span>
+            ${s.shopeeStops.map(x => `<span class="chip${multi ? " hot" : ""}">Shopee ${x}</span>`).join("")}
+            ${s.pkgs.some(p => p.seq == null) ? `<span class="chip hot">sem sequência</span>` : ""}
+          </div>
+          <details class="pk"><summary>Ver pacotes</summary><ul>${pk}</ul></details>
+          <div class="actions">
+            <a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a>
+            <a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Maps</a>
+            <button type="button" class="ok" data-done="${i}">${done ? "Entregue ✓" : "Entregue"}</button>
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+
+    drawMap(nextIdx);
+  }
+
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-done]");
+    if (!b) return;
+    const s = state.order[+b.dataset.done];
+    const done = isDone(s);
+    s.pkgs.forEach(p => (done ? state.delivered.delete(p.tn) : state.delivered.add(p.tn)));
+    store.set(deliveredKey(), [...state.delivered]);
+    render();
+    if (!done) toast(`Parada ${+b.dataset.done + 1} entregue`);
+  });
+
+  function drawMap(nextIdx) {
+    const cv = $("map"), ctx = cv.getContext("2d");
+    const css = getComputedStyle(document.documentElement);
+    const tok = n => css.getPropertyValue(n).trim();
+    const W = cv.width, H = cv.height, pad = 60;
+    ctx.clearRect(0, 0, W, H);
+    const o = state.order;
+    if (!o.length) return;
+    const lats = o.map(s => s.lat), lngs = o.map(s => s.lng);
+    const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+    const kx = Math.cos(midLat * Math.PI / 180);
+    const x0 = Math.min(...lngs) * kx, x1 = Math.max(...lngs) * kx, y0 = Math.min(...lats), y1 = Math.max(...lats);
+    const sc = Math.min((W - 2 * pad) / (x1 - x0 || 1e-6), (H - 2 * pad) / (y1 - y0 || 1e-6));
+    const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+    const P = s => [ox + (s.lng * kx - x0) * sc, H - (oy + (s.lat - y0) * sc)];
+    ctx.lineWidth = 4; ctx.lineJoin = "round"; ctx.strokeStyle = tok("--muted");
+    ctx.beginPath(); o.forEach((s, i) => { const [x, y] = P(s); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+    ctx.font = "bold 22px " + tok("--font-display"); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    o.forEach((s, i) => {
+      const [x, y] = P(s);
+      const r = i === nextIdx ? 22 : 16;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = isDone(s) ? tok("--ok") : i === nextIdx ? tok("--accent") : tok("--plate"); ctx.fill();
+      ctx.fillStyle = i === nextIdx ? tok("--accent-ink") : tok("--plate-ink");
+      ctx.font = `bold ${i + 1 > 99 ? 14 : 18}px ` + tok("--font-display");
+      ctx.fillText(String(i + 1), x, y + 1);
+    });
+  }
+
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => state.order.length && render());
+})();
+</script>
+<!-- ARTIFACT-END -->
+</body>
+</html>
