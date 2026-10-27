@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3 -2 92 106" fill="none" stroke="currentColor" color="#45171B">
+  <line x1="16.4" y1="2.8" x2="16.4" y2="100" stroke-width="5"/>
+  <line x1="2" y1="3.6" x2="18.6" y2="3.6" stroke-width="1.7"/>
+  <line x1="5.6" y1="100.2" x2="33.6" y2="100.2" stroke-width="1.7"/>
+  <path d="M18.6 56 C 23.5 46.5, 32.5 40.2, 44.8 40.2 C 58 40.2, 68.6 47.5, 69.6 60" stroke-width="2.3"/>
+  <path d="M66.8 53 L66.8 95.5" stroke-width="6.2"/>
+  <path d="M66.8 93.5 C 67 100.5, 75.5 101.5, 83.5 96.5" stroke-width="1.8"/>
+  <path d="M43.6 74.5 C 49.5 68.8, 57 65, 64 63.6" stroke-width="1.7"/>
+  <path d="M43.8 73.2 C 38.2 78.2, 37.6 89.6, 42.4 95.2 C 46.8 100.2, 56.4 100.6, 64 97.6 L 64 95 C 57.6 97, 52.4 96.2, 49.6 92.6 C 46.2 88.4, 46.2 80.4, 48.4 75.6 C 47 74.4, 45.4 73.6, 43.8 73.2 Z" fill="currentColor" stroke="none"/>
+</svg>

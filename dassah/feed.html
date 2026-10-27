@@ -4,6 +4,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..600,0..100,0..1&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..500;1,8..60,300..500&family=Hanken+Grotesk:wght@400;500;600&display=swap">
 <style>
+.hamono { display: inline-block; height: .9em; width: auto; aspect-ratio: 92 / 106; vertical-align: middle; overflow: visible; }
+
 /* Layout: celular com o perfil à esquerda, a lógica do feed à direita; no celular, um embaixo do outro. */
 :root {
   --bordo: #45171B;
@@ -129,6 +131,16 @@ a { color: var(--escova); }
   .types { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="ha" viewBox="-3 -2 92 106" fill="none" stroke="currentColor">
+  <line x1="16.4" y1="2.8" x2="16.4" y2="100" stroke-width="5"/>
+  <line x1="2" y1="3.6" x2="18.6" y2="3.6" stroke-width="1.7"/>
+  <line x1="5.6" y1="100.2" x2="33.6" y2="100.2" stroke-width="1.7"/>
+  <path d="M18.6 56 C 23.5 46.5, 32.5 40.2, 44.8 40.2 C 58 40.2, 68.6 47.5, 69.6 60" stroke-width="2.3"/>
+  <path d="M66.8 53 L66.8 95.5" stroke-width="6.2"/>
+  <path d="M66.8 93.5 C 67 100.5, 75.5 101.5, 83.5 96.5" stroke-width="1.8"/>
+  <path d="M43.6 74.5 C 49.5 68.8, 57 65, 64 63.6" stroke-width="1.7"/>
+  <path d="M43.8 73.2 C 38.2 78.2, 37.6 89.6, 42.4 95.2 C 46.8 100.2, 56.4 100.6, 64 97.6 L 64 95 C 57.6 97, 52.4 96.2, 49.6 92.6 C 46.2 88.4, 46.2 80.4, 48.4 75.6 C 47 74.4, 45.4 73.6, 43.8 73.2 Z" fill="currentColor" stroke="none"/>
+</symbol></defs></svg>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="reel" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></symbol></defs></svg>
 
@@ -145,7 +157,7 @@ a { color: var(--escova); }
         <div class="ig-bar"><span>dassah.co</span><span>Instagram</span></div>
         <div class="profile">
           <div class="prow">
-            <div class="avatar"><span class="mono" style="font-size:46cqw;color:var(--escova)"><b>l</b><b>a</b></span></div>
+            <div class="avatar"><svg class="hamono" style="font-size:46cqw;color:var(--escova)" role="img" aria-label="monograma ha"><use href="#ha"/></svg></div>
             <div class="stats"><div><b>12</b>posts</div><div><b>—</b>seguidores</div><div><b>—</b>seguindo</div></div>
           </div>
           <div class="bio">
