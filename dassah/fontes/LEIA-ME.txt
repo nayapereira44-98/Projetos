@@ -1,0 +1,11 @@
+Fontes do guia de marca Dassah. Instale todas antes de abrir o PowerPoint
+(no Windows, clique duas vezes em cada arquivo e escolha "Instalar"; no Mac, abra com o Catálogo de Fontes).
+
+Fraunces: marca e nome da Victoria
+Instrument Serif: títulos
+Source Serif 4: texto
+Hanken Grotesk: apoio, rótulos e legendas
+Mrs Saint Delafield: provisória, só até escanear a letra da Victoria
+
+Todas são do Google Fonts, com licença SIL Open Font License (uso comercial livre).
+Versões completas: https://fonts.google.com
