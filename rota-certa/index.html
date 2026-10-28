@@ -166,6 +166,11 @@ canvas { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; background: var(--su
 .hit .big { font: 800 4.5rem/1 var(--font-display); grid-row: span 3; }
 .hit .nm { font: 800 1.2rem var(--font-display); }
 .hit.miss { background: var(--bad); }
+.hit .nav { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.hit .nav .btn { border-color: var(--z-ink); background: transparent; color: var(--z-ink); min-height: 44px; padding: 6px 14px; }
+.scanbtns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+.scanbtns .btn, .scanbtns button { min-height: 56px; font-size: 1.05rem; }
+.scanbtns:not(:has(button:not([hidden]))) { grid-template-columns: 1fr; }
 .hit.again { background: var(--muted); }
 .zones { display: grid; gap: 8px; }
 .zrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
@@ -228,11 +233,13 @@ table.hist tfoot td { font-weight: 700; }
       <div class="scan">
         <label for="scanInput"><h2>Onde vai este pacote?</h2></label>
         <input id="scanInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="final do código, ex. 0507">
-        <div class="actions">
-          <button id="scanCam" type="button" class="ghost" hidden>Ler código com a câmera</button>
-          <button id="scanUndo" type="button" class="ghost" disabled>Desfazer último</button>
+        <div class="scanbtns">
+          <label class="btn primary" for="photoScan">Escanear etiqueta</label>
+          <input id="photoScan" type="file" accept="image/*" capture="environment">
+          <button id="liveScan" type="button" class="ghost" hidden>Câmera contínua</button>
         </div>
         <video id="camVideo" playsinline muted hidden></video>
+        <div class="actions"><button id="scanUndo" type="button" class="ghost" disabled>Desfazer último</button></div>
         <div id="scanResult" aria-live="assertive"></div>
       </div>
 
@@ -258,7 +265,7 @@ table.hist tfoot td { font-weight: 700; }
         <summary>Método de carregamento</summary>
         <ol class="sub" style="margin-top:10px">
           <li>A rota é dividida em <b>blocos de até 10 paradas</b> (e no máximo 25 pacotes, para nenhuma zona lotar). Cada bloco tem um lugar fixo no carro, e o bloco 1 fica mais à mão.</li>
-          <li>Na retirada, bipe no app da SPX como sempre. Depois digite aqui os 4 últimos dígitos e coloque o pacote na zona que aparecer. Não precisa ordenar dentro da zona.</li>
+          <li>Na retirada, bipe no app da SPX como sempre. Depois toque em <b>Escanear etiqueta</b> (ou digite os 4 últimos dígitos) e coloque o pacote na zona que aparecer. Não precisa ordenar dentro da zona.</li>
           <li>Se der tempo, escreva a letra da zona na caixa com caneta. Na rua, você acha o pacote pela letra.</li>
           <li>Pacotes grandes vão por baixo, dentro da própria zona. Os maiores podem ir para o assoalho do banco traseiro.</li>
           <li>Ao terminar um bloco, o app mostra os pacotes do próximo para você separar de uma vez. São 10 paradas sem procurar no porta-malas.</li>
@@ -275,9 +282,16 @@ table.hist tfoot td { font-weight: 700; }
       <section class="next" id="next" aria-live="polite"></section>
 
       <div class="card">
-        <label for="findInput"><h2>Achar pacote</h2></label>
-        <input id="findInput" type="search" autocomplete="off" autocapitalize="characters" placeholder="final do código">
-        <div id="findResult" class="sub"></div>
+        <h2>Em que parada está este pacote?</h2>
+        <div class="scanbtns">
+          <label class="btn primary" for="photoFind">Escanear etiqueta</label>
+          <input id="photoFind" type="file" accept="image/*" capture="environment">
+          <button id="liveFind" type="button" class="ghost" hidden>Câmera contínua</button>
+        </div>
+        <video id="findVideo" playsinline muted hidden></video>
+        <label for="findInput" class="sub">ou digite o final do código</label>
+        <input id="findInput" type="search" autocomplete="off" autocapitalize="characters" placeholder="ex. 0507">
+        <div id="findResult" class="sub" aria-live="assertive"></div>
       </div>
 
       <div>
@@ -368,6 +382,7 @@ table.hist tfoot td { font-weight: 700; }
 </div>
 <div id="toast" class="toast" hidden></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>
 <!-- ARTIFACT-END -->
