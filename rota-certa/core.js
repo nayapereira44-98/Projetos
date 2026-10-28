@@ -11,7 +11,7 @@ const Core = (() => {
 
   function stripAccents(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, ""); }
 
-  // "R Doutor José da Silva , 100" -> { street: "jose silva", number: "100" }
+  // "R Antônio Carlos Neves , 168" -> { street: "antonio carlos neves", number: "168" }
   function parseAddress(addr) {
     const s = stripAccents(String(addr || "")).toLowerCase().replace(/\s+/g, " ").trim();
     const parts = s.split(",").map(p => p.trim());
