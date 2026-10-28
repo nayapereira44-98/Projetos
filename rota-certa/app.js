@@ -410,6 +410,7 @@
 
   $("findInput").addEventListener("input", e => {
     const m = Core.matchTN(S.route?.pkgs || [], e.target.value);
+    if (m.length === 1 && e.target.value.replace(/[^A-Za-z0-9]/g, "").length >= 4) return showFound(m[0]);
     $("findResult").innerHTML = m.slice(0, 8).map(p => {
       const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
       return `<p><b class="mono">${esc(p.tn)}</b> → parada ${s.n} · zona ${s.zone.code} (${esc(s.zone.name)}) · ${esc(s.label)}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}</p>`;
@@ -483,8 +484,8 @@
     $("scanInput").value = "";
     $("scanResult").innerHTML = `<div class="hit${again ? " again" : ""}" style="${zc(s.zoneIdx)}">
       <div class="big">${s.zone.code}</div>
-      <div class="nm">${esc(s.zone.name)}${s.layer ? " · por baixo" : ""}</div>
-      <div>${again ? "Já carregado antes · " : ""}Bloco ${s.block + 1} · parada ${s.n} · ${esc(s.label)}</div>
+      <div class="nm">Parada ${s.n} · ${esc(s.zone.name)}${s.layer ? " · por baixo" : ""}</div>
+      <div>${again ? "Já carregado antes · " : ""}Bloco ${s.block + 1} · ${esc(s.label)}</div>
       <div class="mono">${esc(p.tn)}</div></div>`;
     buzz(again ? [60, 60, 60] : 60);
     $("scanUndo").disabled = !S.prog.loadLog.length;
@@ -499,31 +500,107 @@
     renderAll();
   });
 
-  // Leitura por câmera (Android/Chrome com BarcodeDetector).
-  if ("BarcodeDetector" in window && navigator.mediaDevices?.getUserMedia) $("scanCam").hidden = false;
-  let camStream = null, lastCode = "", lastAt = 0;
-  $("scanCam").addEventListener("click", async () => {
-    const v = $("camVideo");
-    if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; v.hidden = true; $("scanCam").textContent = "Ler código com a câmera"; return; }
+  // ---------- leitura do código de barras (ZXing) ----------
+  const findPkgByCode = text => {
+    const t = String(text || "").toUpperCase().replace(/\s+/g, "");
+    return S.route?.pkgs.find(p => p.tn && t.includes(p.tn.toUpperCase())) || null;
+  };
+  function zxHints() {
+    const F = ZXing.BarcodeFormat, hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.EAN_13, F.QR_CODE, F.DATA_MATRIX]);
+    return hints;
+  }
+
+  // Foto da etiqueta: tenta a imagem inteira e faixas dela (a etiqueta tem mais de um código), em pé e deitada.
+  async function decodePhoto(file) {
+    const url = URL.createObjectURL(file);
     try {
-      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-      v.srcObject = camStream; v.hidden = false; await v.play();
-      $("scanCam").textContent = "Fechar câmera";
-      const det = new BarcodeDetector();
-      const loop = async () => {
-        if (!camStream) return;
-        try {
-          for (const c of await det.detect(v)) {
-            const raw = String(c.rawValue).toUpperCase();
-            const p = S.route.pkgs.find(x => raw.includes(x.tn.toUpperCase()));
-            if (p && (p.tn !== lastCode || Date.now() - lastAt > 3000)) { lastCode = p.tn; lastAt = Date.now(); registerLoad(p); }
-          }
-        } catch {}
-        setTimeout(loop, 250);
-      };
-      loop();
-    } catch { camStream = null; toast("Câmera indisponível. Digite o final do código."); }
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.min(1, 1600 / Math.max(iw, ih));
+      const reader = new ZXing.MultiFormatReader(), hints = zxHints();
+      const regions = [[0, 0, 1, 1], [0, 0, 1, 0.5], [0, 0.5, 1, 0.5], [0, 0, 1, 0.34], [0, 0.33, 1, 0.34], [0, 0.66, 1, 0.34], [0, 0.25, 1, 0.5]];
+      const read = [];
+      for (const [x, y, w, h] of regions) {
+        for (const rot of [0, 1]) {
+          const sw = w * iw, sh = h * ih, dw = Math.round(sw * scale), dh = Math.round(sh * scale);
+          const cv = document.createElement("canvas");
+          cv.width = rot ? dh : dw; cv.height = rot ? dw : dh;
+          const ctx = cv.getContext("2d");
+          if (rot) { ctx.translate(dh, 0); ctx.rotate(Math.PI / 2); }
+          ctx.drawImage(img, x * iw, y * ih, sw, sh, 0, 0, dw, dh);
+          try {
+            const r = reader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv))), hints);
+            const p = findPkgByCode(r.getText());
+            if (p) return { p, read };
+            if (!read.includes(r.getText())) read.push(r.getText());
+          } catch {}
+          await new Promise(r => setTimeout(r));
+        }
+      }
+      return { p: null, read };
+    } finally { URL.revokeObjectURL(url); }
+  }
+
+  function scanMiss(ctx, read) {
+    const box = ctx === "load" ? $("scanResult") : $("findResult");
+    box.innerHTML = read.length
+      ? `<div class="hit miss"><div class="big">?</div><div class="nm">Este pacote não está nesta rota</div><div>Código lido: <span class="mono">${esc(read.join(", "))}</span></div></div>`
+      : `<div class="hit again"><div class="big">?</div><div class="nm">Não consegui ler o código</div><div>Fotografe só a etiqueta, de perto, com luz e sem tremer. Ou digite o final do código.</div></div>`;
+    buzz([200, 80, 200]);
+  }
+  const onScanned = (p, ctx) => { if (ctx === "load") return registerLoad(p); $("findInput").value = ""; showFound(p); };
+
+  [["photoScan", "load", "scanResult"], ["photoFind", "find", "findResult"]].forEach(([id, ctx, out]) => {
+    $(id).addEventListener("change", async e => {
+      const f = e.target.files[0];
+      e.target.value = "";
+      if (!f || !S.route) return;
+      if (!window.ZXing) return toast("O leitor de código não carregou. Confira a internet e abra o app de novo.");
+      $(out).innerHTML = `<p class="sub">Lendo a etiqueta…</p>`;
+      try {
+        const { p, read } = await decodePhoto(f);
+        p ? onScanned(p, ctx) : scanMiss(ctx, read);
+      } catch { scanMiss(ctx, []); }
+    });
   });
+
+  // Câmera contínua: funciona quando o navegador libera a câmera ao vivo (no link do GitHub Pages, por exemplo).
+  const live = {};
+  if (window.ZXing && navigator.mediaDevices?.getUserMedia) { $("liveScan").hidden = false; $("liveFind").hidden = false; }
+  [["liveScan", "camVideo", "load"], ["liveFind", "findVideo", "find"]].forEach(([btn, vid, ctx]) => {
+    $(btn).addEventListener("click", async () => {
+      if (live[ctx]) { live[ctx].reset(); live[ctx] = null; $(vid).hidden = true; $(btn).textContent = "Câmera contínua"; return; }
+      const reader = new ZXing.BrowserMultiFormatReader(zxHints(), 250);
+      let last = "", lastAt = 0;
+      live[ctx] = reader; $(vid).hidden = false; $(btn).textContent = "Fechar câmera";
+      try {
+        await reader.decodeFromVideoDevice(undefined, $(vid), res => {
+          if (!res) return;
+          const txt = res.getText();
+          if (txt === last && Date.now() - lastAt < 3000) return;
+          last = txt; lastAt = Date.now();
+          const p = findPkgByCode(txt);
+          p ? onScanned(p, ctx) : scanMiss(ctx, [txt]);
+        });
+      } catch {
+        reader.reset(); live[ctx] = null; $(vid).hidden = true; $(btn).textContent = "Câmera contínua";
+        toast("A câmera ao vivo não abriu aqui. Use Escanear etiqueta.");
+      }
+    });
+  });
+
+  function showFound(p) {
+    const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
+    $("findResult").innerHTML = `<div class="hit" style="${zc(s.zoneIdx)}">
+      <div class="big">${s.n}</div>
+      <div class="nm">Parada ${s.n} de ${S.display.length}</div>
+      <div>${esc(s.label)} · ${s.pkgs.length} pct</div>
+      <div>Zona ${s.zone.code}: ${esc(s.zone.name)} · Bloco ${s.block + 1}${st ? (st === "ok" ? " · já entregue" : " · não entregue") : ""}</div>
+      <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a><span class="mono">${esc(p.tn)}</span></div></div>`;
+    buzz(60);
+  }
 
   function renderLoad() {
     const st = S.route.settings, veh = Core.VEHICLES[st.vehicle];

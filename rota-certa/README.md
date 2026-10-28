@@ -5,7 +5,7 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 ## Três abas
 
 ### Carregar (no CD)
-- Digite o final do código do pacote (ex.: `0507`). O app mostra em letra grande **em que zona do veículo ele vai**: A, banco do passageiro; B e C, banco traseiro; D e E, porta-malas. Também há layouts para utilitário e moto.
+- **Escaneie a etiqueta** (foto pela câmera do celular, ou câmera contínua onde o navegador permitir) ou digite o final do código (ex.: `0507`). O app mostra em letra grande **em que zona do veículo ele vai**: A, banco do passageiro; B e C, banco traseiro; D e E, porta-malas. Também há layouts para utilitário e moto.
 - A rota é dividida em **blocos** de até 10 paradas e no máximo 25 pacotes. O bloco 1 vai na zona mais à mão.
 - Mostra o progresso por zona, a lista "faltam carregar" e o botão desfazer. No Android/Chrome, também lê o código de barras pela câmera.
 - Compara a estimativa de tempo da rota sem organização e com organização por zonas.
@@ -16,7 +16,8 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - **"Separe o bloco N"**: antes de cada bloco, lista os pacotes das próximas paradas (final do código, parada e rua) para separar de uma vez.
 - A próxima parada tem horário previsto e botões Waze, Google Maps e Apple Maps, além de **Entregue**, **Não entregue** (com motivo) e **Depois** (vai para o fim).
 - Janela de horário lida do complemento ("Entrega até às 17:30"), com aviso se a chegada prevista passar do horário.
-- Busca de pacote pelo final do código e botão "Copiar" do código para colar no app da SPX.
+- **"Em que parada está este pacote?"**: escaneie a etiqueta e o app mostra o número da parada em tamanho grande, a zona do carro e os botões de navegação. Também aceita o final do código digitado.
+- Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.
 
 ### Ganhos
@@ -46,5 +47,6 @@ Para usar: abra `index.html` no navegador ou publique com GitHub Pages (*Setting
 
 ## Créditos
 - [OSRM](https://github.com/Project-OSRM/osrm-backend) (BSD-2): distâncias pelas ruas. Dados © colaboradores do OpenStreetMap.
+- [ZXing](https://github.com/zxing-js/library) (Apache-2.0): leitura de código de barras e QR.
 - Deep links do Waze, do Google Maps e do Apple Maps.
 - O leitor .xlsx é próprio e usa o `DecompressionStream` do navegador, porque a `read-excel-file` (MIT) não abriu o arquivo exportado pela SPX.
