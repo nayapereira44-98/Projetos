@@ -16,6 +16,7 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - **"Separe o bloco N"**: antes de cada bloco, lista os pacotes das próximas paradas (final do código, parada e rua) para separar de uma vez.
 - A próxima parada tem horário previsto e botões Waze, Google Maps e Apple Maps, além de **Entregue**, **Não entregue** (com motivo) e **Depois** (vai para o fim).
 - Janela de horário lida do complemento ("Entrega até às 17:30"), com aviso se a chegada prevista passar do horário.
+- **Visão por local**: a lista "locais com mais de uma parada da Shopee" mostra, por exemplo, que as paradas 48 e 49 ficam no mesmo endereço. A próxima parada avisa "Leve 2 pacotes para este local". Digite o número da parada da etiqueta (ex.: 49) e o app mostra todos os pacotes daquele local, com o número Shopee de cada um, e os locais a poucos passos.
 - **"Em que parada está este pacote?"**: escaneie a etiqueta e o app mostra o número da parada em tamanho grande, a zona do carro e os botões de navegação. Também aceita o final do código digitado.
 - Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.

@@ -270,6 +270,11 @@ const Core = (() => {
     });
   }
 
+  // Outros locais a até `maxM` metros, do mais perto ao mais longe.
+  function nearby(stop, stops, maxM) {
+    return stops.filter(s => s !== stop).map(s => ({ s, d: hav(stop, s) })).filter(x => x.d <= maxM).sort((a, b) => a.d - b.d);
+  }
+
   const ll = p => p.lat.toFixed(6) + "," + p.lng.toFixed(6);
   const links = {
     waze: p => "https://waze.com/ul?ll=" + ll(p) + "&navigate=yes",
@@ -282,6 +287,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, estimateMinutes, finance, matchTN, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, estimateMinutes, finance, matchTN, nearby, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
