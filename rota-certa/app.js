@@ -260,6 +260,12 @@
     if (late.length) warn.push(`<b>Horário em risco:</b> ${late.map(s => `parada ${s.n} (até ${s.until}, chegada prevista ${hhmm(s.eta)})`).join("; ")}. Use "Depois" em outras paradas ou comece por ela.`);
     if (S.route.bad?.length) warn.push(`${S.route.bad.length} pacote(s) sem coordenadas ficaram fora da rota: ${S.route.bad.map(p => esc(p.tn)).join(", ")}.`);
     $("warn").hidden = !warn.length; $("warn").innerHTML = warn.map(w => `<p>${w}</p>`).join("");
+    const multi = d.filter(s => s.shopeeStops.length > 1 || (s.unseq && s.pkgs.length > 1)).sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
+    $("multiBox").hidden = !multi.length;
+    $("multiSum").textContent = `${multi.length} locais com mais de uma parada da Shopee`;
+    $("multiList").innerHTML = multi.map(s => `<button type="button" class="${stopDone(s) ? "done" : ""}" data-showstop="${esc(s.key)}">
+      <span class="stopnums">${s.shopeeStops.map(x => `<span>${x}</span>`).join("")}${s.unseq ? `<span>sem nº</span>` : ""}</span>
+      <span style="flex:1;min-width:0">${esc(s.label)}<br><span class="sub">${s.pkgs.length} pacotes · nossa parada ${s.n}${stopDone(s) ? " · entregue" : ""}</span></span></button>`).join("");
 
     const nextIdx = d.findIndex(s => !stopDone(s));
     const n = d[nextIdx];
@@ -275,7 +281,8 @@
         <div class="eyebrow">Próxima parada · ${n.n} de ${d.length} · chegada ~${hhmm(n.eta)}</div>
         <div class="addr">${esc(n.label)}</div>
         <div class="meta"><span>${n.pkgs.length} pacote${n.pkgs.length > 1 ? "s" : ""}</span>${zoneTag(n)}${n.shopeeStops.length ? `<span>Shopee ${n.shopeeStops.join(", ")}</span>` : ""}${n.unseq ? "<span>sem nº</span>" : ""}${n.until ? `<span>até ${n.until}</span>` : ""}</div>
-        <div class="meta mono">${n.pkgs.map(p => esc(tail(p.tn))).join(" · ")}</div>
+        ${n.pkgs.length > 1 ? `<div class="alert">Leve ${n.pkgs.length} pacotes para este local${n.shopeeStops.length > 1 ? `: paradas Shopee ${n.shopeeStops.join(" + ")}` : ""}${n.unseq ? ` + ${n.unseq} sem nº` : ""}</div>` : ""}
+        <div class="meta mono">${n.pkgs.map(p => esc(tail(p.tn)) + (p.shopeeStop != null ? ` (${p.shopeeStop})` : " (sem nº)")).join(" · ")}</div>
         <div class="row">
           <a class="btn primary" href="${Core.links.waze(n)}" target="_blank" rel="noopener">Waze</a>
           <a class="btn" href="${Core.links.gmaps(n)}" target="_blank" rel="noopener">Google</a>
@@ -368,6 +375,11 @@
       const s = stop(ds.ok), done = stopDone(s) && !stopFailed(s);
       s.pkgs.forEach(p => { if (done) delete S.prog.status[p.tn]; else if (S.prog.status[p.tn] !== "ok") { S.prog.status[p.tn] = "ok"; delete S.prog.reason[p.tn]; } });
       afterStatus(done ? null : `Parada ${s.n} entregue`);
+      if (t.closest("#findResult")) { $("findResult").innerHTML = ""; $("shopeeStopInput").value = ""; }
+    } else if (ds.showstop) {
+      const s = stop(ds.showstop);
+      showStop(s, `Paradas Shopee ${s.shopeeStops.join(" + ") || "sem nº"} no mesmo local`);
+      $("findResult").scrollIntoView({ behavior: "smooth", block: "center" });
     } else if (ds.failopen) { S.failOpen = ds.failopen; renderAll(); }
     else if (ds.failcancel) { S.failOpen = null; renderAll(); }
     else if (ds.fail) {
@@ -591,16 +603,41 @@
     });
   });
 
-  function showFound(p) {
-    const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
+  // Todos os pacotes deste local (com o nº de parada da Shopee de cada um) e os locais a poucos passos.
+  function locBox(s, tn) {
+    const near = Core.nearby(s, S.display, 60).filter(x => !stopDone(x.s));
+    return `<div class="loc">
+      <b class="alert">${s.pkgs.length > 1 ? `Neste local: ${s.pkgs.length} pacotes` : "Só este pacote neste local"}</b>
+      ${s.shopeeStops.length ? `<div class="stopnums">${s.shopeeStops.map(x => `<span>Shopee ${x}</span>`).join("")}${s.unseq ? `<span>${s.unseq} sem nº</span>` : ""}</div>` : ""}
+      <ul>${s.pkgs.map(p => `<li class="${p.tn === tn ? "me" : ""} ${S.prog.status[p.tn] ? "done" : ""}"><span class="mono">${esc(tail(p.tn))}</span><span>${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}</span><span>${esc(p.address.split(",").slice(2).join(",").trim())}</span></li>`).join("")}</ul>
+      ${near.length ? `<div class="near">A poucos passos: ${near.map(x => `${Math.round(x.d)} m, ${esc(x.s.label)} (Shopee ${x.s.shopeeStops.join(", ") || "sem nº"}, ${x.s.pkgs.length} pct)`).join("; ")}</div>` : ""}
+    </div>`;
+  }
+
+  function showStop(s, title, tn) {
     $("findResult").innerHTML = `<div class="hit" style="${zc(s.zoneIdx)}">
       <div class="big">${s.n}</div>
-      <div class="nm">Parada ${s.n} de ${S.display.length}</div>
-      <div>${esc(s.label)} · ${s.pkgs.length} pct</div>
-      <div>Zona ${s.zone.code}: ${esc(s.zone.name)} · Bloco ${s.block + 1}${st ? (st === "ok" ? " · já entregue" : " · não entregue") : ""}</div>
-      <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a><span class="mono">${esc(p.tn)}</span></div></div>`;
+      <div class="nm">${title}</div>
+      <div>${esc(s.label)} · nossa parada ${s.n} de ${S.display.length}</div>
+      <div>Zona ${s.zone.code}: ${esc(s.zone.name)} · Bloco ${s.block + 1}${stopDone(s) ? " · já entregue" : ""}</div>
+      ${locBox(s, tn)}
+      <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a>${!stopDone(s) ? `<button type="button" class="btn" data-ok="${esc(s.key)}">Entregar todos</button>` : ""}</div></div>`;
     buzz(60);
   }
+
+  $("shopeeStopInput").addEventListener("input", e => {
+    const n = parseInt(e.target.value, 10);
+    if (!S.route || !n) { $("findResult").innerHTML = ""; return; }
+    const s = S.display.find(x => x.shopeeStops.includes(n));
+    if (!s) { $("findResult").innerHTML = `<p>A parada ${n} da Shopee não está nesta planilha.</p>`; return; }
+    showStop(s, `Parada Shopee ${n}${s.shopeeStops.length > 1 ? ` fica junto com ${s.shopeeStops.filter(x => x !== n).join(", ")}` : ""}`);
+  });
+
+  function showFound(p) {
+    const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
+    if (s) return showStop(s, `Pacote ${esc(tail(p.tn))}${p.shopeeStop != null ? ` · Shopee ${p.shopeeStop}` : " · sem nº"}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}`, p.tn);
+  }
+
 
   function renderLoad() {
     const st = S.route.settings, veh = Core.VEHICLES[st.vehicle];

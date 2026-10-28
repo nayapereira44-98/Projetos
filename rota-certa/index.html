@@ -168,6 +168,20 @@ canvas { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; background: var(--su
 .hit.miss { background: var(--bad); }
 .hit .nav { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .hit .nav .btn { border-color: var(--z-ink); background: transparent; color: var(--z-ink); min-height: 44px; padding: 6px 14px; }
+.loc { grid-column: 1 / -1; background: rgba(0,0,0,0.18); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; margin-top: 6px; }
+.loc b.alert { font: 800 1.05rem var(--font-display); }
+.loc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.loc li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 0.92rem; }
+.loc li.me { font-weight: 700; text-decoration: underline; }
+.loc li.done { opacity: 0.6; text-decoration: line-through; }
+.loc .near { font-size: 0.85rem; opacity: 0.9; }
+.stopnums { display: flex; flex-wrap: wrap; gap: 6px; }
+.stopnums span { font: 800 1rem var(--font-display); border: 2px solid currentColor; border-radius: 8px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+.multi { display: grid; gap: 8px; margin-top: 8px; }
+.multi button { justify-content: space-between; text-align: left; font-weight: 400; border-width: 1px; border-color: var(--line); gap: 10px; }
+.multi button .stopnums { flex: none; color: var(--accent); }
+.multi button.done { opacity: 0.5; }
+.next .alert { background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 8px 10px; font-weight: 700; }
 .scanbtns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
 .scanbtns .btn, .scanbtns button { min-height: 56px; font-size: 1.05rem; }
 .scanbtns:not(:has(button:not([hidden]))) { grid-template-columns: 1fr; }
@@ -278,11 +292,18 @@ table.hist tfoot td { font-weight: 700; }
     <section id="view-rota" class="stack" hidden>
       <div class="stats" id="stats"></div>
       <div id="warn" class="notice" hidden></div>
+      <details class="cfg" id="multiBox" open hidden>
+        <summary id="multiSum"></summary>
+        <p class="sub" style="margin-top:6px">A Shopee dá números de parada diferentes para pacotes do mesmo endereço. Aqui eles são uma parada só: entregue todos de uma vez.</p>
+        <div class="multi" id="multiList"></div>
+      </details>
       <div id="pickCard"></div>
       <section class="next" id="next" aria-live="polite"></section>
 
       <div class="card">
         <h2>Em que parada está este pacote?</h2>
+        <label for="shopeeStopInput" class="sub">Número da parada na etiqueta da Shopee</label>
+        <input id="shopeeStopInput" type="number" inputmode="numeric" min="1" placeholder="ex. 49">
         <div class="scanbtns">
           <label class="btn primary" for="photoFind">Escanear etiqueta</label>
           <input id="photoFind" type="file" accept="image/*" capture="environment">
