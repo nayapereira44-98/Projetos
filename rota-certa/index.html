@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT-START -->
+<title>Rota Certa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: painel de motorista em uma coluna; abas Carregar / Rota / Ganhos; cartão da próxima parada fixo no topo. */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #16191d;
+  --muted: #5b6168;
+  --line: #d9dcd6;
+  --accent: #d9480f;
+  --accent-ink: #ffffff;
+  --plate: #1f3b2d;
+  --plate-ink: #f5f7f2;
+  --ok: #2b8a3e;
+  --bad: #c92a2a;
+  --warn-soft: #fff1e6;
+  --z1: #d9480f; --z2: #1971c2; --z3: #7048e8; --z4: #2b8a3e; --z5: #c2255c; --z6: #8a6d00;
+  --z-ink: #ffffff;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+    --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
+    --ok: #5fcf75; --bad: #ff6b6b; --warn-soft: #2e2017;
+    --z1: #e8590c; --z2: #1c7ed6; --z3: #7950f2; --z4: #2f9e44; --z5: #d6336c; --z6: #9c7c00;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+  --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
+  --ok: #5fcf75; --bad: #ff6b6b; --warn-soft: #2e2017;
+  --z1: #e8590c; --z2: #1c7ed6; --z3: #7950f2; --z4: #2f9e44; --z5: #d6336c; --z6: #9c7c00;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.02rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+h3 { font-size: 1.1rem; font-weight: 800; }
+p { margin: 0; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top small { display: block; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+button, .btn {
+  font: 700 1rem var(--font-body); border-radius: 10px; border: 2px solid var(--ink);
+  background: var(--surface); color: var(--ink); padding: 10px 14px; cursor: pointer;
+  text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; text-align: center;
+}
+.btn.primary, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.ghost { border-color: var(--line); }
+button.danger { border-color: var(--bad); color: var(--bad); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; }
+.empty { background: var(--surface); border: 2px dashed var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.empty ol, .card ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.notice { padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); font-size: 0.92rem; display: grid; gap: 4px; }
+.sub { color: var(--muted); font-size: 0.88rem; }
+.mono { font-family: var(--font-data); }
+
+nav.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--bg); display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-block: 6px; }
+nav.tabs a { text-align: center; text-decoration: none; color: var(--ink); font: 800 0.95rem var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 6px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); }
+nav.tabs a[aria-current="page"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+nav.tabs a small { display: block; font: 500 0.72rem var(--font-data); text-transform: none; letter-spacing: 0; opacity: 0.8; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat b { display: block; font: 800 1.45rem var(--font-display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 0.8rem; }
+.stat.good b { color: var(--ok); }
+.stat.badv b { color: var(--bad); }
+
+details.cfg { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+details.cfg summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.form { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form .full { grid-column: 1 / -1; }
+.form label { display: grid; gap: 4px; font-size: 0.86rem; color: var(--muted); min-width: 0; }
+select, input[type=range], input[type=number], input[type=text], input[type=search] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 46px; width: 100%; min-width: 0; }
+
+.zone-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 3px 8px 3px 3px; font-weight: 700; font-size: 0.85rem; color: var(--z-ink); }
+.zone-tag b { background: rgba(0,0,0,0.22); border-radius: 6px; padding: 0 7px; font-family: var(--font-display); }
+
+/* Separar bloco */
+.pick { border: 3px solid var(--zc, var(--accent)); border-radius: 14px; background: var(--surface); padding: 14px; display: grid; gap: 10px; }
+.pick-head { display: flex; gap: 12px; align-items: center; }
+.pick-letter { width: 56px; height: 56px; border-radius: 12px; background: var(--zc); color: var(--z-ink); font: 800 2rem var(--font-display); display: grid; place-items: center; flex: none; }
+.pick ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pick li button { width: 100%; justify-content: space-between; min-height: 44px; font-weight: 400; border-width: 1px; border-color: var(--line); }
+.pick li button.picked { opacity: 0.45; text-decoration: line-through; }
+.tn-end { font: 700 1.05rem var(--font-data); letter-spacing: 0.04em; }
+
+/* Próxima parada */
+.next { background: var(--plate); color: var(--plate-ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+.next .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; }
+.next .addr { font: 800 1.25rem/1.2 var(--font-display); }
+.next .meta { font-size: 0.9rem; opacity: 0.92; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.next .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.next .btn, .next button { border-color: var(--plate-ink); background: transparent; color: var(--plate-ink); min-height: 46px; padding: 8px; }
+.next .btn.primary, .next button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.next button.okb { background: var(--plate-ink); color: var(--plate); }
+.reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.legs { display: flex; flex-wrap: wrap; gap: 8px; }
+.legs .btn { font-size: 0.88rem; min-height: 44px; }
+.legs .btn.done { opacity: 0.45; }
+canvas { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: block; }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+.stop { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--zc, var(--line)); border-radius: 12px; padding: 12px; }
+.stop.done { opacity: 0.55; }
+.stop.current { outline: 3px solid var(--accent); outline-offset: -1px; }
+.plate { background: var(--plate); color: var(--plate-ink); border-radius: 8px; font: 800 1.35rem var(--font-display); display: grid; place-items: center; height: 52px; font-variant-numeric: tabular-nums; }
+.stop.done .plate { background: var(--ok); }
+.stop.failed .plate { background: var(--bad); }
+.body { min-width: 0; display: grid; gap: 6px; }
+.street { font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.78rem var(--font-data); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--muted); }
+.chip.hot { border-color: var(--accent); color: var(--accent); }
+.chip.count { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip.time { border-color: var(--bad); color: var(--bad); }
+.pk summary { cursor: pointer; font-size: 0.88rem; color: var(--muted); min-height: 28px; }
+.pk ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.pk li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.86rem; }
+.pk li .t { font-family: var(--font-data); overflow-wrap: anywhere; }
+.pk li .st { display: flex; gap: 4px; }
+.pk li button { min-height: 36px; padding: 4px 10px; font-size: 0.8rem; border-width: 1px; }
+.pk li button.on-ok { background: var(--ok); color: var(--surface); border-color: var(--ok); }
+.pk li button.on-bad { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions .btn, .actions button { min-height: 40px; padding: 6px 12px; font-size: 0.88rem; }
+
+/* Carregar */
+.scan { background: var(--surface); border: 2px solid var(--ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.scan input { font: 700 1.6rem var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; min-height: 60px; text-align: center; }
+.scan input::placeholder { font: 400 1rem var(--font-body); letter-spacing: 0; text-transform: none; }
+.hit { border-radius: 14px; padding: 16px; color: var(--z-ink); background: var(--zc); display: grid; gap: 4px; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 16px; }
+.hit .big { font: 800 4.5rem/1 var(--font-display); grid-row: span 3; }
+.hit .nm { font: 800 1.2rem var(--font-display); }
+.hit.miss { background: var(--bad); }
+.hit.again { background: var(--muted); }
+.zones { display: grid; gap: 8px; }
+.zrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.zrow .zl { width: 40px; height: 40px; border-radius: 8px; background: var(--zc); color: var(--z-ink); font: 800 1.3rem var(--font-display); display: grid; place-items: center; }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.bar i { display: block; height: 100%; background: var(--zc); }
+.num { font-variant-numeric: tabular-nums; font-family: var(--font-data); font-size: 0.85rem; }
+svg.vehicle { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+svg.vehicle text { font-family: var(--font-display); }
+.compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.compare div { border-radius: 10px; padding: 10px; background: var(--bg); }
+.compare b { display: block; font: 800 1.3rem var(--font-display); font-variant-numeric: tabular-nums; }
+.compare .gain b { color: var(--ok); }
+.missing { font-family: var(--font-data); font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+video { width: 100%; border-radius: 12px; background: #000; }
+
+table.hist { width: 100%; border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+table.hist th, table.hist td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.hist th:first-child, table.hist td:first-child { text-align: left; }
+table.hist tfoot td { font-weight: 700; }
+.scroll { overflow-x: auto; }
+.foot { color: var(--muted); font-size: 0.82rem; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 20; max-width: calc(100% - 32px); }
+@media (max-width: 420px) { .form { grid-template-columns: minmax(0, 1fr); } .hit .big { font-size: 3.5rem; } }
+@media (prefers-reduced-motion: no-preference) { .stop { transition: opacity .2s; } }
+</style>
+</head>
+<body>
+<!-- BODY-START -->
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rota Certa</h1>
+      <small id="subtitle">Rota, carregamento e ganhos do dia</small>
+    </div>
+    <label class="btn primary" for="file">Abrir planilha</label>
+    <input id="file" type="file" accept=".xlsx">
+  </header>
+
+  <section id="empty" class="empty">
+    <h2>Como funciona</h2>
+    <ol>
+      <li>Exporte a rota do dia em Excel (.xlsx) e toque em <b>Abrir planilha</b>.</li>
+      <li><b>Carregar:</b> no CD, digite o final do código de cada pacote. O app diz em que lugar do carro ele vai, por bloco de 10 paradas.</li>
+      <li><b>Rota:</b> pacotes do mesmo endereço viram uma parada só, inclusive as reentregas que vêm sem número. Antes de cada bloco, o app lista quais pacotes separar.</li>
+      <li><b>Ganhos:</b> quilômetros rodados, combustível gasto e quanto sobrou no fim do dia.</li>
+    </ol>
+    <p class="sub">A planilha é lida aqui no aparelho e fica salva só nele.</p>
+  </section>
+
+  <div id="app" class="stack" hidden>
+    <nav class="tabs" aria-label="Seções">
+      <a href="#carregar" data-tab="carregar">Carregar<small id="tabLoad"></small></a>
+      <a href="#rota" data-tab="rota">Rota<small id="tabRoute"></small></a>
+      <a href="#ganhos" data-tab="ganhos">Ganhos<small id="tabMoney"></small></a>
+    </nav>
+
+    <!-- CARREGAR -->
+    <section id="view-carregar" class="stack" hidden>
+      <div class="scan">
+        <label for="scanInput"><h2>Onde vai este pacote?</h2></label>
+        <input id="scanInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="final do código, ex. 0507">
+        <div class="actions">
+          <button id="scanCam" type="button" class="ghost" hidden>Ler código com a câmera</button>
+          <button id="scanUndo" type="button" class="ghost" disabled>Desfazer último</button>
+        </div>
+        <video id="camVideo" playsinline muted hidden></video>
+        <div id="scanResult" aria-live="assertive"></div>
+      </div>
+
+      <div class="card">
+        <div class="top"><h2>Carregamento</h2><span class="num" id="loadCount"></span></div>
+        <div class="zones" id="zoneProgress"></div>
+        <details class="pk" id="missingBox"><summary id="missingSum"></summary><p class="missing" id="missingList"></p></details>
+      </div>
+
+      <div class="card">
+        <h2>Mapa do veículo</h2>
+        <div id="vehicleSvg"></div>
+        <p class="sub" id="vehicleNote"></p>
+      </div>
+
+      <div class="card">
+        <h2>Tempo estimado da rota</h2>
+        <div class="compare" id="timeCompare"></div>
+        <p class="sub" id="timeNote"></p>
+      </div>
+
+      <details class="cfg">
+        <summary>Método de carregamento</summary>
+        <ol class="sub" style="margin-top:10px">
+          <li>A rota é dividida em <b>blocos de até 10 paradas</b> (e no máximo 25 pacotes, para nenhuma zona lotar). Cada bloco tem um lugar fixo no carro, e o bloco 1 fica mais à mão.</li>
+          <li>Na retirada, bipe no app da SPX como sempre. Depois digite aqui os 4 últimos dígitos e coloque o pacote na zona que aparecer. Não precisa ordenar dentro da zona.</li>
+          <li>Se der tempo, escreva a letra da zona na caixa com caneta. Na rua, você acha o pacote pela letra.</li>
+          <li>Pacotes grandes vão por baixo, dentro da própria zona. Os maiores podem ir para o assoalho do banco traseiro.</li>
+          <li>Ao terminar um bloco, o app mostra os pacotes do próximo para você separar de uma vez. São 10 paradas sem procurar no porta-malas.</li>
+          <li>A lista "Faltam carregar" mostra os pacotes que não passaram por aqui, antes de você sair do CD.</li>
+        </ol>
+      </details>
+    </section>
+
+    <!-- ROTA -->
+    <section id="view-rota" class="stack" hidden>
+      <div class="stats" id="stats"></div>
+      <div id="warn" class="notice" hidden></div>
+      <div id="pickCard"></div>
+      <section class="next" id="next" aria-live="polite"></section>
+
+      <div class="card">
+        <label for="findInput"><h2>Achar pacote</h2></label>
+        <input id="findInput" type="search" autocomplete="off" autocapitalize="characters" placeholder="final do código">
+        <div id="findResult" class="sub"></div>
+      </div>
+
+      <div>
+        <h2 style="margin-bottom:8px">Rota inteira no Google Maps</h2>
+        <div class="legs" id="legs"></div>
+      </div>
+
+      <canvas id="map" width="1200" height="900" aria-label="Desenho da rota, colorido por bloco"></canvas>
+
+      <details class="cfg" id="cfg">
+        <summary>Ajustes da rota</summary>
+        <div class="form" style="padding-top:10px">
+          <label for="start" class="full">Começar por<select id="start"></select></label>
+          <label for="vehicle" class="full">Veículo<select id="vehicle"></select></label>
+          <label for="blockSize">Paradas por bloco<input id="blockSize" type="number" min="3" max="20" value="10"></label>
+          <label for="maxPkgs">Máx. pacotes por bloco<input id="maxPkgs" type="number" min="5" max="80" value="25"></label>
+          <label for="radius" class="full">Juntar pacotes a até <b id="radiusVal">20</b> m numa parada<input id="radius" type="range" min="0" max="80" step="5" value="20"></label>
+          <button id="recalc" class="primary full" type="button">Recalcular rota</button>
+          <p class="sub full" id="recalcNote" hidden>O carregamento já começou. Recalcular muda os blocos e as zonas. Toque de novo para confirmar.</p>
+        </div>
+      </details>
+
+      <div class="top">
+        <h2>Paradas</h2>
+        <button id="copy" type="button" class="ghost">Copiar lista</button>
+      </div>
+      <div class="list" id="list"></div>
+      <p class="foot" id="foot"></p>
+    </section>
+
+    <!-- GANHOS -->
+    <section id="view-ganhos" class="stack" hidden>
+      <div class="card">
+        <div class="top"><h2>Jornada</h2><span class="num" id="clock"></span></div>
+        <div class="actions">
+          <button id="dayStart" type="button" class="primary">Iniciar rota agora</button>
+          <button id="dayEnd" type="button" class="ghost">Finalizar rota</button>
+        </div>
+        <p class="sub" id="dayInfo"></p>
+      </div>
+
+      <div class="stats" id="moneyStats"></div>
+
+      <div class="card">
+        <h2>Quilometragem</h2>
+        <div class="form">
+          <label for="odoStart">Odômetro na saída (km)<input id="odoStart" type="number" inputmode="decimal" step="0.1"></label>
+          <label for="odoEnd">Odômetro na chegada (km)<input id="odoEnd" type="number" inputmode="decimal" step="0.1"></label>
+          <label for="cdKm" class="full">Ida e volta do CD até a área de entrega (km)<input id="cdKm" type="number" inputmode="decimal" step="0.1" value="0"></label>
+        </div>
+        <div class="actions"><button id="gpsBtn" type="button" class="ghost">Medir km pelo GPS</button></div>
+        <p class="sub" id="kmInfo"></p>
+      </div>
+
+      <div class="card">
+        <h2>Combustível e ganho</h2>
+        <div class="form">
+          <label for="fuel">Combustível<select id="fuel"><option value="gasolina">Gasolina</option><option value="etanol">Etanol</option><option value="diesel">Diesel</option><option value="gnv">GNV (m³)</option></select></label>
+          <label for="price">Preço por litro (R$)<input id="price" type="number" inputmode="decimal" step="0.01" value="6.29"></label>
+          <label for="kml">Consumo (km por litro)<input id="kml" type="number" inputmode="decimal" step="0.1" value="11"></label>
+          <label for="extras">Outros gastos do dia (R$)<input id="extras" type="number" inputmode="decimal" step="0.01" value="0"></label>
+          <label for="payMode">Como você recebe<select id="payMode"><option value="rota">Valor fechado da rota</option><option value="pacote">Por pacote entregue</option><option value="parada">Por parada entregue</option></select></label>
+          <label for="payValue">Valor (R$)<input id="payValue" type="number" inputmode="decimal" step="0.01" value="0"></label>
+        </div>
+        <p class="sub" id="fuelTip"></p>
+      </div>
+
+      <div id="returns"></div>
+
+      <div class="card">
+        <div class="top"><h2>Histórico</h2><button id="closeDay" type="button" class="primary">Fechar o dia</button></div>
+        <div class="scroll"><table class="hist" id="hist"></table></div>
+        <button id="clearHist" type="button" class="danger" hidden>Apagar histórico</button>
+      </div>
+
+      <details class="cfg">
+        <summary>Premissas de tempo</summary>
+        <div class="form" style="padding-top:10px">
+          <label for="aSpeed">Velocidade média no bairro (km/h)<input id="aSpeed" type="number" step="1" value="18"></label>
+          <label for="aStop">Minutos por parada<input id="aStop" type="number" step="0.5" value="2"></label>
+          <label for="aExtra">Minutos por pacote extra na parada<input id="aExtra" type="number" step="0.1" value="0.5"></label>
+          <label for="aMessy">Minutos procurando pacote (carro bagunçado)<input id="aMessy" type="number" step="0.1" value="1.2"></label>
+          <label for="aOrg">Minutos procurando pacote (por zona)<input id="aOrg" type="number" step="0.1" value="0.3"></label>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+<!-- ARTIFACT-END -->
+</body>
+</html>
