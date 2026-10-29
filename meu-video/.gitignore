@@ -12,3 +12,7 @@ public/foto-ref.jpg
 public/*.mp4
 public/*.mov
 public/legendas.json
+
+# vídeo das crianças (ICA): mídia bruta fica fora do Git
+public/ica/bruto.mp4
+public/ica/voz.wav
