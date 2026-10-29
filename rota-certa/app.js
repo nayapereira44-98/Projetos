@@ -79,10 +79,29 @@
     stops: [], byKey: new Map(), byTn: new Map(), display: [],
     failOpen: null, gpsWatch: null, lastPos: null, wake: null, recalcArmed: false,
   };
-  const newProg = () => ({ status: {}, reason: {}, loaded: {}, loadLog: [], picked: {}, later: [], startedAt: null, finishedAt: null, odoStart: null, odoEnd: null, gpsKm: 0, cdKm: 0 });
+  const newProg = () => ({ status: {}, reason: {}, loaded: {}, loadedZone: {}, loadLog: [], picked: {}, later: [], startedAt: null, finishedAt: null, odoStart: null, odoEnd: null, gpsKm: 0, cdKm: 0 });
   const progKey = () => "rc:prog:" + S.route.id;
   const saveProg = () => store.set(progKey(), S.prog);
   const saveRoute = () => store.set("rc:route", S.route);
+
+  // Rotas do dia: cada pacote guarda o AT ID da planilha de onde veio.
+  function normalizeRoute() {
+    const r = S.route;
+    if (!r.routes) r.routes = [{ id: r.id, file: r.file }];
+    r.pkgs.forEach(p => { if (!p.route) p.route = r.routes[0].id; });
+    r.settings.multiMode = r.settings.multiMode || "seq";
+  }
+  const multi = () => S.route.routes.length > 1;
+  const ri = p => Math.max(0, S.route.routes.findIndex(r => r.id === p.route));
+  const rTag = (i, big) => `<span class="rtag r${(i % 3) + 1}${big ? " big" : ""}">Rota ${i + 1}</span>`;
+  const rTags = s => (multi() ? s.ris.map(i => rTag(i)).join("") : "");
+  // Números de parada da Shopee de um local; com várias rotas, cada número leva a rota junto (R1·48).
+  const refs = s => {
+    const seen = new Set(), out = [];
+    s.pkgs.forEach(p => { if (p.shopeeStop == null) return; const k = (multi() ? `R${ri(p) + 1}·` : "") + p.shopeeStop; if (!seen.has(k)) { seen.add(k); out.push(k); } });
+    return out.sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+  };
+  const pkgRef = p => (multi() ? `R${ri(p) + 1} · ` : "") + (p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº");
 
   const toast = msg => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2400); };
   const buzz = ms => { try { navigator.vibrate?.(ms); } catch {} };
@@ -95,21 +114,78 @@
       const { pkgs, bad } = Core.parseRows(await readXlsxFile(f));
       if (!pkgs.length) throw new Error("A planilha não tem pacotes com coordenadas.");
       const id = (pkgs[0].at || f.name) + "";
-      const same = S.route && S.route.id === id;
-      S.route = { id, file: f.name, pkgs, bad, settings: same ? S.route.settings : { radius: 20, start: "shopee", vehicle: S.route?.settings.vehicle || "carro", blockSize: 10, maxPkgs: 25 }, plan: same ? S.route.plan : null };
-      S.prog = { ...newProg(), ...store.get(progKey(), {}) };
-      saveRoute();
-      await boot(!same);
-      location.hash = Object.keys(S.prog.loaded).length || Object.keys(S.prog.status).length ? "#rota" : "#carregar";
-      toast(`${pkgs.length} pacotes carregados da planilha`);
+      pkgs.forEach(p => (p.route = id));
+      if (S.route && S.route.routes.some(r => r.id === id)) {
+        // Mesma rota de novo: troca só os pacotes dela e mantém o resto do dia.
+        S.route.pkgs = S.route.pkgs.filter(p => p.route !== id).concat(pkgs);
+        S.route.bad = (S.route.bad || []).filter(p => p.route !== id).concat(bad.map(p => ({ ...p, route: id })));
+        saveRoute();
+        await boot(false);
+        toast(`Rota atualizada: ${pkgs.length} pacotes`);
+      } else if (S.route) {
+        S.pending = { id, file: f.name, pkgs, bad };
+        showAddRoute();
+      } else {
+        await newDay(id, f.name, pkgs, bad);
+      }
     } catch (err) {
       toast(err.message || "Não consegui ler a planilha.");
     } finally { e.target.value = ""; }
   });
 
+  async function newDay(id, file, pkgs, bad) {
+    S.route = { id, file, pkgs, bad, routes: [{ id, file }], settings: { radius: 20, start: "shopee", vehicle: S.route?.settings.vehicle || "carro", blockSize: 10, maxPkgs: 25, multiMode: "seq" }, plan: null };
+    S.prog = { ...newProg(), ...store.get(progKey(), {}) };
+    saveRoute();
+    await boot(true);
+    location.hash = Object.keys(S.prog.loaded).length || Object.keys(S.prog.status).length ? "#rota" : "#carregar";
+    toast(`${pkgs.length} pacotes carregados da planilha`);
+  }
+
+  function showAddRoute() {
+    const p = S.pending, n = S.route.routes.length + 1;
+    $("addRoute").hidden = false;
+    $("addRoute").innerHTML = `<h2>Planilha de outra rota</h2>
+      <p><b>${esc(p.id)}</b> · ${p.pkgs.length} pacotes. Hoje você já tem ${S.route.routes.length === 1 ? "1 rota" : S.route.routes.length + " rotas"} com ${S.route.pkgs.length} pacotes.</p>
+      <div class="actions">
+        <button type="button" class="primary" data-addroute="add">Adicionar como Rota ${n}</button>
+        <button type="button" class="ghost" data-addroute="new">Começar dia novo só com ela</button>
+        <button type="button" class="ghost" data-addroute="cancel">Cancelar</button>
+      </div>`;
+    $("addRoute").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function addRoute(choice) {
+    const p = S.pending;
+    S.pending = null; $("addRoute").hidden = true;
+    if (!p || choice === "cancel") return;
+    if (choice === "new") return newDay(p.id, p.file, p.pkgs, p.bad);
+    S.route.routes.push({ id: p.id, file: p.file });
+    S.route.pkgs = S.route.pkgs.concat(p.pkgs);
+    S.route.bad = (S.route.bad || []).concat(p.bad.map(b => ({ ...b, route: p.id })));
+    saveRoute();
+    fillSettings();
+    derive();
+    await plan({ keep: true });
+    route();
+    location.hash = "#carregar";
+    toast(`Rota ${S.route.routes.length} adicionada: ${p.pkgs.length} pacotes`);
+  }
+
+  async function removeRoute(i) {
+    const id = S.route.routes[i].id;
+    S.route.routes.splice(i, 1);
+    S.route.pkgs = S.route.pkgs.filter(p => p.route !== id);
+    S.route.bad = (S.route.bad || []).filter(p => p.route !== id);
+    saveRoute(); fillSettings(); derive();
+    await plan({ keep: true });
+    toast("Rota removida do dia");
+  }
+
   async function boot(forcePlan) {
+    normalizeRoute();
     $("empty").hidden = true; $("app").hidden = false;
-    $("subtitle").textContent = S.route.file.replace(/\.xlsx$/i, "");
+
     fillSettings();
     derive();
     if (forcePlan || !planMatches()) await plan();
@@ -135,20 +211,51 @@
     } catch { return null; } finally { clearTimeout(tm); }
   }
 
-  async function plan() {
+  // Paradas do dia. "seq": cada rota agrupada e percorrida separada, uma depois da outra. "join": tudo junto.
+  const joined = () => !multi() || S.route.settings.multiMode === "join";
+  function buildStops() {
+    const { radius } = S.route.settings;
+    const stops = joined()
+      ? Core.groupStops(S.route.pkgs, radius)
+      : S.route.routes.flatMap(r => Core.groupStops(S.route.pkgs.filter(p => p.route === r.id), radius));
+    stops.forEach(s => { s.ris = [...new Set(s.pkgs.map(ri))].sort((a, b) => a - b); s.ri = s.ris[0]; });
+    return stops;
+  }
+
+  async function plan(opts = {}) {
     const st = S.route.settings;
-    const stops = Core.groupStops(S.route.pkgs, st.radius);
+    const stops = buildStops();
     const points = stops.slice();
-    let startIdx = -1;
-    if (st.start === "gps" && S.gpsStart) { points.push({ ...S.gpsStart, street: "" }); startIdx = points.length - 1; }
-    else if (st.start.startsWith("s")) startIdx = stops.findIndex(s => s.key === st.start.slice(1));
-    if (startIdx < 0) startIdx = stops.reduce((b, s, i) => (s.minSeq < stops[b].minSeq ? i : b), 0);
+    let gpsIdx = -1;
+    if (st.start === "gps" && S.gpsStart) { points.push({ ...S.gpsStart, street: "" }); gpsIdx = points.length - 1; }
     $("foot").textContent = "Calculando distâncias pelas ruas…";
     const road = await roadTable(points);
-    const C = Core.buildCost(points, road, road ? 40 : 60);
-    const order = Core.solve(C, startIdx);
-    const shopee = [...stops.keys()].sort((a, b) => stops[a].minSeq - stops[b].minSeq);
-    const stopOrder = order.filter(i => i < stops.length);
+    const groups = joined() ? [stops.map((_, i) => i)] : S.route.routes.map((_, r) => stops.map((s, i) => (s.ri === r ? i : -1)).filter(i => i >= 0));
+    const old = opts.keep && S.route.plan ? S.route.plan.orderKeys : null;
+    const stopOrder = [], shopee = [];
+    groups.forEach((I, g) => {
+      if (!I.length) return;
+      shopee.push(...I.slice().sort((a, b) => stops[a].minSeq - stops[b].minSeq));
+      const keys = new Set(I.map(i => stops[i].key));
+      // Rota que já estava no plano mantém a ordem (e as zonas) de antes.
+      if (old && [...keys].every(k => old.includes(k))) {
+        stopOrder.push(...old.filter(k => keys.has(k)).map(k => stops.findIndex(s => s.key === k)));
+        return;
+      }
+      const sub = I.slice();
+      let start = -1;
+      if (g === 0 && gpsIdx >= 0) { sub.push(gpsIdx); start = sub.length - 1; }
+      else if (g === 0 && st.start.startsWith("s")) start = sub.findIndex(i => stops[i].key === st.start.slice(1));
+      else if (stopOrder.length) {
+        const last = points[stopOrder[stopOrder.length - 1]];
+        start = sub.reduce((b, i, k) => (Core.hav(last, points[i]) < Core.hav(last, points[sub[b]]) ? k : b), 0);
+      }
+      if (start < 0) start = sub.reduce((b, i, k) => (stops[i].minSeq < stops[sub[b]].minSeq ? k : b), 0);
+      const subRoad = road ? sub.map(i => sub.map(j => road[i][j])) : null;
+      const C = Core.buildCost(sub.map(i => points[i]), subRoad, road ? 40 : 60);
+      stopOrder.push(...Core.solve(C, start).map(k => sub[k]).filter(i => i < stops.length));
+    });
+    if (gpsIdx >= 0 && stopOrder.length) shopee.unshift(gpsIdx);
     S.route.plan = {
       orderKeys: stopOrder.map(i => stops[i].key),
       matrix: road ? stopOrder.map(i => stopOrder.map(j => Math.round(road[i][j]))) : null,
@@ -163,18 +270,25 @@
 
   function derive() {
     const st = S.route.settings;
-    S.stops = Core.groupStops(S.route.pkgs, st.radius);
+    S.stops = buildStops();
     S.byKey = new Map(S.stops.map(s => [s.key, s]));
     S.byTn = new Map();
     S.stops.forEach(s => s.pkgs.forEach(p => S.byTn.set(p.tn, s)));
     if (!planMatches()) { S.display = []; return; }
     const planStops = S.route.plan.orderKeys.map(k => S.byKey.get(k));
     // Bloco fecha ao atingir N paradas ou o limite de pacotes, para nenhuma zona lotar.
-    let b = 0, cnt = 0, pk = 0;
+    // Com rotas separadas, um bloco nunca mistura rotas e cada rota usa as suas próprias zonas do carro.
+    const sep = !joined();
+    const nZones = (Core.VEHICLES[st.vehicle] || Core.VEHICLES.carro).zones.length;
+    S.zoneSplit = sep ? Core.splitZones(nZones, S.route.routes.map(r => S.route.pkgs.filter(p => p.route === r.id).length)) : null;
+    let b = 0, cnt = 0, pk = 0, prevRi = null;
+    const firstBlock = {};
     planStops.forEach((s, i) => {
-      if (cnt >= st.blockSize || (cnt > 0 && pk + s.pkgs.length > (st.maxPkgs || 25))) { b++; cnt = 0; pk = 0; }
-      s.pi = i; s.block = b; cnt++; pk += s.pkgs.length;
-      Object.assign(s, Core.zoneFor(s.block, st.vehicle));
+      const newRoute = sep && prevRi !== null && s.ri !== prevRi;
+      if (i > 0 && (newRoute || cnt >= st.blockSize || (cnt > 0 && pk + s.pkgs.length > (st.maxPkgs || 25)))) { b++; cnt = 0; pk = 0; }
+      if (sep && firstBlock[s.ri] == null) firstBlock[s.ri] = b;
+      s.pi = i; s.block = b; cnt++; pk += s.pkgs.length; prevRi = s.ri;
+      Object.assign(s, sep ? Core.zoneFor(b - firstBlock[s.ri], st.vehicle, S.zoneSplit[s.ri]) : Core.zoneFor(b, st.vehicle));
     });
     S.planStops = planStops;
     const later = S.prog.later.filter(k => S.byKey.has(k));
@@ -233,6 +347,19 @@
   }
 
   // ---------- ROTA ----------
+  function renderRoutes() {
+    const R = S.route.routes, veh = Core.VEHICLES[S.route.settings.vehicle];
+    $("subtitle").textContent = R.length > 1 ? `${R.length} rotas · ${S.route.pkgs.length} pacotes` : S.route.file.replace(/\.xlsx$/i, "");
+    const html = `<div class="top"><h2>${R.length > 1 ? R.length + " rotas hoje" : "Rota do dia"}</h2><label class="btn ghost" for="file">+ Outra rota</label></div>` +
+      R.map((r, i) => {
+        const pk = S.route.pkgs.filter(p => p.route === r.id);
+        const done = pk.filter(p => S.prog.status[p.tn]).length, loaded = pk.filter(p => S.prog.loaded[p.tn]).length;
+        const zs = S.zoneSplit && R.length > 1 ? S.zoneSplit[i].map(z => veh.zones[z].code).join(", ") : null;
+        return `<div class="rrow">${rTag(i, true)}<div><b class="mono">${esc(r.id)}</b><div class="sub">${pk.length} pct · ${loaded} no carro · ${done} feitos${zs ? ` · zona${S.zoneSplit[i].length > 1 ? "s" : ""} ${zs}` : ""}</div></div>${R.length > 1 ? `<button type="button" class="ghost" data-rmroute="${i}">Remover</button>` : ""}</div>`;
+      }).join("") + (R.length > 1 ? "" : `<p class="sub">Pegou outra rota? Toque em <b>+ Outra rota</b> e abra a planilha dela. Cada pacote passa a mostrar de qual rota é.</p>`);
+    document.querySelectorAll(".routesBox").forEach(el => (el.innerHTML = html));
+  }
+
   function zoneTag(s) {
     return `<span class="zone-tag" style="background: var(--z${s.zoneIdx + 1})"><b>${s.zone.code}</b>${esc(s.zone.name)}</span>`;
   }
@@ -260,11 +387,12 @@
     if (late.length) warn.push(`<b>Horário em risco:</b> ${late.map(s => `parada ${s.n} (até ${s.until}, chegada prevista ${hhmm(s.eta)})`).join("; ")}. Use "Depois" em outras paradas ou comece por ela.`);
     if (S.route.bad?.length) warn.push(`${S.route.bad.length} pacote(s) sem coordenadas ficaram fora da rota: ${S.route.bad.map(p => esc(p.tn)).join(", ")}.`);
     $("warn").hidden = !warn.length; $("warn").innerHTML = warn.map(w => `<p>${w}</p>`).join("");
-    const multi = d.filter(s => s.shopeeStops.length > 1 || (s.unseq && s.pkgs.length > 1)).sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
-    $("multiBox").hidden = !multi.length;
-    $("multiSum").textContent = `${multi.length} locais com mais de uma parada da Shopee`;
-    $("multiList").innerHTML = multi.map(s => `<button type="button" class="${stopDone(s) ? "done" : ""}" data-showstop="${esc(s.key)}">
-      <span class="stopnums">${s.shopeeStops.map(x => `<span>${x}</span>`).join("")}${s.unseq ? `<span>sem nº</span>` : ""}</span>
+    renderRoutes();
+    const multiLocs = d.filter(s => refs(s).length > 1 || (s.unseq && s.pkgs.length > 1)).sort((a, b) => a.ri - b.ri || (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
+    $("multiBox").hidden = !multiLocs.length;
+    $("multiSum").textContent = `${multiLocs.length} locais com mais de uma parada da Shopee`;
+    $("multiList").innerHTML = multiLocs.map(s => `<button type="button" class="${stopDone(s) ? "done" : ""}" data-showstop="${esc(s.key)}">
+      <span class="stopnums">${refs(s).map(x => `<span>${x}</span>`).join("")}${s.unseq ? `<span>sem nº</span>` : ""}</span>
       <span style="flex:1;min-width:0">${esc(s.label)}<br><span class="sub">${s.pkgs.length} pacotes · nossa parada ${s.n}${stopDone(s) ? " · entregue" : ""}</span></span></button>`).join("");
 
     const nextIdx = d.findIndex(s => !stopDone(s));
@@ -278,11 +406,12 @@
         <div class="reasons">${["Ausente", "Endereço não encontrado", "Recusado", "Outro motivo"].map(r => `<button type="button" data-fail="${esc(n.key)}" data-reason="${r}">${r}</button>`).join("")}</div>
         <button type="button" data-failcancel="1">Cancelar</button>` : "";
       $("next").innerHTML = `
+        ${multi() ? `<div>${n.ris.map(i => rTag(i, true)).join(" ")}</div>` : ""}
         <div class="eyebrow">Próxima parada · ${n.n} de ${d.length} · chegada ~${hhmm(n.eta)}</div>
         <div class="addr">${esc(n.label)}</div>
-        <div class="meta"><span>${n.pkgs.length} pacote${n.pkgs.length > 1 ? "s" : ""}</span>${zoneTag(n)}${n.shopeeStops.length ? `<span>Shopee ${n.shopeeStops.join(", ")}</span>` : ""}${n.unseq ? "<span>sem nº</span>" : ""}${n.until ? `<span>até ${n.until}</span>` : ""}</div>
-        ${n.pkgs.length > 1 ? `<div class="alert">Leve ${n.pkgs.length} pacotes para este local${n.shopeeStops.length > 1 ? `: paradas Shopee ${n.shopeeStops.join(" + ")}` : ""}${n.unseq ? ` + ${n.unseq} sem nº` : ""}</div>` : ""}
-        <div class="meta mono">${n.pkgs.map(p => esc(tail(p.tn)) + (p.shopeeStop != null ? ` (${p.shopeeStop})` : " (sem nº)")).join(" · ")}</div>
+        <div class="meta"><span>${n.pkgs.length} pacote${n.pkgs.length > 1 ? "s" : ""}</span>${zoneTag(n)}${refs(n).length ? `<span>Shopee ${refs(n).join(", ")}</span>` : ""}${n.unseq ? "<span>sem nº</span>" : ""}${n.until ? `<span>até ${n.until}</span>` : ""}</div>
+        ${n.pkgs.length > 1 ? `<div class="alert">Leve ${n.pkgs.length} pacotes para este local${refs(n).length > 1 ? `: paradas Shopee ${refs(n).join(" + ")}` : ""}${n.unseq ? ` + ${n.unseq} sem nº` : ""}</div>` : ""}
+        <div class="meta mono">${n.pkgs.map(p => esc(tail(p.tn)) + ` (${pkgRef(p).replace("Shopee ", "")})`).join(" · ")}</div>
         <div class="row">
           <a class="btn primary" href="${Core.links.waze(n)}" target="_blank" rel="noopener">Waze</a>
           <a class="btn" href="${Core.links.gmaps(n)}" target="_blank" rel="noopener">Google</a>
@@ -311,15 +440,16 @@
     d.forEach((s, i) => {
       if (s.block !== prevBlock) {
         const members = d.filter(x => x.block === s.block);
-        html += `<div class="block-head"><h3>Bloco ${s.block + 1}</h3>${zoneTag(s)}<span class="sub">${members.reduce((a, x) => a + x.pkgs.length, 0)} pct${s.layer ? " · por baixo" : ""}</span></div>`;
+        if (multi() && !joined() && (prevBlock < 0 || d[i - 1].ri !== s.ri)) html += `<div class="route-head">${rTag(s.ri, true)}<span class="sub">${esc(S.route.routes[s.ri].id)} · ${d.filter(x => x.ri === s.ri).length} paradas</span></div>`;
+        html += `<div class="block-head"><h3>Bloco ${s.block + 1}</h3>${rTags(s)}${zoneTag(s)}<span class="sub">${members.reduce((a, x) => a + x.pkgs.length, 0)} pct${s.layer ? " · por baixo" : ""}</span></div>`;
         prevBlock = s.block;
       }
       const done = stopDone(s), failed = stopFailed(s);
-      const multi = s.shopeeStops.length > 1;
+      const manyRefs = refs(s).length > 1;
       const rows = s.pkgs.map(p => {
         const st = S.prog.status[p.tn];
         const extra = p.address.split(",").slice(2).join(",").trim();
-        return `<li><span class="t">${esc(p.tn)}${p.shopeeStop != null ? " · Shopee " + p.shopeeStop : " · sem nº"}${extra ? `<br><span class="sub">${esc(extra)}</span>` : ""}${st === "fail" ? `<br><span class="sub">Não entregue: ${esc(S.prog.reason[p.tn] || "")}</span>` : ""}</span>
+        return `<li><span class="t">${esc(p.tn)} · ${pkgRef(p)}${extra ? `<br><span class="sub">${esc(extra)}</span>` : ""}${st === "fail" ? `<br><span class="sub">Não entregue: ${esc(S.prog.reason[p.tn] || "")}</span>` : ""}</span>
           <span class="st"><button type="button" class="${st === "ok" ? "on-ok" : ""}" data-pok="${esc(p.tn)}" aria-label="Entregue">✓</button><button type="button" class="${st === "fail" ? "on-bad" : ""}" data-pfail="${esc(p.tn)}" aria-label="Não entregue">✗</button><button type="button" data-copy="${esc(p.tn)}">Copiar</button></span></li>`;
       }).join("");
       html += `<article class="stop${done ? " done" : ""}${failed ? " failed" : ""}${i === nextIdx ? " current" : ""}" style="${zc(s.zoneIdx)}">
@@ -328,8 +458,8 @@
           <div class="street">${esc(s.label)}${s.numbers.length > 1 ? ` <span class="sub">(nº ${esc(s.numbers.join(", "))})</span>` : ""}</div>
           <div class="sub">${esc(s.bairro)}${i > 0 && d[i - 1].street === s.street ? " · mesma rua da anterior" : ""}${s.eta ? " · ~" + hhmm(s.eta) : ""}</div>
           <div class="chips">
-            <span class="chip count">${s.pkgs.length} pct</span>
-            ${s.shopeeStops.map(x => `<span class="chip${multi ? " hot" : ""}">Shopee ${x}</span>`).join("")}
+            ${rTags(s)}<span class="chip count">${s.pkgs.length} pct</span>
+            ${refs(s).map(x => `<span class="chip${manyRefs ? " hot" : ""}">Shopee ${x}</span>`).join("")}
             ${s.unseq ? `<span class="chip hot">${s.unseq} sem nº</span>` : ""}
             ${s.until ? `<span class="chip time">até ${s.until}</span>` : ""}
             ${s.after ? `<span class="chip time">após ${s.after}</span>` : ""}
@@ -359,9 +489,9 @@
     const z = next;
     box.innerHTML = `<section class="pick" style="${zc(z.zoneIdx)}">
       <div class="pick-head"><div class="pick-letter">${z.zone.code}</div>
-        <div><h3>Separe o bloco ${z.block + 1}: ${items.length} pacotes</h3>
+        <div>${multi() ? z.ris.map(i => rTag(i)).join("") : ""}<h3>Separe o bloco ${z.block + 1}: ${items.length} pacotes</h3>
         <p class="sub">${esc(z.zone.name)}${z.layer ? " (por baixo)" : ""} · paradas ${blockStops[0].n}–${blockStops[blockStops.length - 1].n}. Deixe à mão para as próximas ${blockStops.length} paradas.</p></div></div>
-      <ul>${items.map(({ p, s }) => `<li><button type="button" class="${S.prog.picked[p.tn] ? "picked" : ""}" data-pick="${esc(p.tn)}"><span class="tn-end">${esc(tail(p.tn))}</span><span class="sub">parada ${s.n} · ${esc(s.label.split(",")[0])}</span></button></li>`).join("")}</ul>
+      <ul>${items.map(({ p, s }) => `<li><button type="button" class="${S.prog.picked[p.tn] ? "picked" : ""}" data-pick="${esc(p.tn)}"><span class="tn-end">${esc(tail(p.tn))}</span><span class="sub">${multi() ? `R${ri(p) + 1} · ` : ""}parada ${s.n} · ${esc(s.label.split(",")[0])}</span></button></li>`).join("")}</ul>
       <button type="button" class="primary" data-pickall="${z.block}">Separei todos</button>
     </section>`;
   }
@@ -371,6 +501,14 @@
     if (!t || !S.route) return;
     const ds = t.dataset;
     const stop = k => S.byKey.get(k);
+    if (ds.addroute) { addRoute(ds.addroute); return; }
+    if (ds.moved) { S.prog.loadedZone[ds.moved] = S.byTn.get(ds.moved).zone.code; saveProg(); renderAll(); return; }
+    if (ds.rmroute != null) {
+      if (t.dataset.armed) return void removeRoute(+ds.rmroute);
+      t.dataset.armed = "1"; t.textContent = "Toque de novo para remover";
+      setTimeout(() => { delete t.dataset.armed; t.textContent = "Remover"; }, 4000);
+      return;
+    }
     if (ds.ok) {
       const s = stop(ds.ok), done = stopDone(s) && !stopFailed(s);
       s.pkgs.forEach(p => { if (done) delete S.prog.status[p.tn]; else if (S.prog.status[p.tn] !== "ok") { S.prog.status[p.tn] = "ok"; delete S.prog.reason[p.tn]; } });
@@ -378,7 +516,7 @@
       if (t.closest("#findResult")) { $("findResult").innerHTML = ""; $("shopeeStopInput").value = ""; }
     } else if (ds.showstop) {
       const s = stop(ds.showstop);
-      showStop(s, `Paradas Shopee ${s.shopeeStops.join(" + ") || "sem nº"} no mesmo local`);
+      showStop(s, `Paradas Shopee ${refs(s).join(" + ") || "sem nº"} no mesmo local`);
       $("findResult").scrollIntoView({ behavior: "smooth", block: "center" });
     } else if (ds.failopen) { S.failOpen = ds.failopen; renderAll(); }
     else if (ds.failcancel) { S.failOpen = null; renderAll(); }
@@ -430,7 +568,7 @@
   });
 
   $("copy").addEventListener("click", async () => {
-    const txt = S.display.map(s => `${s.n}. [${s.zone.code}] ${s.label} (${s.pkgs.length} pct; Shopee ${s.shopeeStops.join(", ") || "sem nº"})\n   ${s.pkgs.map(p => p.tn).join(" ")}`).join("\n");
+    const txt = S.display.map(s => `${s.n}. ${multi() ? s.ris.map(i => "R" + (i + 1)).join("+") + " " : ""}[${s.zone.code}] ${s.label} (${s.pkgs.length} pct; Shopee ${s.shopeeStops.join(", ") || "sem nº"})\n   ${s.pkgs.map(p => p.tn).join(" ")}`).join("\n");
     try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); } catch { toast("Não foi possível copiar neste navegador"); }
   });
 
@@ -438,6 +576,7 @@
   function fillSettings() {
     const st = S.route.settings;
     $("vehicle").innerHTML = Object.entries(Core.VEHICLES).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("");
+    $("multiMode").value = st.multiMode || "seq";
     $("vehicle").value = st.vehicle; $("blockSize").value = st.blockSize; $("maxPkgs").value = st.maxPkgs || 25; $("radius").value = st.radius; $("radiusVal").textContent = st.radius;
     const stops = Core.groupStops(S.route.pkgs, st.radius).sort((a, b) => a.minSeq - b.minSeq);
     $("start").innerHTML = `<option value="shopee">Primeira parada da Shopee</option><option value="gps">Minha localização atual</option>` +
@@ -449,6 +588,11 @@
     $("odoStart").value = p.odoStart ?? ""; $("odoEnd").value = p.odoEnd ?? ""; $("cdKm").value = p.cdKm || 0;
   }
   $("radius").addEventListener("input", e => ($("radiusVal").textContent = e.target.value));
+  $("multiMode").addEventListener("change", async e => {
+    S.route.settings.multiMode = e.target.value; saveRoute(); derive();
+    await plan();
+    toast(e.target.value === "join" ? "Rotas juntas num caminho só" : "Uma rota depois da outra");
+  });
   $("vehicle").addEventListener("change", e => { S.route.settings.vehicle = e.target.value; saveRoute(); derive(); renderAll(); });
   $("blockSize").addEventListener("change", e => { S.route.settings.blockSize = Math.max(3, Math.min(20, +e.target.value || 10)); e.target.value = S.route.settings.blockSize; saveRoute(); derive(); renderAll(); });
   $("maxPkgs").addEventListener("change", e => { S.route.settings.maxPkgs = Math.max(5, Math.min(80, +e.target.value || 25)); e.target.value = S.route.settings.maxPkgs; saveRoute(); derive(); renderAll(); });
@@ -492,9 +636,13 @@
   function registerLoad(p) {
     const s = S.byTn.get(p.tn);
     const again = !!S.prog.loaded[p.tn];
-    if (!again) { S.prog.loaded[p.tn] = Date.now(); S.prog.loadLog.push(p.tn); saveProg(); }
+    if (!again) { S.prog.loaded[p.tn] = Date.now(); S.prog.loadLog.push(p.tn); }
+    S.prog.loadedZone = S.prog.loadedZone || {};
+    S.prog.loadedZone[p.tn] = s.zone.code;
+    saveProg();
     $("scanInput").value = "";
     $("scanResult").innerHTML = `<div class="hit${again ? " again" : ""}" style="${zc(s.zoneIdx)}">
+      ${multi() ? `<div class="rline">${rTag(ri(p), true)}</div>` : ""}
       <div class="big">${s.zone.code}</div>
       <div class="nm">Parada ${s.n} · ${esc(s.zone.name)}${s.layer ? " · por baixo" : ""}</div>
       <div>${again ? "Já carregado antes · " : ""}Bloco ${s.block + 1} · ${esc(s.label)}</div>
@@ -506,7 +654,7 @@
   $("scanUndo").addEventListener("click", () => {
     const tn = S.prog.loadLog.pop();
     if (!tn) return;
-    delete S.prog.loaded[tn]; saveProg();
+    delete S.prog.loaded[tn]; if (S.prog.loadedZone) delete S.prog.loadedZone[tn]; saveProg();
     $("scanResult").innerHTML = `<p class="sub">Desfeito: ${esc(tn)}</p>`;
     $("scanUndo").disabled = !S.prog.loadLog.length;
     renderAll();
@@ -608,34 +756,41 @@
     const near = Core.nearby(s, S.display, 60).filter(x => !stopDone(x.s));
     return `<div class="loc">
       <b class="alert">${s.pkgs.length > 1 ? `Neste local: ${s.pkgs.length} pacotes` : "Só este pacote neste local"}</b>
-      ${s.shopeeStops.length ? `<div class="stopnums">${s.shopeeStops.map(x => `<span>Shopee ${x}</span>`).join("")}${s.unseq ? `<span>${s.unseq} sem nº</span>` : ""}</div>` : ""}
-      <ul>${s.pkgs.map(p => `<li class="${p.tn === tn ? "me" : ""} ${S.prog.status[p.tn] ? "done" : ""}"><span class="mono">${esc(tail(p.tn))}</span><span>${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}</span><span>${esc(p.address.split(",").slice(2).join(",").trim())}</span></li>`).join("")}</ul>
-      ${near.length ? `<div class="near">A poucos passos: ${near.map(x => `${Math.round(x.d)} m, ${esc(x.s.label)} (Shopee ${x.s.shopeeStops.join(", ") || "sem nº"}, ${x.s.pkgs.length} pct)`).join("; ")}</div>` : ""}
+      ${refs(s).length ? `<div class="stopnums">${refs(s).map(x => `<span>Shopee ${x}</span>`).join("")}${s.unseq ? `<span>${s.unseq} sem nº</span>` : ""}</div>` : ""}
+      <ul>${s.pkgs.map(p => `<li class="${p.tn === tn ? "me" : ""} ${S.prog.status[p.tn] ? "done" : ""}"><span class="mono">${esc(tail(p.tn))}</span><span>${pkgRef(p)}</span><span>${esc(p.address.split(",").slice(2).join(",").trim())}</span></li>`).join("")}</ul>
+      ${near.length ? `<div class="near">A poucos passos: ${near.map(x => `${Math.round(x.d)} m, ${esc(x.s.label)} (Shopee ${refs(x.s).join(", ") || "sem nº"}, ${x.s.pkgs.length} pct)`).join("; ")}</div>` : ""}
     </div>`;
   }
 
-  function showStop(s, title, tn) {
-    $("findResult").innerHTML = `<div class="hit" style="${zc(s.zoneIdx)}">
+  function showStop(s, title, tn) { $("findResult").innerHTML = stopCard(s, title, tn); buzz(60); }
+  function stopCard(s, title, tn) {
+    return `<div class="hit" style="${zc(s.zoneIdx)}">
+      ${multi() ? `<div class="rline">${s.ris.map(i => rTag(i, true)).join(" ")}</div>` : ""}
       <div class="big">${s.n}</div>
       <div class="nm">${title}</div>
       <div>${esc(s.label)} · nossa parada ${s.n} de ${S.display.length}</div>
       <div>Zona ${s.zone.code}: ${esc(s.zone.name)} · Bloco ${s.block + 1}${stopDone(s) ? " · já entregue" : ""}</div>
       ${locBox(s, tn)}
       <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a>${!stopDone(s) ? `<button type="button" class="btn" data-ok="${esc(s.key)}">Entregar todos</button>` : ""}</div></div>`;
-    buzz(60);
   }
 
   $("shopeeStopInput").addEventListener("input", e => {
     const n = parseInt(e.target.value, 10);
     if (!S.route || !n) { $("findResult").innerHTML = ""; return; }
-    const s = S.display.find(x => x.shopeeStops.includes(n));
-    if (!s) { $("findResult").innerHTML = `<p>A parada ${n} da Shopee não está nesta planilha.</p>`; return; }
-    showStop(s, `Parada Shopee ${n}${s.shopeeStops.length > 1 ? ` fica junto com ${s.shopeeStops.filter(x => x !== n).join(", ")}` : ""}`);
+    // Com várias rotas, o mesmo número de parada existe em cada uma: mostra todas.
+    const hits = S.display.filter(x => x.shopeeStops.includes(n));
+    if (!hits.length) { $("findResult").innerHTML = `<p>A parada ${n} da Shopee não está ${multi() ? "em nenhuma das rotas" : "nesta planilha"}.</p>`; return; }
+    const head = hits.length > 1 ? `<p><b>A parada ${n} existe em ${hits.length} rotas.</b> Confira a rota na etiqueta.</p>` : "";
+    $("findResult").innerHTML = head + hits.map(s => {
+      const others = refs(s).filter(x => x !== (multi() ? `R${s.pkgs.find(p => p.shopeeStop === n) ? ri(s.pkgs.find(p => p.shopeeStop === n)) + 1 : 0}·${n}` : String(n)));
+      return stopCard(s, `Parada Shopee ${n}${others.length ? ` fica junto com ${others.join(", ")}` : ""}`);
+    }).join("");
+    buzz(60);
   });
 
   function showFound(p) {
     const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
-    if (s) return showStop(s, `Pacote ${esc(tail(p.tn))}${p.shopeeStop != null ? ` · Shopee ${p.shopeeStop}` : " · sem nº"}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}`, p.tn);
+    if (s) return showStop(s, `Pacote ${esc(tail(p.tn))} · ${pkgRef(p)}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}`, p.tn);
   }
 
 
@@ -643,15 +798,16 @@
     const st = S.route.settings, veh = Core.VEHICLES[st.vehicle];
     const total = S.route.pkgs.length, loaded = Object.keys(S.prog.loaded).length;
     $("loadCount").textContent = `${loaded} de ${total} pacotes`;
-    const zones = veh.zones.map((z, i) => ({ z, i, blocks: new Set(), total: 0, loaded: 0, missing: [] }));
+    const zones = veh.zones.map((z, i) => ({ z, i, blocks: new Set(), routes: new Set(), total: 0, loaded: 0, missing: [] }));
     S.planStops.forEach(s => {
       const Z = zones[s.zoneIdx];
       Z.blocks.add(s.block + 1);
+      s.ris.forEach(r => Z.routes.add(r));
       s.pkgs.forEach(p => { Z.total++; if (S.prog.loaded[p.tn]) Z.loaded++; else Z.missing.push(p.tn); });
     });
     const used = zones.filter(Z => Z.total);
     $("zoneProgress").innerHTML = used.map(Z => `<div class="zrow" style="${zc(Z.i)}"><div class="zl">${Z.z.code}</div>
-      <div><b>${esc(Z.z.name)}</b> <span class="sub">· bloco ${[...Z.blocks].join(" e ")}</span><div class="bar"><i style="width:${(Z.loaded / Z.total * 100).toFixed(0)}%"></i></div></div>
+      <div>${multi() ? [...Z.routes].map(r => rTag(r)).join("") + " " : ""}<b>${esc(Z.z.name)}</b> <span class="sub">· bloco ${[...Z.blocks].join(" e ")}</span><div class="bar"><i style="width:${(Z.loaded / Z.total * 100).toFixed(0)}%"></i></div></div>
       <span class="num">${Z.loaded}/${Z.total}</span></div>`).join("");
     const miss = used.flatMap(Z => Z.missing.map(tn => `${Z.z.code}: ${tn}`));
     $("missingBox").hidden = !miss.length || !loaded;
@@ -659,9 +815,17 @@
     $("missingList").textContent = miss.join(" · ");
     $("scanUndo").disabled = !S.prog.loadLog.length;
 
+    // Pacotes já no carro que mudaram de zona (por exemplo, porque outra rota entrou no dia).
+    const moved = Object.entries(S.prog.loadedZone || {}).map(([tn, code]) => ({ tn, code, s: S.byTn.get(tn) })).filter(x => x.s && x.s.zone.code !== x.code);
+    $("movedBox").hidden = !moved.length;
+    $("movedBox").innerHTML = moved.length ? `<h2>Mudar de lugar: ${moved.length} pacote(s)</h2><p class="sub">As zonas foram redistribuídas entre as rotas. Mova estes pacotes que já estão no carro:</p>
+      <ul class="moved">${moved.map(x => `<li><span class="mono">${esc(tail(x.tn))}</span> ${multi() ? rTag(ri(S.route.pkgs.find(p => p.tn === x.tn))) : ""} de <b>${x.code}</b> para <b>${x.s.zone.code}</b> <button type="button" class="ghost" data-moved="${esc(x.tn)}">Mudei</button></li>`).join("")}</ul>` : "";
+
     $("vehicleSvg").innerHTML = vehicleSvg(st.vehicle, zones);
     const blocks = S.planStops[S.planStops.length - 1].block + 1;
-    $("vehicleNote").textContent = blocks > veh.zones.length
+    $("vehicleNote").textContent = S.zoneSplit && multi()
+      ? S.zoneSplit.map((zs, r) => `Rota ${r + 1}: zona${zs.length > 1 ? "s" : ""} ${zs.map(i => veh.zones[i].code).join(", ")}`).join(" · ") + ". Cada rota fica separada no carro; dentro dela, os blocos seguem a ordem de entrega."
+      : blocks > veh.zones.length
       ? `${blocks} blocos para ${veh.zones.length} zonas: a partir do bloco ${veh.zones.length + 1}, os pacotes vão por baixo, voltando à zona A. Quando o bloco de cima acabar, o de baixo aparece. Para evitar camadas, aumente as paradas por bloco nos ajustes da rota.`
       : `Frente do veículo para cima. O lado direito é o da calçada. ${blocks} blocos de até ${st.blockSize} paradas ou ${st.maxPkgs || 25} pacotes.`;
 
@@ -685,7 +849,7 @@
       const blocks = [...Z.blocks];
       return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="var(--z${i + 1})" opacity="${Z.total ? 1 : 0.25}"/>
         <text x="${x + w / 2}" y="${y + h / 2 + 4}" text-anchor="middle" font-size="40" font-weight="800" fill="var(--z-ink)">${Z.z.code}</text>
-        <text x="${x + w / 2}" y="${y + h / 2 + 28}" text-anchor="middle" font-size="14" fill="var(--z-ink)">${blocks.length ? "bloco " + blocks.join(", ") : "livre"}</text></g>`;
+        <text x="${x + w / 2}" y="${y + h / 2 + 28}" text-anchor="middle" font-size="14" fill="var(--z-ink)">${blocks.length ? (multi() ? [...Z.routes].map(r => "R" + (r + 1)).join("+") + " · " : "") + "bl. " + blocks.join(", ") : "livre"}</text></g>`;
     }).join("");
     return `<svg class="vehicle" viewBox="0 0 ${lay.w} ${lay.h}" role="img" aria-label="Zonas do veículo vistas de cima">${lay.body}${z}</svg>`;
   }
@@ -707,7 +871,7 @@
     const delivered = pk.filter(p => S.prog.status[p.tn] === "ok").length;
     const stopsDone = S.display.filter(s => s.pkgs.some(p => S.prog.status[p.tn] === "ok")).length;
     const { km: k } = kmUsed();
-    return { ...Core.finance({ ...S.fin, km: k, delivered, stopsDone, hours: hoursWorked() || 0 }), delivered, k };
+    return { ...Core.finance({ ...S.fin, km: k, delivered, stopsDone, hours: hoursWorked() || 0, routes: S.route.routes.length }), delivered, k };
   }
 
   function renderMoney() {
@@ -737,7 +901,7 @@
     $("returns").innerHTML = fails.length ? `<div class="card"><h2>Devolver ao CD: ${fails.length}</h2>${fails.map(x => `<p class="sub"><b class="mono">${esc(x.tn)}</b> · ${esc(S.prog.reason[x.tn] || "")} · ${esc(x.address)}</p>`).join("")}</div>` : "";
 
     const hist = S.hist.slice().sort((a, b) => b.date.localeCompare(a.date));
-    if (!hist.length) { $("hist").innerHTML = `<tbody><tr><td class="sub" style="text-align:left">Toque em "Fechar o dia" ao terminar para guardar o resultado aqui.</td></tr></tbody>`; $("clearHist").hidden = true; return; }
+    if (!hist.length) { $("hist").innerHTML = `<tbody><tr><td class="sub" style="text-align:left;white-space:normal">Toque em "Fechar o dia" ao terminar para guardar o resultado aqui.</td></tr></tbody>`; $("clearHist").hidden = true; return; }
     const sum = k => hist.reduce((s, r) => s + (r[k] || 0), 0);
     const row = r => `<td>${r.ok}</td><td>${kmN(r.km)}</td><td>${r.hours ? dur(r.hours * 60) : "–"}</td><td>${brl(r.gain)}</td><td>${brl(r.cost)}</td><td>${brl(r.profit)}</td>`;
     $("hist").innerHTML = `<thead><tr><th>Dia</th><th>Entregues</th><th>Km</th><th>Horas</th><th>Ganho</th><th>Gasto</th><th>Lucro</th></tr></thead>
@@ -816,7 +980,12 @@
     o.forEach((s, i) => {
       const [x, y] = P(s), r = i === nextIdx ? 40 : 30;
       ctx.globalAlpha = stopDone(s) ? 0.35 : 1;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = tok(`--z${s.zoneIdx + 1}`); ctx.fill();
+      // Rota 1 círculo, Rota 2 quadrado, Rota 3 losango.
+      ctx.beginPath();
+      if (s.ri % 3 === 1) ctx.rect(x - r, y - r, 2 * r, 2 * r);
+      else if (s.ri % 3 === 2) { ctx.moveTo(x, y - r * 1.25); ctx.lineTo(x + r * 1.25, y); ctx.lineTo(x, y + r * 1.25); ctx.lineTo(x - r * 1.25, y); ctx.closePath(); }
+      else ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = tok(`--z${s.zoneIdx + 1}`); ctx.fill();
       if (i === nextIdx) { ctx.lineWidth = 8; ctx.strokeStyle = tok("--ink"); ctx.stroke(); }
       if (s.unseq) { ctx.lineWidth = 5; ctx.strokeStyle = tok("--accent"); ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.arc(x, y, r + 10, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
       ctx.fillStyle = tok("--z-ink"); ctx.font = `bold ${s.n > 99 ? 24 : 30}px ` + tok("--font-display");
@@ -828,6 +997,7 @@
 
   // ---------- início ----------
   if (S.route) {
+    normalizeRoute();
     S.prog = { ...newProg(), ...store.get(progKey(), {}) };
     boot(false).catch(() => {});
   }
