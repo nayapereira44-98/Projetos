@@ -20,6 +20,7 @@ export type Evento =
   | { t: number; tipo: "flash"; som?: Som }
   | { t: number; tipo: "confete"; som?: Som }
   | { t: number; tipo: "final"; som?: Som } // mensagem final por cima do vídeo
+  | { t: number; tipo: "logo"; ate: number; arroba?: boolean; som?: Som }
   | { t: number; tipo: "som"; som: Som };
 
 export type Trecho = {
@@ -32,32 +33,12 @@ export type Trecho = {
   eventos: Evento[];
 };
 
-export const CORES: Record<string, string> = {
-  LUZ: "#FFC93C",
-  JESUS: "#2E86FF",
-  CRISTO: "#2E86FF",
-  SALVADOR: "#2E86FF",
-  SALVAÇÃO: "#2E86FF",
-  DEUS: "#2E86FF",
-  BÍBLIA: "#2EC27E",
-  ESCRITURA: "#2EC27E",
-  REFORMA: "#FF8A1F",
-  PROTESTANTE: "#FF8A1F",
-  OUTUBRO: "#FF8A1F",
-  GRAÇA: "#FF5FA2",
-  FÉ: "#8B5CF6",
-  NÃO: "#FF4D4D",
-  HALLOWEEN: "#FF8A1F",
-  MAL: "#FF4D4D",
-  MEDO: "#8B5CF6",
-};
-
 export const SOLAS = [
-  { emoji: "📖", nome: "Somente a Escritura", cor: "#2EC27E" },
-  { emoji: "👑", nome: "Somente Cristo", cor: "#FFC93C" },
-  { emoji: "❤️", nome: "Somente a Graça", cor: "#FF5FA2" },
-  { emoji: "🙏", nome: "Somente a Fé", cor: "#2E86FF" },
-  { emoji: "⭐", nome: "Glória somente a Deus", cor: "#FF8A1F" },
+  { emoji: "📖", nome: "Somente a Escritura", cor: "#FED403" },
+  { emoji: "👑", nome: "Somente Cristo", cor: "#FED403" },
+  { emoji: "❤️", nome: "Somente a Graça", cor: "#FED403" },
+  { emoji: "🙏", nome: "Somente a Fé", cor: "#FED403" },
+  { emoji: "⭐", nome: "Glória somente a Deus", cor: "#FED403" },
 ];
 
 export const TRECHOS: Trecho[] = [
@@ -70,11 +51,12 @@ export const TRECHOS: Trecho[] = [
       [2.85, 5.9, "no dia 31 de OUTUBRO?"],
     ],
     eventos: [
+      { t: 0.0, tipo: "logo", ate: 1.6, som: "brilho" },
       {
-        t: 0.1,
+        t: 1.7,
         tipo: "banner",
         texto: "📅 31 DE OUTUBRO",
-        cor: "#FF8A1F",
+        cor: "#FED403",
         som: "pop",
       },
       { t: 5.0, tipo: "emoji", emoji: "🤔", x: 0.82, y: 0.2, som: "boing" },
@@ -203,7 +185,7 @@ export const TRECHOS: Trecho[] = [
         t: 94.7,
         tipo: "banner",
         texto: "📜 REFORMA PROTESTANTE",
-        cor: "#FF8A1F",
+        cor: "#FED403",
         som: "brilho",
       },
       { t: 95.8, tipo: "confete" },
@@ -236,7 +218,7 @@ export const TRECHOS: Trecho[] = [
         t: 120.2,
         tipo: "banner",
         texto: "☀️ SALMOS 27:1",
-        cor: "#FFC93C",
+        cor: "#FED403",
         som: "ding",
       },
       { t: 121.85, tipo: "flash", som: "brilho" },
@@ -374,6 +356,7 @@ export const BASTIDORES: Trecho[] = [
     ],
     eventos: [
       { t: 300.2, tipo: "emoji", emoji: "🍬", x: 0.82, y: 0.2, som: "pop" },
+      { t: 304.3, tipo: "logo", ate: 305.9, arroba: true, som: "ding" },
     ],
   },
 ];

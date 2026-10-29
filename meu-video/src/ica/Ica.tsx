@@ -1,3 +1,4 @@
+import "@fontsource/orbitron/900.css";
 import "@fontsource/poppins/800.css";
 import "@fontsource/poppins/900.css";
 import {
@@ -17,7 +18,6 @@ import {
 } from "remotion";
 import {
   BASTIDORES,
-  CORES,
   Evento,
   FOCO_Y,
   SOLAS,
@@ -72,7 +72,10 @@ const TextoComEmoji: React.FC<{ texto: string; tamanho: number }> = ({
       )}
   </>
 );
-const AZUL = "#1E3A8A";
+// identidade da Igreja de Cristo Arena: amarelo da faixa da logo, preto e branco
+const PRETO = "#161616";
+const AMARELO = "#FED403";
+const fonteMarca = "Orbitron, sans-serif";
 
 const quadros = (seg: number) => Math.round(seg * FPS);
 const duracaoTrecho = (t: Trecho) => quadros(t.ate - t.de);
@@ -88,7 +91,7 @@ const SomFx: React.FC<{ som: Som }> = ({ som }) => (
 // Estrelinhas e corações flutuando nas bordas, o vídeo todo
 const Flutuantes: React.FC = () => {
   const frame = useCurrentFrame();
-  const itens = ["⭐", "✨", "💛", "💙", "⭐", "💚", "✨", "🧡"];
+  const itens = ["⭐", "✨", "💛", "⭐", "✨", "💛", "⭐", "✨"];
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       {itens.map((e, i) => {
@@ -121,14 +124,7 @@ const Flutuantes: React.FC = () => {
 
 const Confete: React.FC = () => {
   const frame = useCurrentFrame();
-  const cores = [
-    "#FFC93C",
-    "#2E86FF",
-    "#2EC27E",
-    "#FF8A1F",
-    "#FF5FA2",
-    "#8B5CF6",
-  ];
+  const cores = [AMARELO, "#FFFFFF", "#FFE45C", PRETO, "#FFF3B0", AMARELO];
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       {new Array(90).fill(0).map((_, i) => {
@@ -185,7 +181,7 @@ const Legenda: React.FC<{ texto: string; inicio: number }> = ({
         const limpa = p.replace(/[^A-ZÀ-Ú]/g, "");
         const destaque =
           limpa.length > 1 && p === p.toUpperCase() && /[A-ZÀ-Ú]/.test(p);
-        const cor = destaque ? (CORES[limpa] ?? "#FFC93C") : "white";
+        const cor = destaque ? AMARELO : "white";
         return (
           <span
             key={i}
@@ -197,9 +193,9 @@ const Legenda: React.FC<{ texto: string; inicio: number }> = ({
               fontSize: destaque ? 96 : 78,
               lineHeight: 1.15,
               color: cor,
-              WebkitTextStroke: `10px ${AZUL}`,
+              WebkitTextStroke: `10px ${PRETO}`,
               paintOrder: "stroke fill",
-              textShadow: "0 8px 0 rgba(30,58,138,0.35)",
+              textShadow: "0 8px 0 rgba(22,22,22,0.35)",
             }}
           >
             {p}
@@ -210,11 +206,12 @@ const Legenda: React.FC<{ texto: string; inicio: number }> = ({
   );
 };
 
-const Banner: React.FC<{ texto: string; cor: string; inicio: number }> = ({
-  texto,
-  cor,
-  inicio,
-}) => {
+const Banner: React.FC<{
+  texto: string;
+  cor: string;
+  inicio: number;
+  escuro?: boolean;
+}> = ({ texto, inicio, escuro = false }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = spring({
@@ -235,20 +232,19 @@ const Banner: React.FC<{ texto: string; cor: string; inicio: number }> = ({
     >
       <div
         style={{
-          backgroundColor: cor,
-          color: "white",
-          fontFamily: fonte,
+          backgroundColor: escuro ? PRETO : AMARELO,
+          color: escuro ? AMARELO : PRETO,
+          fontFamily: fonteMarca,
           fontWeight: 900,
-          fontSize: 66,
-          padding: "18px 44px",
-          borderRadius: 28,
-          border: "8px solid white",
-          boxShadow: "0 12px 0 rgba(30,58,138,0.25)",
-          WebkitTextStroke: `4px ${AZUL}`,
-          paintOrder: "stroke fill",
+          fontSize: 56,
+          letterSpacing: 3,
+          padding: "16px 40px",
+          borderRadius: 6,
+          border: `6px solid ${escuro ? AMARELO : PRETO}`,
+          boxShadow: "0 10px 0 rgba(22,22,22,0.35)",
         }}
       >
-        <TextoComEmoji texto={texto} tamanho={66} />
+        <TextoComEmoji texto={texto} tamanho={56} />
       </div>
     </div>
   );
@@ -295,7 +291,7 @@ const Figurinha: React.FC<{
         textAlign: "center",
         lineHeight: `${tamanho}px`,
         transform: `scale(${s * (1 - saida * 0.4)}) rotate(${balanco + saida * 200}deg)`,
-        filter: "drop-shadow(0 8px 6px rgba(30,58,138,0.3))",
+        filter: "drop-shadow(0 8px 6px rgba(22,22,22,0.3))",
       }}
     >
       <Emoji e={ev.emoji} tamanho={tamanho * 0.9} />
@@ -344,9 +340,9 @@ const SeloGrande: React.FC<{ indice: number; inicio: number }> = ({
           width: 230,
           height: 230,
           borderRadius: "50%",
-          backgroundColor: sola.cor,
-          border: "10px solid white",
-          boxShadow: "0 0 60px rgba(255,201,60,0.9)",
+          backgroundColor: AMARELO,
+          border: `10px solid ${PRETO}`,
+          boxShadow: "0 0 60px rgba(254,212,3,0.9)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -382,8 +378,8 @@ const FileiraSelos: React.FC<{
           width: tamanho,
           height: tamanho,
           borderRadius: "50%",
-          backgroundColor: i < quantos ? s.cor : "rgba(255,255,255,0.35)",
-          border: "6px solid white",
+          backgroundColor: i < quantos ? AMARELO : "rgba(255,255,255,0.35)",
+          border: `6px solid ${PRETO}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -476,7 +472,7 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
       <Flutuantes />
 
       {trecho.rotulo ? (
-        <Banner texto={trecho.rotulo} cor="#8B5CF6" inicio={0} />
+        <Banner texto={trecho.rotulo} cor={PRETO} inicio={0} escuro />
       ) : null}
 
       {trecho.eventos.map((ev, i) => {
@@ -490,6 +486,14 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
             ) : null}
             {ev.tipo === "confete" ? <Confete /> : null}
             {ev.tipo === "final" ? <MensagemFinal /> : null}
+            {ev.tipo === "logo" ? (
+              <Sequence durationInFrames={quadros(ev.ate - ev.t)} layout="none">
+                <VinhetaLogo
+                  duracao={quadros(ev.ate - ev.t)}
+                  arroba={ev.arroba}
+                />
+              </Sequence>
+            ) : null}
           </Sequence>
         );
       })}
@@ -522,6 +526,67 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
   );
 };
 
+// Logo da Igreja de Cristo Arena, sempre com o fundo original (fiel à marca)
+const SeloLogo: React.FC<{ largura: number }> = ({ largura }) => (
+  <Img
+    src={staticFile("ica/logo_arena_fundo.png")}
+    style={{
+      width: largura,
+      borderRadius: largura * 0.06,
+      boxShadow: "0 14px 30px rgba(22,22,22,0.35)",
+      border: `5px solid ${AMARELO}`,
+    }}
+  />
+);
+
+const VinhetaLogo: React.FC<{ duracao: number; arroba?: boolean }> = ({
+  duracao,
+  arroba = false,
+}) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const s = spring({ frame, fps, config: { damping: 11, stiffness: 170 } });
+  const sai = interpolate(frame, [duracao - 8, duracao], [1, 0], clamp);
+  return (
+    <AbsoluteFill
+      style={{
+        justifyContent: "flex-start",
+        paddingTop: 300,
+        alignItems: "center",
+        backgroundColor: `rgba(22,22,22,${0.45 * sai})`,
+      }}
+    >
+      <div
+        style={{
+          transform: `scale(${s * (0.9 + 0.1 * sai)})`,
+          opacity: sai,
+          textAlign: "center",
+        }}
+      >
+        <SeloLogo largura={760} />
+        {arroba ? (
+          <div
+            style={{
+              marginTop: 26,
+              display: "inline-block",
+              backgroundColor: AMARELO,
+              color: PRETO,
+              fontFamily: fonteMarca,
+              fontWeight: 900,
+              fontSize: 54,
+              letterSpacing: 3,
+              padding: "12px 34px",
+              borderRadius: 6,
+            }}
+          >
+            @icacampinas
+          </div>
+        ) : null}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 // Mensagem final por cima do vídeo do grito "Reforma Protestante!"
 const MensagemFinal: React.FC = () => {
   const frame = useCurrentFrame();
@@ -532,6 +597,36 @@ const MensagemFinal: React.FC = () => {
       fps,
       config: { damping: 10, stiffness: 160 },
     });
+  const faixa = (
+    texto: string,
+    escuro: boolean,
+    atraso: number,
+    tamanho = 40,
+  ) => (
+    <div
+      style={{
+        textAlign: "center",
+        transform: `scale(${entra(atraso)})`,
+        marginBottom: 14,
+      }}
+    >
+      <span
+        style={{
+          display: "inline-block",
+          backgroundColor: escuro ? PRETO : AMARELO,
+          color: escuro ? AMARELO : PRETO,
+          fontFamily: fonteMarca,
+          fontWeight: 900,
+          fontSize: tamanho,
+          letterSpacing: 2,
+          padding: "10px 26px",
+          borderRadius: 6,
+        }}
+      >
+        <TextoComEmoji texto={texto} tamanho={tamanho} />
+      </span>
+    </div>
+  );
   const linha = (
     texto: string,
     tamanho: number,
@@ -545,11 +640,11 @@ const MensagemFinal: React.FC = () => {
         fontSize: tamanho,
         color: cor,
         textAlign: "center",
-        lineHeight: 1.08,
-        WebkitTextStroke: `${tamanho / 9}px ${AZUL}`,
+        lineHeight: 1.05,
+        WebkitTextStroke: `${tamanho / 9}px ${PRETO}`,
         paintOrder: "stroke fill",
         transform: `scale(${entra(atraso)})`,
-        marginBottom: 10,
+        marginBottom: 8,
       }}
     >
       <TextoComEmoji texto={texto} tamanho={tamanho} />
@@ -557,42 +652,49 @@ const MensagemFinal: React.FC = () => {
   );
   return (
     <AbsoluteFill>
-      {/* raios de luz girando atrás do texto */}
       <AbsoluteFill
         style={{
           opacity: interpolate(frame, [0, 10], [0, 1], clamp),
           maskImage:
-            "radial-gradient(ellipse 70% 22% at 50% 16%, black 0%, black 55%, transparent 100%)",
+            "radial-gradient(ellipse 75% 24% at 50% 18%, black 0%, black 55%, transparent 100%)",
           WebkitMaskImage:
-            "radial-gradient(ellipse 70% 22% at 50% 16%, black 0%, black 55%, transparent 100%)",
+            "radial-gradient(ellipse 75% 24% at 50% 18%, black 0%, black 55%, transparent 100%)",
         }}
       >
         <AbsoluteFill
           style={{
             background:
-              "radial-gradient(ellipse at 50% 16%, rgba(255,251,234,0.85) 0%, rgba(255,251,234,0) 60%)",
+              "radial-gradient(ellipse at 50% 18%, rgba(255,251,230,0.9) 0%, rgba(255,251,230,0) 60%)",
           }}
         />
         <AbsoluteFill
           style={{
-            background:
-              "repeating-conic-gradient(from 0deg at 50% 16%, rgba(255,214,90,0.5) 0deg 9deg, rgba(255,214,90,0) 9deg 18deg)",
+            background: `repeating-conic-gradient(from 0deg at 50% 18%, rgba(254,212,3,0.45) 0deg 9deg, rgba(254,212,3,0) 9deg 18deg)`,
             transform: `rotate(${frame * 0.6}deg) scale(2.2)`,
-            transformOrigin: "50% 16%",
+            transformOrigin: "50% 18%",
           }}
         />
       </AbsoluteFill>
-      <div style={{ position: "absolute", top: 150, left: 40, right: 40 }}>
-        {linha("NÃO comemoramos o Halloween 🎃🚫", 50, "white", 2)}
-        {linha("Nós escolhemos", 80, "white", 8)}
-        {linha("a LUZ! ✨", 130, "#FFC93C", 12)}
-        {linha("31 de Outubro · Reforma Protestante", 44, "#FF8A1F", 18)}
+      <div style={{ position: "absolute", top: 90, left: 30, right: 30 }}>
+        <div
+          style={{
+            textAlign: "center",
+            transform: `scale(${entra(0)})`,
+            marginBottom: 18,
+          }}
+        >
+          <SeloLogo largura={330} />
+        </div>
+        {faixa("NÃO comemoramos o Halloween 🎃🚫", false, 6)}
+        {linha("Nós escolhemos", 74, "white", 12)}
+        {linha("a LUZ! ✨", 118, AMARELO, 16)}
+        {faixa("31 de Outubro · Reforma Protestante", true, 22, 34)}
       </div>
       <div
         style={{
           position: "absolute",
           inset: 0,
-          transform: `scale(${entra(26)})`,
+          transform: `scale(${entra(28)})`,
         }}
       >
         <FileiraSelos quantos={5} tamanho={120} topo={1480} />
