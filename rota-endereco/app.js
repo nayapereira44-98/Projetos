@@ -197,6 +197,8 @@
     order.forEach(a => a.pkgs.forEach(p => rows.push({ s: p.shopeeStop, a, p })));
     rows.sort((x, y) => (x.s ?? 1e9) - (y.s ?? 1e9) || x.a.n - y.a.n);
     $("dp").innerHTML = `<thead><tr><th>Shopee</th><th>Nosso nº</th><th>Endereço</th><th>Pacote</th></tr></thead><tbody>${rows.map(r => `<tr style="${pkgDone(r.p) ? "opacity:.5" : ""}"><td>${r.s ?? "sem nº"}</td><td>${r.a.n}</td><td>${esc(r.a.label)}</td><td class="mono">${esc(tail(r.p.tn))}</td></tr>`).join("")}</tbody>`;
+    $("streetList").innerHTML = [...new Set(A.map(streetName))].sort().map(n => `<option value="${esc(n)}"></option>`).join("");
+    renderHere();
     $("foot").textContent = "Ordem por endereço: cada rua é feita inteira antes da próxima, em ordem de número. A distância é estimada em linha reta com fator de ruas.";
   }
 
@@ -226,6 +228,68 @@
   $("copy").addEventListener("click", async () => {
     const txt = order.map(a => `${a.n}. ${a.label} — Shopee ${a.shopeeStops.join(", ") || "sem nº"} — ${a.pkgs.map(p => tail(p.tn)).join(" ")}`).join("\n");
     try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); } catch { toast("Não foi possível copiar neste navegador"); }
+  });
+
+  // ---------- onde estou ----------
+  // GPS quando o navegador deixa; senão, a rua digitada vira o ponto de referência.
+  let here = null, hereSrc = "", hereStreet = null, watchId = null, wake = null;
+  const streetName = a => a.label.split(",")[0].trim();
+  function renderHere() {
+    if (!here || !D) { $("locOut").innerHTML = ""; return; }
+    const pend = order.filter(a => !addrDone(a));
+    if (!pend.length) { $("locOut").innerHTML = `<p class="sub">Todos os endereços foram entregues.</p>`; return; }
+    const dist = a => Core.hav(here, a);
+    const nearest = pend.map(a => ({ a, d: dist(a) })).sort((x, y) => x.d - y.d);
+    // Rua digitada com pendência manda; senão, a rua do endereço pendente mais perto.
+    const st = hereSrc === "rua" && pend.some(a => a.street === hereStreet) ? hereStreet : nearest[0].a.street;
+    const onStreet = pend.filter(a => a.street === st).sort((x, y) => x.num - y.num);
+    const head = nearest.find(x => x.a.street === st);
+    const closestAny = order.map(a => ({ a, d: dist(a) })).sort((x, y) => x.d - y.d)[0];
+    const atDoneStreet = hereSrc === "gps" && closestAny.d < 60 && closestAny.a.street !== st && order.filter(a => a.street === closestAny.a.street).every(addrDone);
+    const row = ({ a, d }) => `<div class="near-row"><div class="m">${d < 1000 ? Math.round(d) + " m" : (d / 1000).toFixed(1) + " km"}</div>
+      <div><b>${esc(a.label)}</b><div class="sub">nosso nº ${a.n} · <span class="shp">${shp(a) || "–"}</span> · ${a.pkgs.length} pct · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></div></div>
+      <div class="acts"><a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><button type="button" data-a="${esc(a.key)}">Entregue</button></div></div>`;
+    $("locOut").innerHTML = `<div class="here">
+      ${atDoneStreet ? `<p class="sub">Você está na ${esc(streetName(closestAny.a))}, que já foi concluída.</p>` : ""}
+      <div class="sub">Rua com entrega pendente mais perto de você</div>
+      <div class="street-now">${esc(streetName(head.a))}</div>
+      <div class="dist">${hereSrc === "gps" ? Math.round(head.d) + " m · " : ""}${esc(head.a.bairro)} · faltam ${onStreet.length} endereço${onStreet.length > 1 ? "s" : ""}: nº ${onStreet.map(a => a.num || "?").join(", ")}</div>
+      <div class="sub" style="margin-top:4px">Mais perto de você</div>
+      ${(hereSrc === "rua" ? onStreet.map(a => ({ a, d: Core.hav(here, a) })).concat(nearest.filter(x => x.a.street !== st)) : nearest).slice(0, 6).map(row).join("")}
+    </div>`;
+  }
+  $("locBtn").addEventListener("click", async () => {
+    if (watchId != null) {
+      navigator.geolocation.clearWatch(watchId); watchId = null;
+      try { await wake?.release(); } catch {} wake = null;
+      $("locBtn").textContent = "Ativar localizador"; $("locInfo").textContent = "Localizador desligado.";
+      return;
+    }
+    if (!navigator.geolocation) return void ($("locInfo").textContent = "Este navegador não tem localização. Digite a rua abaixo.");
+    $("locInfo").textContent = "Procurando sua localização…";
+    watchId = navigator.geolocation.watchPosition(pos => {
+      here = { lat: pos.coords.latitude, lng: pos.coords.longitude }; hereSrc = "gps";
+      $("locInfo").textContent = `Localização ao vivo (precisão de ${Math.round(pos.coords.accuracy)} m), atualizada às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`;
+      $("locStreet").value = "";
+      renderHere();
+    }, () => {
+      navigator.geolocation.clearWatch(watchId); watchId = null;
+      $("locBtn").textContent = "Ativar localizador";
+      $("locInfo").textContent = "A localização foi bloqueada aqui. Neste link do claude.ai o navegador não libera o GPS. Digite a rua em que você está, logo abaixo.";
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    $("locBtn").textContent = "Desligar localizador";
+    try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+  });
+  const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/^(r|rua|av|avenida)\.?\s+/, "").trim();
+  $("locStreet").addEventListener("input", e => {
+    const q = norm(e.target.value);
+    if (q.length < 3 || !D) return;
+    const hit = A.filter(a => norm(streetName(a)).includes(q));
+    if (!hit.length) { $("locOut").innerHTML = `<p class="sub">Nenhuma rua da rota tem esse nome.</p>`; return; }
+    // Ponto de referência: meio dos endereços dessa rua.
+    here = { lat: hit.reduce((t, a) => t + a.lat, 0) / hit.length, lng: hit.reduce((t, a) => t + a.lng, 0) / hit.length }; hereSrc = "rua"; hereStreet = hit[0].street;
+    $("locInfo").textContent = `Usando a ${streetName(hit[0])} como referência.`;
+    renderHere();
   });
 
   // ---------- achar pacote ----------
