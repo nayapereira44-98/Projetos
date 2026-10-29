@@ -21,6 +21,11 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.
 
+### Aproveite aqui (não voltar no mesmo lugar)
+- A próxima parada mostra **"Aproveite aqui, para não voltar depois"**: paradas pendentes a até 120 m a pé, ou na mesma rua a até 400 m, que a ordem só visitaria mais tarde. Cada uma aparece com a zona do carro, os pacotes e o botão **Entreguei junto**, que não dispara o aviso de "fora da ordem".
+- Na lista de paradas, o chip **"perto: 23, 24"** indica paradas próximas que estão longe na sequência.
+- Blocos e zonas do carro não mudam.
+
 ### Entregas fora da ordem e pacote não achado
 - **Entreguei outro**: na próxima parada, leva até a busca. Escaneie o pacote ou digite o final do código ou o número da parada da Shopee e toque em **Entregar**. Num local com vários pacotes, dá para entregar um por um.
 - Toda entrega guarda a hora ("entregue 10:32"). Uma entrega fora da ordem não muda a sequência. O app pergunta se você quer **reorganizar o resto a partir de lá**: ele refaz o caminho das paradas que faltam saindo de onde você está e mantém os blocos e as zonas do carro. Ou você pode **seguir a ordem**.

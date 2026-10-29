@@ -399,6 +399,18 @@
   }
 
   // ---------- ROTA ----------
+  // Paradas pendentes que ficam a pé daqui (até 120 m) ou na mesma rua (até 400 m) e que a ordem só visitaria
+  // mais tarde: avisar para entregar junto e não voltar. Não mexe em blocos nem zonas.
+  function aroundHere(n) {
+    const act = S.display.filter(stopActive);
+    const after = act.indexOf(n);
+    const soon = new Set(after >= 0 ? act.slice(after + 1, after + 2) : []);
+    return act.filter(s => s !== n && !soon.has(s))
+      .map(s => ({ s, d: Core.hav(n, s) }))
+      .filter(x => x.d <= 120 || (x.s.street && x.s.street === n.street && x.d <= 400))
+      .sort((a, b) => a.d - b.d).slice(0, 5);
+  }
+
   // Pacotes que você não achou: ficam aqui até aparecerem.
   function renderPend() {
     const list = S.display.filter(stopMissing);
@@ -502,6 +514,7 @@
           <button type="button" data-failopen="${esc(n.key)}">Não entregue</button>
           <button type="button" data-later="${esc(n.key)}">Depois</button>
         </div>
+        ${(() => { const near = aroundHere(n); return near.length ? `<div class="aqui"><b>Aproveite aqui, para não voltar depois:</b>${near.map(({ s, d }) => `<div class="aqui-row"><span><b>Parada ${s.n}</b> · zona ${s.zone.code}${multi() ? " · R" + (s.ri + 1) : ""} · ${esc(s.label)} · ${Math.round(d)} m${s.street === n.street ? " · mesma rua" : ""}<br><span class="mono">${s.pkgs.filter(pkgOpen).map(p => `${esc(tail(p.tn))} (${pkgRef(p).replace("Shopee ", "")})`).join(" · ")}</span></span><button type="button" data-ok="${esc(s.key)}" data-together="1">Entreguei junto</button></div>`).join("")}</div>` : ""; })()}
         <div class="row two">
           <button type="button" data-missing="${esc(n.key)}">Não achei o pacote</button>
           <button type="button" data-other="1">Entreguei outro</button>
@@ -550,6 +563,7 @@
             ${s.unseq ? `<span class="chip hot">${s.unseq} sem nº</span>` : ""}
             ${s.until ? `<span class="chip time">até ${s.until}</span>` : ""}
             ${s.after ? `<span class="chip time">após ${s.after}</span>` : ""}
+            ${stopActive(s) && i !== nextIdx ? (() => { const nb = aroundHere(s).filter(x => x.d <= 120 && Math.abs(x.s.n - s.n) > 2).map(x => x.s.n); return nb.length ? `<span class="chip hot">perto: ${nb.join(", ")}</span>` : ""; })() : ""}
             ${stopMissing(s) ? `<span class="chip time">não achei ${s.pkgs.filter(pkgMissing).length}</span>` : ""}
             ${stopDoneAt(s) && done ? `<span class="chip">entregue ${hhmm(stopDoneAt(s))}</span>` : ""}
           </div>
@@ -610,7 +624,7 @@
       const s = stop(ds.ok), done = stopDone(s) && !stopFailed(s);
       const expected = S.display.find(stopActive);
       s.pkgs.forEach(p => { if (done) clearStatus(p.tn); else if (S.prog.status[p.tn] !== "ok") setOk(p.tn); });
-      const ooo = !done && expected && expected !== s && S.display.some(x => stopActive(x) && x !== s);
+      const ooo = !ds.together && !done && expected && expected !== s && S.display.some(x => stopActive(x) && x !== s);
       S.outOfOrder = ooo ? s.key : null;
       afterStatus(done ? null : ooo ? `Parada ${s.n} entregue fora da ordem` : `Parada ${s.n} entregue`);
       if (t.closest("#findResult")) { $("findResult").innerHTML = ""; $("shopeeStopInput").value = ""; $("findInput").value = ""; }
