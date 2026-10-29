@@ -289,6 +289,92 @@ const Core = (() => {
     });
   }
 
+  // ---------- rota por endereço ----------
+  // Uma parada por endereço (rua + número); a parada da Shopee vira só referência.
+  function buildAddresses(pkgs) {
+    const map = new Map();
+    pkgs.forEach(p => {
+      const key = p.street && p.number ? p.street + "|" + p.number : "geo|" + p.lat.toFixed(4) + "," + p.lng.toFixed(4);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    return [...map.entries()].map(([key, list]) => {
+      list.sort((a, b) => (a.shopeeStop ?? 1e9) - (b.shopeeStop ?? 1e9) || a.tn.localeCompare(b.tn));
+      const lat = list.reduce((s, p) => s + p.lat, 0) / list.length, lng = list.reduce((s, p) => s + p.lng, 0) / list.length;
+      return {
+        key, pkgs: list, lat, lng, street: list[0].street, num: parseInt(list[0].number, 10) || 0,
+        label: list[0].address.split(",").slice(0, 2).join(",").replace(/\s+,/g, ",").trim(),
+        bairro: list[0].bairro,
+        shopeeStops: [...new Set(list.map(p => p.shopeeStop).filter(v => v != null))].sort((a, b) => a - b),
+        unseq: list.filter(p => p.seq == null).length,
+      };
+    });
+  }
+
+  // Trechos de rua: endereços da mesma rua em ordem de número; trecho quebra se o próximo número fica a mais de `gapM`.
+  function streetSegments(addrs, gapM = 250) {
+    const byStreet = new Map();
+    addrs.forEach(a => { const k = a.key.startsWith("geo|") ? a.key : a.street; if (!byStreet.has(k)) byStreet.set(k, []); byStreet.get(k).push(a); });
+    const segs = [];
+    byStreet.forEach(list => {
+      list.sort((a, b) => a.num - b.num);
+      let cur = [list[0]];
+      for (let i = 1; i < list.length; i++) {
+        if (hav(list[i - 1], list[i]) > gapM) { segs.push(cur); cur = []; }
+        cur.push(list[i]);
+      }
+      segs.push(cur);
+    });
+    return segs.map(addrs => ({ addrs, len: addrs.slice(1).reduce((s, a, i) => s + hav(addrs[i], a), 0) }));
+  }
+
+  // Ordem dos trechos (cada um percorrido inteiro, num sentido ou no outro), saindo do endereço `startKey`.
+  function addressRoute(addrs, startKey) {
+    const segs = streetSegments(addrs);
+    const ends = (s, dir) => (dir ? [s.addrs[s.addrs.length - 1], s.addrs[0]] : [s.addrs[0], s.addrs[s.addrs.length - 1]]);
+    const cost = path => path.reduce((t, [si, d], i) => {
+      if (!i) return t;
+      const [pi, pd] = path[i - 1];
+      return t + hav(ends(segs[pi], pd)[1], ends(segs[si], d)[0]) * STREET_FACTOR;
+    }, 0);
+    let first = segs.findIndex(s => s.addrs.some(a => a.key === startKey));
+    if (first < 0) first = 0;
+    const fs = segs[first], at = fs.addrs.findIndex(a => a.key === startKey);
+    const path = [[first, at > (fs.addrs.length - 1) / 2 ? 1 : 0]];
+    const left = new Set(segs.map((_, i) => i)); left.delete(first);
+    while (left.size) {
+      const exit = ends(segs[path[path.length - 1][0]], path[path.length - 1][1])[1];
+      let best = null, bd = Infinity;
+      left.forEach(i => [0, 1].forEach(d => { const v = hav(exit, ends(segs[i], d)[0]); if (v < bd) { bd = v; best = [i, d]; } }));
+      path.push(best); left.delete(best[0]);
+    }
+    // Melhora: move ou inverte blocos de 1 a 3 trechos enquanto o caminho encurtar.
+    let improved = true, guard = 0;
+    while (improved && guard++ < 100) {
+      improved = false;
+      for (let len = 1; len <= 3; len++) {
+        for (let i = 1; i + len <= path.length; i++) {
+          const block = path.slice(i, i + len);
+          const rest = path.slice(0, i).concat(path.slice(i + len));
+          const base = cost(path);
+          let best = null, bv = base - 1;
+          for (let k = 1; k <= rest.length; k++) {
+            for (const rev of [false, true]) {
+              const b = rev ? block.slice().reverse().map(([s, d]) => [s, 1 - d]) : block;
+              const cand = rest.slice(0, k).concat(b, rest.slice(k));
+              const v = cost(cand);
+              if (v < bv) { bv = v; best = cand; }
+            }
+          }
+          if (best) { path.splice(0, path.length, ...best); improved = true; }
+        }
+      }
+    }
+    const order = path.flatMap(([si, d]) => (d ? segs[si].addrs.slice().reverse() : segs[si].addrs));
+    const km = path.reduce((t, [si], i) => t + segs[si].len, 0) + cost(path);
+    return { order, km, segs: path.length };
+  }
+
   // Outros locais a até `maxM` metros, do mais perto ao mais longe.
   function nearby(stop, stops, maxM) {
     return stops.filter(s => s !== stop).map(s => ({ s, d: hav(stop, s) })).filter(x => x.d <= maxM).sort((a, b) => a.d - b.d);
@@ -306,6 +392,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, streetSegments, addressRoute, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT-START -->
+<title>Rota por Endereço</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: uma coluna de motorista. Cartão do próximo endereço no topo; lista agrupada por rua, com a placa da rua como cabeçalho. */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #16191d;
+  --muted: #5b6168;
+  --line: #d9dcd6;
+  --accent: #d9480f;
+  --accent-ink: #ffffff;
+  --sign: #1f5f3a;
+  --sign-ink: #f5f7f2;
+  --ok: #2b8a3e;
+  --bad: #c92a2a;
+  --soft: #fff1e6;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+    --accent: #ff7a3d; --accent-ink: #1a0d05; --sign: #2e7a4f; --sign-ink: #f1f6ef;
+    --ok: #5fcf75; --bad: #ff6b6b; --soft: #2e2017; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
+  --accent: #ff7a3d; --accent-ink: #1a0d05; --sign: #2e7a4f; --sign-ink: #f1f6ef;
+  --ok: #5fcf75; --bad: #ff6b6b; --soft: #2e2017; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+h1 { font-size: 1.6rem; font-weight: 800; }
+h2 { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+p { margin: 0; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top small { display: block; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+button, .btn {
+  font: 700 1rem var(--font-body); border-radius: 10px; border: 2px solid var(--ink); background: var(--surface); color: var(--ink);
+  padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; text-align: center;
+}
+.btn.primary, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.ghost { border-color: var(--line); }
+button.danger { border-color: var(--bad); color: var(--bad); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+input[type=search], input[type=number], select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 46px; width: 100%; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.sub { color: var(--muted); font-size: 0.88rem; }
+.mono { font-family: var(--font-data); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.empty ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 560px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.stat b { display: block; font: 800 1.4rem var(--font-display); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 0.8rem; }
+
+/* Próximo endereço */
+.next { background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.next .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; }
+.next .addr { font: 800 1.45rem/1.15 var(--font-display); }
+.next .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.next .btn, .next button { border-color: var(--sign-ink); background: transparent; color: var(--sign-ink); min-height: 46px; padding: 8px; }
+.next .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.next button.okb { background: var(--sign-ink); color: var(--sign); grid-column: 1 / -1; min-height: 54px; font-size: 1.1rem; }
+.next ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.next li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: rgba(0,0,0,0.16); border-radius: 8px; padding: 6px 8px; }
+.next li button { min-height: 38px; padding: 4px 10px; font-size: 0.85rem; }
+.next li.done { opacity: 0.55; text-decoration: line-through; }
+.next .street-left { font-size: 0.9rem; opacity: 0.92; }
+
+.shp { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.shp span { font: 800 0.85rem var(--font-display); border: 2px solid currentColor; border-radius: 6px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+
+/* Busca */
+.scanbtns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+.scanbtns .btn, .scanbtns button { min-height: 54px; }
+.hit { border: 3px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
+.hit .big { font: 800 2.6rem/1 var(--font-display); color: var(--accent); }
+.hit.miss { border-color: var(--bad); }
+
+/* Lista por rua */
+.street { display: grid; gap: 6px; }
+.street-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--sign); color: var(--sign-ink); border-radius: 8px; padding: 6px 10px; }
+.street-head b { font: 800 1rem var(--font-display); }
+.street-head span { font-size: 0.82rem; opacity: 0.9; }
+.street.done .street-head { opacity: 0.5; }
+.addr-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.addr-row.done { opacity: 0.5; }
+.addr-row.current { outline: 3px solid var(--accent); outline-offset: -1px; }
+.addr-row .n { font: 800 1.2rem var(--font-display); text-align: center; font-variant-numeric: tabular-nums; }
+.addr-row .num { font: 800 1.1rem var(--font-display); }
+.addr-row .shp { color: var(--accent); }
+.addr-row button { min-height: 40px; padding: 4px 10px; font-size: 0.85rem; }
+.addr-row.done button { border-color: var(--ok); color: var(--ok); }
+
+details.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+details.box summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.scroll { overflow-x: auto; }
+table.dp { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+table.dp th, table.dp td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+table.dp td:first-child, table.dp td:nth-child(2) { font: 800 1rem var(--font-display); white-space: nowrap; }
+.foot { color: var(--muted); font-size: 0.82rem; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 20; max-width: calc(100% - 32px); }
+video { width: 100%; border-radius: 12px; background: #000; }
+</style>
+</head>
+<body>
+<!-- BODY-START -->
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rota por Endereço</h1>
+      <small id="subtitle">Cada rua de uma vez, com o de-para da Shopee</small>
+    </div>
+    <label class="btn primary" for="file" id="fileBtn">Abrir planilha</label>
+    <input id="file" type="file" accept=".xlsx">
+  </header>
+
+  <section id="resume" class="card" hidden></section>
+
+  <section id="empty" class="card empty">
+    <h2>Como funciona</h2>
+    <ol>
+      <li>Exporte a rota em Excel no app da Shopee e toque em <b>Abrir planilha</b>.</li>
+      <li>Cada parada é um <b>endereço</b> (rua + número). Pacotes do mesmo endereço ficam juntos, mesmo com números de parada da Shopee diferentes.</li>
+      <li>As ruas são feitas <b>inteiras, uma de cada vez</b>, em ordem de número. Assim você não volta na mesma rua.</li>
+      <li>Ao lado de cada endereço aparece a <b>parada da Shopee</b>, para você fazer o de-para com a etiqueta.</li>
+    </ol>
+    <p class="sub">A planilha é lida e fica salva só neste aparelho.</p>
+  </section>
+
+  <div id="app" class="wrap" hidden>
+    <div class="stats" id="stats"></div>
+    <section class="next" id="next" aria-live="polite"></section>
+
+    <section class="card">
+      <h2>Achar pacote</h2>
+      <div class="scanbtns">
+        <label class="btn primary" for="photo">Escanear etiqueta</label>
+        <input id="photo" type="file" accept="image/*" capture="environment">
+        <button id="live" type="button" class="ghost" hidden>Câmera contínua</button>
+      </div>
+      <video id="video" playsinline muted hidden></video>
+      <label for="q" class="sub">ou digite o final do código ou o número da parada da Shopee</label>
+      <input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="ex. 0507 ou 49">
+      <div id="found" aria-live="assertive"></div>
+    </section>
+
+    <details class="box">
+      <summary>De-para: parada da Shopee → endereço</summary>
+      <div class="scroll"><table class="dp" id="dp"></table></div>
+    </details>
+
+    <details class="box" id="cfg">
+      <summary>Ajustes</summary>
+      <div class="card" style="border:0;padding:10px 0 0">
+        <label for="start" class="sub">Começar pelo endereço</label>
+        <select id="start"></select>
+        <button id="recalc" type="button" class="primary">Refazer a ordem</button>
+        <p class="sub">Refazer mantém as entregas já marcadas.</p>
+        <button id="clear" type="button" class="danger">Começar do zero</button>
+      </div>
+    </details>
+
+    <div class="top"><h2>Ruas na ordem</h2><button id="copy" type="button" class="ghost">Copiar lista</button></div>
+    <div id="list" class="wrap"></div>
+    <p class="foot" id="foot"></p>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="../rota-certa/core.js"></script>
+<script src="app.js"></script>
+<!-- ARTIFACT-END -->
+</body>
+</html>
