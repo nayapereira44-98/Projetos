@@ -87,12 +87,13 @@
   // Rotas do dia: cada pacote guarda o AT ID da planilha de onde veio.
   function normalizeRoute() {
     const r = S.route;
-    if (!r.routes) r.routes = [{ id: r.id, file: r.file }];
+    if (!r.routes) r.routes = [{ id: r.id, at: r.id, file: r.file }];
     r.pkgs.forEach(p => { if (!p.route) p.route = r.routes[0].id; });
     r.settings.multiMode = r.settings.multiMode || "seq";
   }
   const multi = () => S.route.routes.length > 1;
   const ri = p => Math.max(0, S.route.routes.findIndex(r => r.id === p.route));
+  const routeDesc = i => { const r = S.route.routes[i]; return i > 0 && r.addedAt ? `pedidos das ${hhmm(r.addedAt)}` : (r.at || r.id); };
   const rTag = (i, big) => `<span class="rtag r${(i % 3) + 1}${big ? " big" : ""}">Rota ${i + 1}</span>`;
   const rTags = s => (multi() ? s.ris.map(i => rTag(i)).join("") : "");
   // Números de parada da Shopee de um local; com várias rotas, cada número leva a rota junto (R1·48).
@@ -113,63 +114,104 @@
     try {
       const { pkgs, bad } = Core.parseRows(await readXlsxFile(f));
       if (!pkgs.length) throw new Error("A planilha não tem pacotes com coordenadas.");
-      const id = (pkgs[0].at || f.name) + "";
-      pkgs.forEach(p => (p.route = id));
-      if (S.route && S.route.routes.some(r => r.id === id)) {
-        // Mesma rota de novo: troca só os pacotes dela e mantém o resto do dia.
-        S.route.pkgs = S.route.pkgs.filter(p => p.route !== id).concat(pkgs);
-        S.route.bad = (S.route.bad || []).filter(p => p.route !== id).concat(bad.map(p => ({ ...p, route: id })));
-        saveRoute();
-        await boot(false);
-        toast(`Rota atualizada: ${pkgs.length} pacotes`);
-      } else if (S.route) {
-        S.pending = { id, file: f.name, pkgs, bad };
-        showAddRoute();
-      } else {
-        await newDay(id, f.name, pkgs, bad);
-      }
+      const at = (pkgs[0].at || f.name) + "";
+      // Com o dia aberto, a planilha nova sempre soma; na tela inicial, ela começa um dia novo.
+      if (S.route && !$("app").hidden) await importMore(at, f.name, pkgs, bad);
+      else await newDay(at, f.name, pkgs, bad);
     } catch (err) {
       toast(err.message || "Não consegui ler a planilha.");
     } finally { e.target.value = ""; }
   });
 
-  async function newDay(id, file, pkgs, bad) {
-    S.route = { id, file, pkgs, bad, routes: [{ id, file }], settings: { radius: 20, start: "shopee", vehicle: S.route?.settings.vehicle || "carro", blockSize: 10, maxPkgs: 25, multiMode: "seq" }, plan: null };
-    S.prog = { ...newProg(), ...store.get(progKey(), {}) };
-    saveRoute();
+  async function newDay(at, file, pkgs, bad) {
+    if (S.route) store.set(progKey(), null);
+    pkgs.forEach(p => (p.route = at));
+    S.route = { id: at, file, pkgs, bad, createdAt: Date.now(), routes: [{ id: at, at, file, addedAt: Date.now() }], settings: { radius: 20, start: "shopee", vehicle: S.route?.settings.vehicle || "carro", blockSize: 10, maxPkgs: 25, multiMode: "seq" }, plan: null };
+    S.prog = newProg();
+    saveRoute(); saveProg();
+    $("resume").hidden = true; $("addRoute").hidden = true;
     await boot(true);
-    location.hash = Object.keys(S.prog.loaded).length || Object.keys(S.prog.status).length ? "#rota" : "#carregar";
+    location.hash = "#carregar";
     toast(`${pkgs.length} pacotes carregados da planilha`);
   }
 
-  function showAddRoute() {
-    const p = S.pending, n = S.route.routes.length + 1;
+  // A planilha da Shopee vem acumulada: o que ainda não foi entregue + os pedidos novos.
+  // Pacote já conhecido continua na rota de antes; pacote novo vira a próxima rota;
+  // pacote que sumiu da planilha já foi baixado no app da Shopee.
+  async function importMore(at, file, pkgs, bad) {
+    const known = new Map(S.route.pkgs.map(p => [p.tn, p]));
+    const incoming = new Set(pkgs.map(p => p.tn));
+    const fresh = pkgs.filter(p => !known.has(p.tn));
+    const overlap = pkgs.length - fresh.length;
+    pkgs.forEach(p => { const k = known.get(p.tn); if (k) Object.assign(k, p, { route: k.route }); });
+    const gone = overlap ? S.route.pkgs.filter(p => !incoming.has(p.tn) && !S.prog.status[p.tn]) : [];
+    S.prog.gone = S.prog.gone || {};
+    gone.forEach(p => { S.prog.status[p.tn] = "ok"; S.prog.reason[p.tn] = "Saiu da planilha da Shopee"; S.prog.gone[p.tn] = 1; });
+    let n = null;
+    if (fresh.length) {
+      n = S.route.routes.length + 1;
+      const rid = `${at}#${n}`;
+      S.route.routes.push({ id: rid, at, file, addedAt: Date.now() });
+      fresh.forEach(p => (p.route = rid));
+      S.route.pkgs = S.route.pkgs.concat(fresh);
+    }
+    const badKnown = new Set((S.route.bad || []).map(p => p.tn));
+    S.route.bad = (S.route.bad || []).concat(bad.filter(p => !badKnown.has(p.tn)));
+    S.lastImport = { at, file, pkgs, bad, gone: gone.map(p => p.tn) };
+    saveRoute(); saveProg();
+    if (!fresh.length && !gone.length) { toast("Nenhum pedido novo nesta planilha"); return; }
+    fillSettings(); derive();
+    await plan({ keep: true });
+    route();
     $("addRoute").hidden = false;
-    $("addRoute").innerHTML = `<h2>Planilha de outra rota</h2>
-      <p><b>${esc(p.id)}</b> · ${p.pkgs.length} pacotes. Hoje você já tem ${S.route.routes.length === 1 ? "1 rota" : S.route.routes.length + " rotas"} com ${S.route.pkgs.length} pacotes.</p>
+    $("addRoute").innerHTML = `<h2>Planilha somada ao dia</h2>
+      ${overlap ? `<p>${overlap} pacote(s) que você já tinha continuam na rota de antes.</p>` : ""}
+      ${fresh.length ? `<p>${rTag(n - 1, true)} <b>${fresh.length} pedido(s) novo(s)</b> viraram a Rota ${n}${S.zoneSplit && multi() ? `, nas zonas ${S.zoneSplit[n - 1].map(i => Core.VEHICLES[S.route.settings.vehicle].zones[i].code).join(", ")}` : ""}.</p>` : ""}
+      ${gone.length ? `<p><b>${gone.length} pacote(s) não estão mais na planilha</b> e foram marcados como entregues (já baixados no app da Shopee): <span class="mono">${gone.map(p => esc(tail(p.tn))).join(", ")}</span>.</p>` : ""}
       <div class="actions">
-        <button type="button" class="primary" data-addroute="add">Adicionar como Rota ${n}</button>
-        <button type="button" class="ghost" data-addroute="new">Começar dia novo só com ela</button>
-        <button type="button" class="ghost" data-addroute="cancel">Cancelar</button>
+        <button type="button" class="primary" data-import="ok">Entendi</button>
+        ${gone.length ? `<button type="button" class="ghost" data-import="ungone">Não entreguei esses</button>` : ""}
+        <button type="button" class="ghost" data-import="newday">Usar só esta planilha (dia novo)</button>
       </div>`;
+    location.hash = fresh.length ? "#carregar" : "#rota";
     $("addRoute").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function addRoute(choice) {
-    const p = S.pending;
-    S.pending = null; $("addRoute").hidden = true;
-    if (!p || choice === "cancel") return;
-    if (choice === "new") return newDay(p.id, p.file, p.pkgs, p.bad);
-    S.route.routes.push({ id: p.id, file: p.file });
-    S.route.pkgs = S.route.pkgs.concat(p.pkgs);
-    S.route.bad = (S.route.bad || []).concat(p.bad.map(b => ({ ...b, route: p.id })));
-    saveRoute();
-    fillSettings();
-    derive();
-    await plan({ keep: true });
-    route();
-    location.hash = "#carregar";
-    toast(`Rota ${S.route.routes.length} adicionada: ${p.pkgs.length} pacotes`);
+  async function importChoice(choice) {
+    const li = S.lastImport;
+    $("addRoute").hidden = true;
+    if (!li) return;
+    if (choice === "newday") { S.lastImport = null; return newDay(li.at, li.file, li.pkgs, li.bad); }
+    if (choice === "ungone") {
+      li.gone.forEach(tn => { delete S.prog.status[tn]; delete S.prog.reason[tn]; delete S.prog.gone[tn]; });
+      saveProg(); renderAll(); toast("Pacotes voltaram para a rota");
+    }
+    S.lastImport = null;
+  }
+
+  // Tela inicial: o dia salvo só volta se você pedir.
+  function showResume() {
+    const r = S.route, pend = r.pkgs.filter(p => !S.prog.status[p.tn]).length;
+    const when = r.createdAt ? new Date(r.createdAt) : null;
+    const today = when && when.toDateString() === new Date().toDateString();
+    $("resume").hidden = false;
+    $("resume").innerHTML = `<h2>${today ? "Dia em andamento" : "Rota salva" + (when ? " de " + when.toLocaleDateString("pt-BR") : "")}</h2>
+      <p>${r.routes.length > 1 ? r.routes.length + " rotas" : "1 rota"} · ${r.pkgs.length} pacotes · <b>${pend} pendentes</b></p>
+      <div class="actions">
+        <button type="button" class="primary" data-resume="go">Continuar ${today ? "o dia" : "esta rota"}</button>
+        <button type="button" class="ghost" data-resume="clear">Começar do zero</button>
+      </div>
+      <p class="sub">"Começar do zero" apaga esta rota do aparelho; o histórico de ganhos continua. Abrir uma planilha aqui também começa um dia novo.</p>`;
+  }
+
+  function clearDay() {
+    store.set(progKey(), null); store.set("rc:route", null);
+    S.route = null; S.prog = null; S.display = []; S.lastImport = null;
+    $("app").hidden = true; $("resume").hidden = true; $("addRoute").hidden = true; $("empty").hidden = false;
+    $("subtitle").textContent = "Rota, carregamento e ganhos do dia";
+    document.querySelector('header label[for="file"]').textContent = "Abrir planilha";
+    history.replaceState(null, "", location.pathname + location.search);
+    toast("Pronto. Abra a planilha para começar.");
   }
 
   async function removeRoute(i) {
@@ -349,14 +391,16 @@
   // ---------- ROTA ----------
   function renderRoutes() {
     const R = S.route.routes, veh = Core.VEHICLES[S.route.settings.vehicle];
+    document.querySelector('header label[for="file"]').textContent = "Somar planilha";
     $("subtitle").textContent = R.length > 1 ? `${R.length} rotas · ${S.route.pkgs.length} pacotes` : S.route.file.replace(/\.xlsx$/i, "");
-    const html = `<div class="top"><h2>${R.length > 1 ? R.length + " rotas hoje" : "Rota do dia"}</h2><label class="btn ghost" for="file">+ Outra rota</label></div>` +
+    const html = `<div class="top"><h2>${R.length > 1 ? R.length + " rotas hoje" : "Rota do dia"}</h2><label class="btn ghost" for="file">+ Somar planilha</label></div>` +
       R.map((r, i) => {
         const pk = S.route.pkgs.filter(p => p.route === r.id);
         const done = pk.filter(p => S.prog.status[p.tn]).length, loaded = pk.filter(p => S.prog.loaded[p.tn]).length;
         const zs = S.zoneSplit && R.length > 1 ? S.zoneSplit[i].map(z => veh.zones[z].code).join(", ") : null;
-        return `<div class="rrow">${rTag(i, true)}<div><b class="mono">${esc(r.id)}</b><div class="sub">${pk.length} pct · ${loaded} no carro · ${done} feitos${zs ? ` · zona${S.zoneSplit[i].length > 1 ? "s" : ""} ${zs}` : ""}</div></div>${R.length > 1 ? `<button type="button" class="ghost" data-rmroute="${i}">Remover</button>` : ""}</div>`;
-      }).join("") + (R.length > 1 ? "" : `<p class="sub">Pegou outra rota? Toque em <b>+ Outra rota</b> e abra a planilha dela. Cada pacote passa a mostrar de qual rota é.</p>`);
+        return `<div class="rrow">${rTag(i, true)}<div><b>${esc(routeDesc(i))}</b><div class="sub">${pk.length} pct · ${loaded} no carro · ${done} feitos${zs ? ` · zona${S.zoneSplit[i].length > 1 ? "s" : ""} ${zs}` : ""}</div></div>${R.length > 1 ? `<button type="button" class="ghost" data-rmroute="${i}">Remover</button>` : ""}</div>`;
+      }).join("") + `<p class="sub">Pegou mais pedidos? Exporte a planilha de novo no app da Shopee e toque em <b>+ Somar planilha</b>. O que você já tinha continua igual e os pedidos novos viram a próxima rota.</p>
+      <div class="actions"><button type="button" class="danger" data-clearday="1">Começar dia novo</button></div>`;
     document.querySelectorAll(".routesBox").forEach(el => (el.innerHTML = html));
   }
 
@@ -440,7 +484,7 @@
     d.forEach((s, i) => {
       if (s.block !== prevBlock) {
         const members = d.filter(x => x.block === s.block);
-        if (multi() && !joined() && (prevBlock < 0 || d[i - 1].ri !== s.ri)) html += `<div class="route-head">${rTag(s.ri, true)}<span class="sub">${esc(S.route.routes[s.ri].id)} · ${d.filter(x => x.ri === s.ri).length} paradas</span></div>`;
+        if (multi() && !joined() && (prevBlock < 0 || d[i - 1].ri !== s.ri)) html += `<div class="route-head">${rTag(s.ri, true)}<span class="sub">${esc(routeDesc(s.ri))} · ${d.filter(x => x.ri === s.ri).length} paradas</span></div>`;
         html += `<div class="block-head"><h3>Bloco ${s.block + 1}</h3>${rTags(s)}${zoneTag(s)}<span class="sub">${members.reduce((a, x) => a + x.pkgs.length, 0)} pct${s.layer ? " · por baixo" : ""}</span></div>`;
         prevBlock = s.block;
       }
@@ -501,7 +545,15 @@
     if (!t || !S.route) return;
     const ds = t.dataset;
     const stop = k => S.byKey.get(k);
-    if (ds.addroute) { addRoute(ds.addroute); return; }
+    if (ds.import) { importChoice(ds.import); return; }
+    if (ds.resume === "go") { $("resume").hidden = true; boot(false); return; }
+    if (ds.resume === "clear" || ds.clearday != null) {
+      if (t.dataset.armed) return void clearDay();
+      const label = t.textContent;
+      t.dataset.armed = "1"; t.textContent = "Toque de novo para apagar";
+      setTimeout(() => { delete t.dataset.armed; t.textContent = label; }, 4000);
+      return;
+    }
     if (ds.moved) { S.prog.loadedZone[ds.moved] = S.byTn.get(ds.moved).zone.code; saveProg(); renderAll(); return; }
     if (ds.rmroute != null) {
       if (t.dataset.armed) return void removeRoute(+ds.rmroute);
@@ -816,7 +868,7 @@
     $("scanUndo").disabled = !S.prog.loadLog.length;
 
     // Pacotes já no carro que mudaram de zona (por exemplo, porque outra rota entrou no dia).
-    const moved = Object.entries(S.prog.loadedZone || {}).map(([tn, code]) => ({ tn, code, s: S.byTn.get(tn) })).filter(x => x.s && x.s.zone.code !== x.code);
+    const moved = Object.entries(S.prog.loadedZone || {}).map(([tn, code]) => ({ tn, code, s: S.byTn.get(tn) })).filter(x => x.s && x.s.zone.code !== x.code && !S.prog.status[x.tn]);
     $("movedBox").hidden = !moved.length;
     $("movedBox").innerHTML = moved.length ? `<h2>Mudar de lugar: ${moved.length} pacote(s)</h2><p class="sub">As zonas foram redistribuídas entre as rotas. Mova estes pacotes que já estão no carro:</p>
       <ul class="moved">${moved.map(x => `<li><span class="mono">${esc(tail(x.tn))}</span> ${multi() ? rTag(ri(S.route.pkgs.find(p => p.tn === x.tn))) : ""} de <b>${x.code}</b> para <b>${x.s.zone.code}</b> <button type="button" class="ghost" data-moved="${esc(x.tn)}">Mudei</button></li>`).join("")}</ul>` : "";
@@ -999,6 +1051,6 @@
   if (S.route) {
     normalizeRoute();
     S.prog = { ...newProg(), ...store.get(progKey(), {}) };
-    boot(false).catch(() => {});
+    showResume();
   }
 })();
