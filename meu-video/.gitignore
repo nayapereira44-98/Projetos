@@ -16,3 +16,6 @@ public/legendas.json
 # vídeo das crianças (ICA): mídia bruta fica fora do Git
 public/ica/bruto.mp4
 public/ica/voz.wav
+
+public/ica/bastidores.mp4
+public/ica/voz_bastidores.wav

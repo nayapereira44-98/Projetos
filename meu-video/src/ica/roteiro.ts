@@ -19,6 +19,7 @@ export type Evento =
   | { t: number; tipo: "selo"; indice: number; som?: Som }
   | { t: number; tipo: "flash"; som?: Som }
   | { t: number; tipo: "confete"; som?: Som }
+  | { t: number; tipo: "final"; som?: Som } // mensagem final por cima do vídeo
   | { t: number; tipo: "som"; som: Som };
 
 export type Trecho = {
@@ -26,6 +27,7 @@ export type Trecho = {
   ate: number;
   zoom: number;
   rotulo?: string; // etiqueta fixa no topo (ex.: BASTIDORES)
+  fonte?: "bastidores"; // trecho tirado do vídeo de bastidores
   legendas: [number, number, string][];
   eventos: Evento[];
 };
@@ -322,25 +324,59 @@ export const TRECHOS: Trecho[] = [
     ],
     eventos: [{ t: 289.6, tipo: "confete", som: "brilho" }],
   },
+  // Grande final (vídeo de bastidores): as crianças gritam "Reforma Protestante!"
+  {
+    de: 72.6,
+    ate: 81.2,
+    zoom: 1.2,
+    fonte: "bastidores",
+    legendas: [
+      [72.6, 77.3, "Pessoal, o que a gente comemora?"],
+      [77.3, 78.66, "REFORMA PROTESTANTE!"],
+      [78.66, 81.2, "REFORMA PROTESTANTE!"],
+    ],
+    eventos: [
+      { t: 77.35, tipo: "final", som: "brilho" },
+      { t: 77.4, tipo: "confete" },
+      { t: 78.7, tipo: "confete", som: "ding" },
+    ],
+  },
 ];
 
-// Depois do cartão final
-export const BASTIDORES: Trecho = {
-  de: 299.6,
-  ate: 305.9,
-  zoom: 1.3,
-  rotulo: "BASTIDORES 😂",
-  legendas: [
-    [299.6, 300.95, "Eu gosto do DOCE!"],
-    [300.95, 302.3, "Você gosta do doce?"],
-    [302.3, 304.2, "Eu gosto, eu estava comendo agora!"],
-    [304.2, 305.9, "Você estava comendo doce?!"],
-  ],
-  eventos: [
-    { t: 300.2, tipo: "emoji", emoji: "🍬", x: 0.82, y: 0.2, som: "pop" },
-  ],
-};
+// Depois do grande final: bastidores divertidos
+export const BASTIDORES: Trecho[] = [
+  {
+    de: 55.6,
+    ate: 64.0,
+    zoom: 1.2,
+    fonte: "bastidores",
+    rotulo: "BASTIDORES 😂",
+    legendas: [
+      [55.6, 58.0, "Ensaiando… REFORMA…"],
+      [58.0, 60.5, "PROTESTANTE…"],
+      [60.5, 62.7, "REFORMA…"],
+      [62.7, 64.0, "PROTESTANTE!"],
+    ],
+    eventos: [
+      { t: 62.85, tipo: "emoji", emoji: "😂", x: 0.82, y: 0.2, som: "pop" },
+    ],
+  },
+  {
+    de: 299.6,
+    ate: 305.9,
+    zoom: 1.3,
+    rotulo: "BASTIDORES 😂",
+    legendas: [
+      [299.6, 300.95, "Eu gosto do DOCE!"],
+      [300.95, 302.3, "Você gosta do doce?"],
+      [302.3, 304.2, "Eu gosto, eu estava comendo agora!"],
+      [304.2, 305.9, "Você estava comendo doce?!"],
+    ],
+    eventos: [
+      { t: 300.2, tipo: "emoji", emoji: "🍬", x: 0.82, y: 0.2, som: "pop" },
+    ],
+  },
+];
 
-export const SEG_CARTAO = 4.5;
 // foco vertical do zoom (0 = topo, 1 = base): as crianças ficam na metade de baixo
 export const FOCO_Y = 0.62;

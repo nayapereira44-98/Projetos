@@ -20,7 +20,6 @@ import {
   CORES,
   Evento,
   FOCO_Y,
-  SEG_CARTAO,
   SOLAS,
   Som,
   Trecho,
@@ -442,7 +441,11 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
         }}
       >
         <OffthreadVideo
-          src={staticFile("ica/bruto.mp4")}
+          src={staticFile(
+            trecho.fonte === "bastidores"
+              ? "ica/bastidores.mp4"
+              : "ica/bruto.mp4",
+          )}
           trimBefore={quadros(trecho.de)}
           muted
           style={{
@@ -460,7 +463,14 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
             "linear-gradient(180deg, rgba(255,246,214,0.55) 0%, rgba(255,246,214,0.15) 40%, rgba(255,246,214,0) 55%)",
         }}
       />
-      <Audio src={staticFile("ica/voz.wav")} trimBefore={quadros(trecho.de)} />
+      <Audio
+        src={staticFile(
+          trecho.fonte === "bastidores"
+            ? "ica/voz_bastidores.wav"
+            : "ica/voz.wav",
+        )}
+        trimBefore={quadros(trecho.de)}
+      />
       {indice > 0 ? <SomFx som="whoosh" /> : null}
 
       <Flutuantes />
@@ -479,6 +489,7 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
               <Banner texto={ev.texto} cor={ev.cor} inicio={0} />
             ) : null}
             {ev.tipo === "confete" ? <Confete /> : null}
+            {ev.tipo === "final" ? <MensagemFinal /> : null}
           </Sequence>
         );
       })}
@@ -511,7 +522,8 @@ const Cena: React.FC<{ trecho: Trecho; indice: number }> = ({
   );
 };
 
-const CartaoFinal: React.FC = () => {
+// Mensagem final por cima do vídeo do grito "Reforma Protestante!"
+const MensagemFinal: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const entra = (atraso: number) =>
@@ -520,7 +532,6 @@ const CartaoFinal: React.FC = () => {
       fps,
       config: { damping: 10, stiffness: 160 },
     });
-  const giro = frame * 0.6;
   const linha = (
     texto: string,
     tamanho: number,
@@ -534,60 +545,69 @@ const CartaoFinal: React.FC = () => {
         fontSize: tamanho,
         color: cor,
         textAlign: "center",
-        lineHeight: 1.1,
+        lineHeight: 1.08,
         WebkitTextStroke: `${tamanho / 9}px ${AZUL}`,
         paintOrder: "stroke fill",
         transform: `scale(${entra(atraso)})`,
-        marginBottom: 18,
+        marginBottom: 10,
       }}
     >
       <TextoComEmoji texto={texto} tamanho={tamanho} />
     </div>
   );
   return (
-    <AbsoluteFill
-      style={{
-        background:
-          "radial-gradient(circle at 50% 45%, #FFFBEA 0%, #FFE58A 55%, #FFC93C 100%)",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <AbsoluteFill>
+      {/* raios de luz girando atrás do texto */}
       <AbsoluteFill
         style={{
-          background:
-            "repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,255,255,0.45) 0deg 10deg, rgba(255,255,255,0) 10deg 20deg)",
-          transform: `rotate(${giro}deg) scale(2)`,
+          opacity: interpolate(frame, [0, 10], [0, 1], clamp),
+          maskImage:
+            "radial-gradient(ellipse 70% 22% at 50% 16%, black 0%, black 55%, transparent 100%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 70% 22% at 50% 16%, black 0%, black 55%, transparent 100%)",
         }}
-      />
-      <Flutuantes />
-      <div style={{ position: "relative", padding: "0 60px", marginTop: -120 }}>
-        {linha("NÃO comemoramos o Halloween 🎃🚫", 64, "white", 4)}
-        {linha("Nós escolhemos", 96, "white", 14)}
-        {linha("a LUZ! ✨", 150, "#FFFFFF", 20)}
-        <div style={{ height: 30 }} />
-        {linha("31 de Outubro", 84, "#FF8A1F", 30)}
-        {linha("REFORMA PROTESTANTE", 74, "#2E86FF", 36)}
+      >
+        <AbsoluteFill
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 16%, rgba(255,251,234,0.85) 0%, rgba(255,251,234,0) 60%)",
+          }}
+        />
+        <AbsoluteFill
+          style={{
+            background:
+              "repeating-conic-gradient(from 0deg at 50% 16%, rgba(255,214,90,0.5) 0deg 9deg, rgba(255,214,90,0) 9deg 18deg)",
+            transform: `rotate(${frame * 0.6}deg) scale(2.2)`,
+            transformOrigin: "50% 16%",
+          }}
+        />
+      </AbsoluteFill>
+      <div style={{ position: "absolute", top: 150, left: 40, right: 40 }}>
+        {linha("NÃO comemoramos o Halloween 🎃🚫", 50, "white", 2)}
+        {linha("Nós escolhemos", 80, "white", 8)}
+        {linha("a LUZ! ✨", 130, "#FFC93C", 12)}
+        {linha("31 de Outubro · Reforma Protestante", 44, "#FF8A1F", 18)}
       </div>
       <div
         style={{
-          transform: `scale(${entra(46)})`,
           position: "absolute",
           inset: 0,
+          transform: `scale(${entra(26)})`,
         }}
       >
-        <FileiraSelos quantos={5} tamanho={130} topo={1500} />
+        <FileiraSelos quantos={5} tamanho={120} topo={1480} />
       </div>
-      <Confete />
-      <SomFx som="brilho" />
     </AbsoluteFill>
   );
 };
 
 export const VideoIca: React.FC = () => {
+  const todos = [...TRECHOS, ...BASTIDORES];
   let t = 0;
-  const blocos = TRECHOS.map((trecho, i) => {
+  const marcos: number[] = [];
+  const blocos = todos.map((trecho, i) => {
     const de = t;
+    marcos.push(de);
     t += duracaoTrecho(trecho);
     return (
       <Sequence key={i} from={de} durationInFrames={duracaoTrecho(trecho)}>
@@ -595,18 +615,13 @@ export const VideoIca: React.FC = () => {
       </Sequence>
     );
   });
-  const inicioCartao = t;
-  const fimCartao = t + quadros(SEG_CARTAO);
-  const total = fimCartao + duracaoTrecho(BASTIDORES);
+  const total = t;
+  // trilha mais alta no grande final, baixinha durante as falas
+  const inicioFinal = marcos[TRECHOS.length - 1];
+  const inicioBastidores = marcos[TRECHOS.length];
   return (
     <AbsoluteFill style={{ backgroundColor: "#FFF6D6" }}>
       {blocos}
-      <Sequence from={inicioCartao} durationInFrames={quadros(SEG_CARTAO)}>
-        <CartaoFinal />
-      </Sequence>
-      <Sequence from={fimCartao} durationInFrames={duracaoTrecho(BASTIDORES)}>
-        <Cena trecho={BASTIDORES} indice={1} />
-      </Sequence>
       <Audio
         src={staticFile("ica/trilha.wav")}
         volume={(f) =>
@@ -615,14 +630,14 @@ export const VideoIca: React.FC = () => {
             [
               0,
               20,
-              inicioCartao - 10,
-              inicioCartao,
-              fimCartao,
-              fimCartao + 10,
+              inicioFinal - 10,
+              inicioFinal + 10,
+              inicioBastidores - 10,
+              inicioBastidores + 10,
               total - 20,
               total,
             ],
-            [0.35, 0.09, 0.09, 0.5, 0.5, 0.12, 0.12, 0],
+            [0.35, 0.09, 0.09, 0.22, 0.22, 0.12, 0.12, 0],
             clamp,
           )
         }
@@ -632,9 +647,7 @@ export const VideoIca: React.FC = () => {
 };
 
 export const duracaoTotal = () =>
-  TRECHOS.reduce((a, tr) => a + duracaoTrecho(tr), 0) +
-  quadros(SEG_CARTAO) +
-  duracaoTrecho(BASTIDORES);
+  [...TRECHOS, ...BASTIDORES].reduce((a, tr) => a + duracaoTrecho(tr), 0);
 
 export const Ica: React.FC = () => (
   <Composition
