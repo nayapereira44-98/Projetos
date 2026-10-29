@@ -21,6 +21,15 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.
 
+### Mais de uma rota no dia
+- Pegou outra rota? Toque em **+ Outra rota** (ou **Abrir planilha**) e escolha **Adicionar como Rota 2**. Também dá para começar um dia novo só com a planilha nova.
+- Cada pacote fica marcado com a rota: **Rota 1** (preta), **Rota 2** (amarela), **Rota 3** (azul). A marca aparece ao escanear no carregamento, na separação dos blocos, na próxima parada, na lista de paradas, na busca e na lista de locais. No mapa, a Rota 1 é círculo, a Rota 2 é quadrado e a Rota 3 é losango.
+- **Uma rota depois da outra** (padrão): as zonas do carro são divididas entre as rotas pela quantidade de pacotes. Por exemplo, Rota 1 nas zonas A, B e C e Rota 2 em D e E, sem misturar rotas no carro. A rota que já estava no plano mantém a ordem.
+- **Juntar as rotas num caminho só**: um percurso único, e endereços repetidos nas duas rotas viram uma parada.
+- Se a Rota 2 entrar depois que você já começou a carregar, o card **Mudar de lugar** lista os pacotes do carro que trocaram de zona.
+- Como o mesmo número de parada da Shopee existe em cada rota, a busca pelo número mostra todas as rotas que têm aquela parada (ex.: R1·49 e R2·49).
+- Em Ganhos, o "valor fechado da rota" é multiplicado pelo número de rotas.
+
 ### Ganhos
 - Início e fim da jornada são marcados automaticamente na primeira e na última entrega.
 - Km rodados pelo odômetro, pelo GPS (medição contínua) ou pela estimativa da rota mais o trajeto do CD.

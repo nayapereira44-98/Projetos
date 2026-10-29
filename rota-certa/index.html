@@ -26,6 +26,7 @@
   --warn-soft: #fff1e6;
   --z1: #d9480f; --z2: #1971c2; --z3: #7048e8; --z4: #2b8a3e; --z5: #c2255c; --z6: #8a6d00;
   --z-ink: #ffffff;
+  --r1: #16191d; --r1-ink: #ffffff; --r2: #f2c200; --r2-ink: #16191d; --r3: #0b7285; --r3-ink: #ffffff;
   --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -37,6 +38,7 @@
     --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
     --ok: #5fcf75; --bad: #ff6b6b; --warn-soft: #2e2017;
     --z1: #e8590c; --z2: #1c7ed6; --z3: #7950f2; --z4: #2f9e44; --z5: #d6336c; --z6: #9c7c00;
+    --r1: #eef1ec; --r1-ink: #111412; --r2: #ffd43b; --r2-ink: #111412; --r3: #22b8cf; --r3-ink: #111412;
     color-scheme: dark;
   }
 }
@@ -45,6 +47,7 @@
   --accent: #ff7a3d; --accent-ink: #1a0d05; --plate: #2e5a43; --plate-ink: #f1f6ef;
   --ok: #5fcf75; --bad: #ff6b6b; --warn-soft: #2e2017;
   --z1: #e8590c; --z2: #1c7ed6; --z3: #7950f2; --z4: #2f9e44; --z5: #d6336c; --z6: #9c7c00;
+  --r1: #eef1ec; --r1-ink: #111412; --r2: #ffd43b; --r2-ink: #111412; --r3: #22b8cf; --r3-ink: #111412;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -179,9 +182,22 @@ canvas { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; background: var(--su
 .stopnums span { font: 800 1rem var(--font-display); border: 2px solid currentColor; border-radius: 8px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
 .multi { display: grid; gap: 8px; margin-top: 8px; }
 .multi button { justify-content: space-between; text-align: left; font-weight: 400; border-width: 1px; border-color: var(--line); gap: 10px; }
-.multi button .stopnums { flex: none; color: var(--accent); }
+.multi button { width: 100%; min-width: 0; }
+.multi button .stopnums { flex: 0 1 45%; min-width: 0; color: var(--accent); }
 .multi button.done { opacity: 0.5; }
 .next .alert { background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 8px 10px; font-weight: 700; }
+.rtag { display: inline-flex; align-items: center; border-radius: 6px; padding: 1px 8px; font: 800 0.78rem var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; border: 2px solid rgba(0,0,0,0.25); }
+.rtag.r1 { background: var(--r1); color: var(--r1-ink); }
+.rtag.r2 { background: var(--r2); color: var(--r2-ink); }
+.rtag.r3 { background: var(--r3); color: var(--r3-ink); }
+.rtag.big { font-size: 1rem; padding: 3px 12px; }
+.hit .rline { grid-column: 1 / -1; }
+.route-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 3px solid var(--ink); margin-top: 6px; }
+.rrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.rrow button { min-height: 40px; padding: 6px 10px; font-size: 0.85rem; }
+ul.moved { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.moved li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+ul.moved button { min-height: 36px; padding: 4px 10px; font-size: 0.85rem; }
 .scanbtns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
 .scanbtns .btn, .scanbtns button { min-height: 56px; font-size: 1.05rem; }
 .scanbtns:not(:has(button:not([hidden]))) { grid-template-columns: 1fr; }
@@ -224,6 +240,8 @@ table.hist tfoot td { font-weight: 700; }
     <input id="file" type="file" accept=".xlsx">
   </header>
 
+  <section id="addRoute" class="card" hidden></section>
+
   <section id="empty" class="empty">
     <h2>Como funciona</h2>
     <ol>
@@ -244,6 +262,8 @@ table.hist tfoot td { font-weight: 700; }
 
     <!-- CARREGAR -->
     <section id="view-carregar" class="stack" hidden>
+      <div class="card routesBox"></div>
+      <div class="card" id="movedBox" hidden></div>
       <div class="scan">
         <label for="scanInput"><h2>Onde vai este pacote?</h2></label>
         <input id="scanInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="final do código, ex. 0507">
@@ -290,6 +310,7 @@ table.hist tfoot td { font-weight: 700; }
 
     <!-- ROTA -->
     <section id="view-rota" class="stack" hidden>
+      <div class="card routesBox"></div>
       <div class="stats" id="stats"></div>
       <div id="warn" class="notice" hidden></div>
       <details class="cfg" id="multiBox" open hidden>
@@ -326,10 +347,11 @@ table.hist tfoot td { font-weight: 700; }
         <summary>Ajustes da rota</summary>
         <div class="form" style="padding-top:10px">
           <label for="start" class="full">Começar por<select id="start"></select></label>
+          <label for="multiMode" class="full">Com mais de uma rota no dia<select id="multiMode"><option value="seq">Uma rota depois da outra (separadas no carro)</option><option value="join">Juntar as rotas num caminho só</option></select></label>
           <label for="vehicle" class="full">Veículo<select id="vehicle"></select></label>
           <label for="blockSize">Paradas por bloco<input id="blockSize" type="number" min="3" max="20" value="10"></label>
           <label for="maxPkgs">Máx. pacotes por bloco<input id="maxPkgs" type="number" min="5" max="80" value="25"></label>
-          <label for="radius" class="full">Juntar pacotes a até <b id="radiusVal">20</b> m numa parada<input id="radius" type="range" min="0" max="80" step="5" value="20"></label>
+          <label for="radius" class="full"><span>Juntar pacotes a até <b id="radiusVal">20</b> m numa parada</span><input id="radius" type="range" min="0" max="80" step="5" value="20"></label>
           <button id="recalc" class="primary full" type="button">Recalcular rota</button>
           <p class="sub full" id="recalcNote" hidden>O carregamento já começou. Recalcular muda os blocos e as zonas. Toque de novo para confirmar.</p>
         </div>

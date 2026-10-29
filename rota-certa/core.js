@@ -231,9 +231,28 @@ const Core = (() => {
   };
 
   // Bloco = grupo de N paradas seguidas. Bloco b vai para a zona b (com volta, por baixo, se faltar zona).
-  function zoneFor(block, vehicle) {
+  // `list` (opcional) restringe às zonas reservadas para uma rota quando há mais de uma no dia.
+  function zoneFor(block, vehicle, list) {
     const zones = (VEHICLES[vehicle] || VEHICLES.carro).zones;
-    return { zone: zones[block % zones.length], zoneIdx: block % zones.length, layer: Math.floor(block / zones.length) };
+    const idxs = list && list.length ? list : zones.map((_, i) => i);
+    const zoneIdx = idxs[block % idxs.length];
+    return { zone: zones[zoneIdx], zoneIdx, layer: Math.floor(block / idxs.length) };
+  }
+
+  // Reparte as zonas entre as rotas pela quantidade de pacotes. A primeira rota fica com as zonas mais à mão.
+  function splitZones(nZones, counts) {
+    const R = counts.length;
+    if (R <= 1) return [[...Array(nZones).keys()]];
+    if (R >= nZones) return counts.map((_, i) => [i % nZones]);
+    const total = counts.reduce((a, b) => a + b, 0) || 1;
+    const sizes = counts.map(c => Math.max(1, Math.floor(c / total * nZones)));
+    while (sizes.reduce((a, b) => a + b, 0) > nZones) sizes[sizes.indexOf(Math.max(...sizes))]--;
+    while (sizes.reduce((a, b) => a + b, 0) < nZones) {
+      const want = counts.map((c, i) => c / total * nZones - sizes[i]);
+      sizes[want.indexOf(Math.max(...want))]++;
+    }
+    let z = 0;
+    return sizes.map(n => Array.from({ length: n }, () => z++));
   }
 
   // Tempo estimado: direção + atendimento + busca do pacote no veículo em cada parada.
@@ -246,7 +265,7 @@ const Core = (() => {
   function finance(f) {
     const liters = f.kml > 0 ? f.km / f.kml : 0;
     const fuel = liters * (f.price || 0);
-    const gain = f.payMode === "pacote" ? (f.payValue || 0) * f.delivered : f.payMode === "parada" ? (f.payValue || 0) * f.stopsDone : (f.payValue || 0);
+    const gain = f.payMode === "pacote" ? (f.payValue || 0) * f.delivered : f.payMode === "parada" ? (f.payValue || 0) * f.stopsDone : (f.payValue || 0) * (f.routes || 1);
     const costs = fuel + (f.extras || 0);
     const profit = gain - costs;
     return {
@@ -287,6 +306,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, estimateMinutes, finance, matchTN, nearby, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
