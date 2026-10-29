@@ -21,14 +21,21 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.
 
+### Pedidos novos no meio do dia (planilha acumulada)
+- O app **não abre a rota sozinho**. Ao entrar, ele mostra o dia salvo com dois botões: **Continuar o dia** ou **Começar do zero**. O histórico de ganhos é mantido nos dois casos.
+- Pegou mais pedidos? Exporte a planilha de novo no app da Shopee e toque em **Somar planilha**. Essa planilha vem com o que ainda não foi entregue mais os pedidos novos. O app compara os códigos SPX:
+  - pacote que você já tinha **continua na rota de antes**, sem mudar de ordem nem de zona;
+  - pacote novo vira a **próxima rota** (Rota 2, Rota 3…), identificada como "pedidos das 14:30";
+  - pacote que **sumiu da planilha** é marcado como entregue, porque já foi baixado no app da Shopee. Se ele ainda não foi entregue, o botão **"Não entreguei esses"** desfaz.
+- Se a planilha somada for de outra rota (nenhum código em comum), ela entra inteira como nova rota.
+- **Começar dia novo** (no card das rotas) apaga o dia do aparelho, com confirmação em dois toques.
+
 ### Mais de uma rota no dia
-- Pegou outra rota? Toque em **+ Outra rota** (ou **Abrir planilha**) e escolha **Adicionar como Rota 2**. Também dá para começar um dia novo só com a planilha nova.
-- Cada pacote fica marcado com a rota: **Rota 1** (preta), **Rota 2** (amarela), **Rota 3** (azul). A marca aparece ao escanear no carregamento, na separação dos blocos, na próxima parada, na lista de paradas, na busca e na lista de locais. No mapa, a Rota 1 é círculo, a Rota 2 é quadrado e a Rota 3 é losango.
-- **Uma rota depois da outra** (padrão): as zonas do carro são divididas entre as rotas pela quantidade de pacotes. Por exemplo, Rota 1 nas zonas A, B e C e Rota 2 em D e E, sem misturar rotas no carro. A rota que já estava no plano mantém a ordem.
-- **Juntar as rotas num caminho só**: um percurso único, e endereços repetidos nas duas rotas viram uma parada.
-- Se a Rota 2 entrar depois que você já começou a carregar, o card **Mudar de lugar** lista os pacotes do carro que trocaram de zona.
-- Como o mesmo número de parada da Shopee existe em cada rota, a busca pelo número mostra todas as rotas que têm aquela parada (ex.: R1·49 e R2·49).
-- Em Ganhos, o "valor fechado da rota" é multiplicado pelo número de rotas.
+- Cada pacote mostra a sua rota: **Rota 1** (preta), **Rota 2** (amarela), **Rota 3** (azul). A marca aparece ao escanear no carregamento, na separação dos blocos, na próxima parada, na lista de paradas, na busca e na lista de locais. No mapa, a Rota 1 é círculo, a Rota 2 é quadrado e a Rota 3 é losango.
+- **Uma rota depois da outra** (padrão): as zonas do carro são divididas entre as rotas pela quantidade de pacotes. Por exemplo, Rota 1 em A–D e Rota 2 em E, sem misturar rotas no carro.
+- **Juntar as rotas num caminho só** (nos ajustes): um percurso único, e endereços repetidos viram uma parada.
+- Se as zonas mudarem depois que você começou a carregar, o card **Mudar de lugar** lista os pacotes do carro que precisam trocar de zona.
+- A busca pelo número da parada da Shopee mostra todas as rotas que têm aquele número (R1·49 e R2·49).
 
 ### Ganhos
 - Início e fim da jornada são marcados automaticamente na primeira e na última entrega.
