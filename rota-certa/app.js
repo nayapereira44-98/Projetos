@@ -79,7 +79,7 @@
     stops: [], byKey: new Map(), byTn: new Map(), display: [],
     failOpen: null, gpsWatch: null, lastPos: null, wake: null, recalcArmed: false,
   };
-  const newProg = () => ({ status: {}, reason: {}, loaded: {}, loadedZone: {}, loadLog: [], picked: {}, later: [], startedAt: null, finishedAt: null, odoStart: null, odoEnd: null, gpsKm: 0, cdKm: 0 });
+  const newProg = () => ({ status: {}, reason: {}, loaded: {}, loadedZone: {}, loadLog: [], picked: {}, later: [], missing: {}, doneAt: {}, order: null, startedAt: null, finishedAt: null, odoStart: null, odoEnd: null, gpsKm: 0, cdKm: 0 });
   const progKey = () => "rc:prog:" + S.route.id;
   const saveProg = () => store.set(progKey(), S.prog);
   const saveRoute = () => store.set("rc:route", S.route);
@@ -146,7 +146,7 @@
     pkgs.forEach(p => { const k = known.get(p.tn); if (k) Object.assign(k, p, { route: k.route }); });
     const gone = overlap ? S.route.pkgs.filter(p => !incoming.has(p.tn) && !S.prog.status[p.tn]) : [];
     S.prog.gone = S.prog.gone || {};
-    gone.forEach(p => { S.prog.status[p.tn] = "ok"; S.prog.reason[p.tn] = "Saiu da planilha da Shopee"; S.prog.gone[p.tn] = 1; });
+    gone.forEach(p => { setOk(p.tn); S.prog.reason[p.tn] = "Saiu da planilha da Shopee"; S.prog.gone[p.tn] = 1; });
     let n = null;
     if (fresh.length) {
       n = S.route.routes.length + 1;
@@ -334,23 +334,33 @@
     });
     S.planStops = planStops;
     const later = S.prog.later.filter(k => S.byKey.has(k));
-    S.display = planStops.filter(s => !later.includes(s.key)).concat(later.map(k => S.byKey.get(k)));
+    // Ordem refeita na rua ("reorganizar daqui" ou "achei, ir agora"); blocos e zonas continuam os do plano.
+    const own = S.prog.order && S.prog.order.length === planStops.length && S.prog.order.every(k => S.byKey.has(k)) ? S.prog.order.map(k => S.byKey.get(k)) : planStops;
+    S.display = own.filter(s => !later.includes(s.key)).concat(later.map(k => S.byKey.get(k)));
     S.display.forEach((s, i) => (s.n = i + 1));
   }
 
   const dist = (a, b) => S.route.plan.matrix ? S.route.plan.matrix[a.pi][b.pi] : Core.hav(a, b) * Core.STREET_FACTOR;
   const pkgDone = p => !!S.prog.status[p.tn];
   const stopDone = s => s.pkgs.every(pkgDone);
+  // Pacote "não achei" fica pendente, mas fora da fila até você encontrar.
+  const pkgMissing = p => !pkgDone(p) && !!S.prog.missing?.[p.tn];
+  const pkgOpen = p => !pkgDone(p) && !S.prog.missing?.[p.tn];
+  const stopActive = s => s.pkgs.some(pkgOpen);
+  const stopMissing = s => s.pkgs.some(pkgMissing);
+  function setOk(tn) { S.prog.status[tn] = "ok"; delete S.prog.reason[tn]; if (S.prog.missing) delete S.prog.missing[tn]; S.prog.doneAt = S.prog.doneAt || {}; S.prog.doneAt[tn] = Date.now(); }
+  function clearStatus(tn) { delete S.prog.status[tn]; delete S.prog.reason[tn]; if (S.prog.doneAt) delete S.prog.doneAt[tn]; }
+  const stopDoneAt = s => Math.max(0, ...s.pkgs.map(p => S.prog.doneAt?.[p.tn] || 0));
   const stopFailed = s => s.pkgs.some(p => S.prog.status[p.tn] === "fail");
   const anyLoaded = () => Object.keys(S.prog.loaded).length > 0;
 
   function etas() {
     const a = S.assume, search = anyLoaded() ? a.searchOrg : a.searchMessy;
     let t = Date.now(), prev = null;
-    const firstOpen = S.display.findIndex(s => !stopDone(s));
+    const firstOpen = S.display.findIndex(stopActive);
     if (firstOpen > 0) prev = S.display[firstOpen - 1];
     S.display.forEach(s => {
-      if (stopDone(s)) { s.eta = null; return; }
+      if (!stopActive(s)) { s.eta = null; return; }
       if (prev) t += dist(prev, s) / 1000 / a.speed * 3600e3;
       s.eta = t;
       s.late = s.until && hhmm(t) > s.until;
@@ -389,6 +399,31 @@
   }
 
   // ---------- ROTA ----------
+  // Pacotes que você não achou: ficam aqui até aparecerem.
+  function renderPend() {
+    const list = S.display.filter(stopMissing);
+    $("pendBox").hidden = !list.length;
+    $("pendBox").innerHTML = list.length ? `<h2>Não achei: ${list.reduce((a, s) => a + s.pkgs.filter(pkgMissing).length, 0)} pacote(s)</h2>
+      <p class="sub">Quando achar, escaneie a etiqueta ou toque em "Achei, ir agora": a parada vira a próxima.</p>
+      ${list.map(s => `<div class="pend">${multi() ? rTags(s) : ""}<b>Parada ${s.n}</b> · ${esc(s.label)}<div class="sub mono">${s.pkgs.filter(pkgMissing).map(p => `${esc(tail(p.tn))} (${pkgRef(p)})`).join(" · ")}</div>
+        <div class="actions"><button type="button" class="primary" data-found="${esc(s.key)}">Achei, ir agora</button><button type="button" data-ok="${esc(s.key)}">Já entreguei</button><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a></div></div>`).join("")}` : "";
+  }
+
+  // Refaz a ordem das paradas que faltam a partir de onde você está; blocos e zonas do carro não mudam.
+  function reorderFrom(from) {
+    const rest = S.display.filter(s => stopActive(s) && s !== from);
+    if (!rest.length) { S.outOfOrder = null; renderAll(); return; }
+    const pts = [from, ...rest];
+    const C = pts.map(a => pts.map(b => (a === b ? 0 : dist(a, b) + (a.street && b.street && a.street !== b.street ? 40 : 0))));
+    const order = Core.solve(C, 0).slice(1).map(i => pts[i]);
+    const fixed = S.display.filter(s => !stopActive(s) || s === from);
+    S.prog.order = fixed.concat(order).map(s => s.key);
+    S.prog.later = [];
+    S.outOfOrder = null;
+    saveProg(); derive(); renderAll();
+    toast("Rota reorganizada a partir daqui");
+  }
+
   function renderRoutes() {
     const R = S.route.routes, veh = Core.VEHICLES[S.route.settings.vehicle];
     document.querySelector('header label[for="file"]').textContent = "Somar planilha";
@@ -439,8 +474,9 @@
       <span class="stopnums">${refs(s).map(x => `<span>${x}</span>`).join("")}${s.unseq ? `<span>sem nº</span>` : ""}</span>
       <span style="flex:1;min-width:0">${esc(s.label)}<br><span class="sub">${s.pkgs.length} pacotes · nossa parada ${s.n}${stopDone(s) ? " · entregue" : ""}</span></span></button>`).join("");
 
-    const nextIdx = d.findIndex(s => !stopDone(s));
+    const nextIdx = d.findIndex(stopActive);
     const n = d[nextIdx];
+    renderPend();
     S.lastNextBlock = n ? n.block : null;
     renderPick(n);
 
@@ -465,7 +501,14 @@
           <button type="button" class="okb" data-ok="${esc(n.key)}">Entregue</button>
           <button type="button" data-failopen="${esc(n.key)}">Não entregue</button>
           <button type="button" data-later="${esc(n.key)}">Depois</button>
-        </div>${reasons}`;
+        </div>
+        <div class="row two">
+          <button type="button" data-missing="${esc(n.key)}">Não achei o pacote</button>
+          <button type="button" data-other="1">Entreguei outro</button>
+        </div>
+        ${S.outOfOrder && S.byKey.get(S.outOfOrder) ? `<div class="ooo"><span>Você entregou fora da ordem (${esc(S.byKey.get(S.outOfOrder).label)}).</span><button type="button" class="primary" data-reorder="${esc(S.outOfOrder)}">Reorganizar o resto a partir de lá</button><button type="button" data-reorder-no="1">Seguir a ordem</button></div>` : ""}${reasons}`;
+    } else if (d.some(stopMissing)) {
+      $("next").innerHTML = `<div class="addr">Só faltam os pacotes que você não achou</div><div class="meta">Veja a lista "Não achei" acima. Quando encontrar, toque em "Achei, ir agora".</div>`;
     } else {
       const fails = pk.filter(p => S.prog.status[p.tn] === "fail").length;
       $("next").innerHTML = `<div class="addr">Rota concluída</div><div class="meta">${d.length} paradas · ${pk.length - fails} entregues${fails ? ` · ${fails} para devolver ao CD` : ""}. Veja o resultado em Ganhos.</div>`;
@@ -494,9 +537,9 @@
         const st = S.prog.status[p.tn];
         const extra = p.address.split(",").slice(2).join(",").trim();
         return `<li><span class="t">${esc(p.tn)} · ${pkgRef(p)}${extra ? `<br><span class="sub">${esc(extra)}</span>` : ""}${st === "fail" ? `<br><span class="sub">Não entregue: ${esc(S.prog.reason[p.tn] || "")}</span>` : ""}</span>
-          <span class="st"><button type="button" class="${st === "ok" ? "on-ok" : ""}" data-pok="${esc(p.tn)}" aria-label="Entregue">✓</button><button type="button" class="${st === "fail" ? "on-bad" : ""}" data-pfail="${esc(p.tn)}" aria-label="Não entregue">✗</button><button type="button" data-copy="${esc(p.tn)}">Copiar</button></span></li>`;
+          <span class="st"><button type="button" class="${st === "ok" ? "on-ok" : ""}" data-pok="${esc(p.tn)}" aria-label="Entregue">✓</button><button type="button" class="${st === "fail" ? "on-bad" : ""}" data-pfail="${esc(p.tn)}" aria-label="Não entregue">✗</button><button type="button" class="${pkgMissing(p) ? "on-warn" : ""}" data-pmiss="${esc(p.tn)}" aria-label="Não achei">?</button><button type="button" data-copy="${esc(p.tn)}">Copiar</button></span></li>`;
       }).join("");
-      html += `<article class="stop${done ? " done" : ""}${failed ? " failed" : ""}${i === nextIdx ? " current" : ""}" style="${zc(s.zoneIdx)}">
+      html += `<article class="stop${done ? " done" : ""}${failed ? " failed" : ""}${stopMissing(s) ? " missing" : ""}${i === nextIdx ? " current" : ""}" style="${zc(s.zoneIdx)}">
         <div class="plate">${s.n}</div>
         <div class="body">
           <div class="street">${esc(s.label)}${s.numbers.length > 1 ? ` <span class="sub">(nº ${esc(s.numbers.join(", "))})</span>` : ""}</div>
@@ -507,6 +550,8 @@
             ${s.unseq ? `<span class="chip hot">${s.unseq} sem nº</span>` : ""}
             ${s.until ? `<span class="chip time">até ${s.until}</span>` : ""}
             ${s.after ? `<span class="chip time">após ${s.after}</span>` : ""}
+            ${stopMissing(s) ? `<span class="chip time">não achei ${s.pkgs.filter(pkgMissing).length}</span>` : ""}
+            ${stopDoneAt(s) && done ? `<span class="chip">entregue ${hhmm(stopDoneAt(s))}</span>` : ""}
           </div>
           <details class="pk"><summary>Pacotes: ${s.pkgs.map(p => esc(tail(p.tn))).join(" · ")}</summary><ul>${rows}</ul></details>
           <div class="actions">
@@ -563,9 +608,41 @@
     }
     if (ds.ok) {
       const s = stop(ds.ok), done = stopDone(s) && !stopFailed(s);
-      s.pkgs.forEach(p => { if (done) delete S.prog.status[p.tn]; else if (S.prog.status[p.tn] !== "ok") { S.prog.status[p.tn] = "ok"; delete S.prog.reason[p.tn]; } });
-      afterStatus(done ? null : `Parada ${s.n} entregue`);
-      if (t.closest("#findResult")) { $("findResult").innerHTML = ""; $("shopeeStopInput").value = ""; }
+      const expected = S.display.find(stopActive);
+      s.pkgs.forEach(p => { if (done) clearStatus(p.tn); else if (S.prog.status[p.tn] !== "ok") setOk(p.tn); });
+      const ooo = !done && expected && expected !== s && S.display.some(x => stopActive(x) && x !== s);
+      S.outOfOrder = ooo ? s.key : null;
+      afterStatus(done ? null : ooo ? `Parada ${s.n} entregue fora da ordem` : `Parada ${s.n} entregue`);
+      if (t.closest("#findResult")) { $("findResult").innerHTML = ""; $("shopeeStopInput").value = ""; $("findInput").value = ""; }
+      if (ooo) $("next").scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (ds.missing) {
+      S.prog.missing = S.prog.missing || {};
+      stop(ds.missing).pkgs.filter(pkgOpen).forEach(p => (S.prog.missing[p.tn] = Date.now()));
+      afterStatus("Anotado. Quando achar, escaneie o pacote ou toque em Achei.");
+    } else if (ds.pmiss) {
+      S.prog.missing = S.prog.missing || {};
+      S.prog.missing[ds.pmiss] ? delete S.prog.missing[ds.pmiss] : (S.prog.missing[ds.pmiss] = Date.now());
+      afterStatus();
+    } else if (ds.found) {
+      const s = stop(ds.found);
+      s.pkgs.forEach(p => delete S.prog.missing[p.tn]);
+      // Vira a próxima parada.
+      const keys = S.display.map(x => x.key).filter(k => k !== s.key);
+      const at = keys.findIndex(k => stopActive(S.byKey.get(k)));
+      keys.splice(at < 0 ? keys.length : at, 0, s.key);
+      S.prog.order = keys; S.prog.later = S.prog.later.filter(k => k !== s.key);
+      saveProg(); derive(); renderAll();
+      toast(`Achou! A parada ${s.n} é a próxima.`);
+      $("next").scrollIntoView({ behavior: "smooth", block: "start" });
+      if (t.closest("#findResult")) $("findResult").innerHTML = "";
+    } else if (ds.reorder) {
+      reorderFrom(stop(ds.reorder));
+    } else if (ds.reorderNo) {
+      S.outOfOrder = null; renderAll();
+    } else if (ds.other) {
+      $("findInput").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("findInput").focus();
+      toast("Escaneie ou digite o pacote que você entregou");
     } else if (ds.showstop) {
       const s = stop(ds.showstop);
       showStop(s, `Paradas Shopee ${refs(s).join(" + ") || "sem nº"} no mesmo local`);
@@ -580,9 +657,14 @@
       saveProg(); derive(); renderAll(); toast("Parada movida para o fim da rota");
     } else if (ds.pok || ds.pfail) {
       const tn = ds.pok || ds.pfail, want = ds.pok ? "ok" : "fail";
-      if (S.prog.status[tn] === want) { delete S.prog.status[tn]; delete S.prog.reason[tn]; }
-      else { S.prog.status[tn] = want; if (want === "fail") S.prog.reason[tn] = "Não entregue"; else delete S.prog.reason[tn]; }
-      afterStatus();
+      if (S.prog.status[tn] === want) clearStatus(tn);
+      else if (want === "ok") setOk(tn);
+      else { S.prog.status[tn] = "fail"; S.prog.reason[tn] = "Não entregue"; delete S.prog.missing?.[tn]; }
+      afterStatus(want === "ok" && S.prog.status[tn] ? "Pacote entregue" : null);
+      if (t.closest("#findResult")) {
+        if ($("shopeeStopInput").value) $("shopeeStopInput").dispatchEvent(new Event("input"));
+        else if (S.lastFound) showStop(S.byKey.get(S.lastFound.key), S.lastFound.title, S.lastFound.tn);
+      }
     } else if (ds.copy) {
       navigator.clipboard?.writeText(ds.copy).then(() => toast("Código copiado: cole no app da SPX"), () => toast(ds.copy));
     } else if (ds.pick) {
@@ -602,7 +684,7 @@
     if (!allDone) S.prog.finishedAt = null;
     saveProg();
     renderAll();
-    const next = S.display.find(s => !stopDone(s));
+    const next = S.display.find(stopActive);
     if (next && prevBlock != null && next.block !== prevBlock && $("pickCard").innerHTML) {
       buzz([80, 60, 80]);
       toast(`Bloco ${next.block + 1}: separe os pacotes da zona ${next.zone.code}`);
@@ -612,6 +694,7 @@
 
   $("findInput").addEventListener("input", e => {
     const m = Core.matchTN(S.route?.pkgs || [], e.target.value);
+    $("shopeeStopInput").value = "";
     if (m.length === 1 && e.target.value.replace(/[^A-Za-z0-9]/g, "").length >= 4) return showFound(m[0]);
     $("findResult").innerHTML = m.slice(0, 8).map(p => {
       const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
@@ -809,12 +892,12 @@
     return `<div class="loc">
       <b class="alert">${s.pkgs.length > 1 ? `Neste local: ${s.pkgs.length} pacotes` : "Só este pacote neste local"}</b>
       ${refs(s).length ? `<div class="stopnums">${refs(s).map(x => `<span>Shopee ${x}</span>`).join("")}${s.unseq ? `<span>${s.unseq} sem nº</span>` : ""}</div>` : ""}
-      <ul>${s.pkgs.map(p => `<li class="${p.tn === tn ? "me" : ""} ${S.prog.status[p.tn] ? "done" : ""}"><span class="mono">${esc(tail(p.tn))}</span><span>${pkgRef(p)}</span><span>${esc(p.address.split(",").slice(2).join(",").trim())}</span></li>`).join("")}</ul>
+      <ul>${s.pkgs.map(p => `<li class="${p.tn === tn ? "me" : ""} ${S.prog.status[p.tn] ? "done" : ""}"><span class="mono">${esc(tail(p.tn))}</span><span>${pkgRef(p)}</span><span>${esc(p.address.split(",").slice(2).join(",").trim())}</span>${pkgMissing(p) ? "<b>não achei</b>" : ""}${S.prog.doneAt?.[p.tn] ? `<span>entregue ${hhmm(S.prog.doneAt[p.tn])}</span>` : ""}${!pkgDone(p) ? `<button type="button" class="mini" data-pok="${esc(p.tn)}">Entregue</button>` : ""}</li>`).join("")}</ul>
       ${near.length ? `<div class="near">A poucos passos: ${near.map(x => `${Math.round(x.d)} m, ${esc(x.s.label)} (Shopee ${refs(x.s).join(", ") || "sem nº"}, ${x.s.pkgs.length} pct)`).join("; ")}</div>` : ""}
     </div>`;
   }
 
-  function showStop(s, title, tn) { $("findResult").innerHTML = stopCard(s, title, tn); buzz(60); }
+  function showStop(s, title, tn) { S.lastFound = { key: s.key, title, tn }; $("findResult").innerHTML = stopCard(s, title, tn); buzz(60); }
   function stopCard(s, title, tn) {
     return `<div class="hit" style="${zc(s.zoneIdx)}">
       ${multi() ? `<div class="rline">${s.ris.map(i => rTag(i, true)).join(" ")}</div>` : ""}
@@ -823,12 +906,13 @@
       <div>${esc(s.label)} · nossa parada ${s.n} de ${S.display.length}</div>
       <div>Zona ${s.zone.code}: ${esc(s.zone.name)} · Bloco ${s.block + 1}${stopDone(s) ? " · já entregue" : ""}</div>
       ${locBox(s, tn)}
-      <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a>${!stopDone(s) ? `<button type="button" class="btn" data-ok="${esc(s.key)}">Entregar todos</button>` : ""}</div></div>`;
+      <div class="nav"><a class="btn" href="${Core.links.waze(s)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(s)}" target="_blank" rel="noopener">Google</a>${stopMissing(s) ? `<button type="button" class="btn" data-found="${esc(s.key)}">Achei, ir agora</button>` : ""}${!stopDone(s) ? `<button type="button" class="btn" data-ok="${esc(s.key)}">Entregar ${s.pkgs.filter(p => !pkgDone(p)).length > 1 ? "todos" : ""}</button>` : ""}</div></div>`;
   }
 
   $("shopeeStopInput").addEventListener("input", e => {
     const n = parseInt(e.target.value, 10);
     if (!S.route || !n) { $("findResult").innerHTML = ""; return; }
+    $("findInput").value = "";
     // Com várias rotas, o mesmo número de parada existe em cada uma: mostra todas.
     const hits = S.display.filter(x => x.shopeeStops.includes(n));
     if (!hits.length) { $("findResult").innerHTML = `<p>A parada ${n} da Shopee não está ${multi() ? "em nenhuma das rotas" : "nesta planilha"}.</p>`; return; }
@@ -841,8 +925,9 @@
   });
 
   function showFound(p) {
+    $("shopeeStopInput").value = "";
     const s = S.byTn.get(p.tn), st = S.prog.status[p.tn];
-    if (s) return showStop(s, `Pacote ${esc(tail(p.tn))} · ${pkgRef(p)}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}`, p.tn);
+    if (s) return showStop(s, `${pkgMissing(p) ? "Você tinha marcado “não achei”: " : ""}Pacote ${esc(tail(p.tn))} · ${pkgRef(p)}${st ? (st === "ok" ? " · entregue" : " · não entregue") : ""}`, p.tn);
   }
 
 
@@ -1027,7 +1112,7 @@
     const P = s => [ox + (s.lng * kx - x0) * sc, H - (oy + (s.lat - y0) * sc)];
     ctx.lineWidth = 6; ctx.lineJoin = "round"; ctx.strokeStyle = tok("--muted");
     ctx.beginPath(); o.forEach((s, i) => { const [x, y] = P(s); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
-    const nextIdx = o.findIndex(s => !stopDone(s));
+    const nextIdx = o.findIndex(stopActive);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     o.forEach((s, i) => {
       const [x, y] = P(s), r = i === nextIdx ? 40 : 30;

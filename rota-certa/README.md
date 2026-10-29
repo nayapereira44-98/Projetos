@@ -21,6 +21,11 @@ Gestão do dia do entregador a partir da planilha (.xlsx) da rota exportada do a
 - Botão "Copiar" do código para colar no app da SPX.
 - A ordem é otimizada pelas distâncias reais nas ruas (OSRM), respeitando mão única e com penalidade para trocar de rua.
 
+### Entregas fora da ordem e pacote não achado
+- **Entreguei outro**: na próxima parada, leva até a busca. Escaneie o pacote ou digite o final do código ou o número da parada da Shopee e toque em **Entregar**. Num local com vários pacotes, dá para entregar um por um.
+- Toda entrega guarda a hora ("entregue 10:32"). Uma entrega fora da ordem não muda a sequência. O app pergunta se você quer **reorganizar o resto a partir de lá**: ele refaz o caminho das paradas que faltam saindo de onde você está e mantém os blocos e as zonas do carro. Ou você pode **seguir a ordem**.
+- **Não achei o pacote**: a parada sai da fila e vai para o quadro vermelho **"Não achei"**, e a rota segue. Quando você encontrar o pacote, escaneie a etiqueta (o app avisa "você tinha marcado não achei") ou toque em **Achei, ir agora**, e aquela parada vira a próxima. Também dá para marcar um pacote só, pelo botão **?** na lista.
+
 ### Pedidos novos no meio do dia (planilha acumulada)
 - O app **não abre a rota sozinho**. Ao entrar, ele mostra o dia salvo com dois botões: **Continuar o dia** ou **Começar do zero**. O histórico de ganhos é mantido nos dois casos.
 - Pegou mais pedidos? Exporte a planilha de novo no app da Shopee e toque em **Somar planilha**. Essa planilha vem com o que ainda não foi entregue mais os pedidos novos. O app compara os códigos SPX:
