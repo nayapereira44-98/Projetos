@@ -817,6 +817,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .chip.shp { background: var(--accent); color: var(--accent-ink); }
 .chip.ok { background: var(--ok-soft); color: var(--ok); }
 .chip.ml { background: #ffe600; color: #2d3277; }
+.chip.other { background: var(--ink); color: var(--bg); }
 .chip.warn { background: var(--bad); color: #fff; }
 .offroute { border: 2px dashed var(--accent); border-radius: 14px; padding: 10px 12px; font-size: 0.92rem; }
 .att { color: var(--bad); font-weight: 700; }
@@ -912,6 +913,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <section class="view" id="v-lista" hidden>
       <div class="pad">
         <button type="button" class="primary" data-add="1">+ Adicionar pacote (Mercado Livre ou outro)</button>
+        <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
       </div>

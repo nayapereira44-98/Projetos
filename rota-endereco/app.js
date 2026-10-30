@@ -93,6 +93,16 @@
   const addrDone = a => a.pkgs.every(pkgDone);
   const extra = p => p.address.split(",").slice(2).join(",").trim();
   const streetName = a => a.label.split(",")[0].trim();
+  const PLATFORMS = {
+    shopee: { name: "Shopee", cls: "shp" },
+    ml: { name: "Mercado Livre", cls: "ml" },
+    outro: { name: "Outro", cls: "other" },
+  };
+  const srcOf = p => p.src || "shopee";
+  const platformsOf = a => [...new Set(a.pkgs.map(srcOf))];
+  const pkgLabel = p => (p.src ? PLATFORMS[p.src]?.name || p.src : p.shopeeStop != null ? "Shopee " + p.shopeeStop : "Shopee, fora da rota");
+  // Próximas paradas pendentes, na ordem do app, a partir da próxima (máximo que o Google Maps aceita num link).
+  const nextLeg = (n = 10) => order.filter(a => !addrDone(a)).slice(0, n);
   const shopee = a => (a.shopeeStops.length ? "Shopee " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
   const nextAddr = () => order.find(a => !addrDone(a));
 
@@ -210,17 +220,19 @@
     return `
       <div class="eyebrow">${a === nx ? "Próxima parada" : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc(a.bairro)}</div></div>
-      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${a.srcs?.includes("ml") ? `<span class="chip ml">Mercado Livre</span>` : ""}${a.srcs?.includes("outro") ? `<span class="chip ml">Outro</span>` : ""}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
       ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.src === "ml" ? "Mercado Livre" : p.src ? "Outro" : p.shopeeStop != null ? "Shopee " + p.shopeeStop : "fora da rota"}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
         <a class="btn" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a>
       </div>
+      ${a === nx && nextLeg().length > 1 ? `<a class="btn brand" href="${Core.links.gmapsLeg(nextLeg())}" target="_blank" rel="noopener">Próximas ${nextLeg().length} paradas no Google Maps (para o carro)</a>` : ""}
       ${pend.length && !(D.later || []).includes(a.key) ? `<button type="button" class="line" data-later="${esc(a.key)}">Ninguém atendeu: voltar depois</button>` : ""}
       ${(D.later || []).includes(a.key) && pend.length ? `<div class="offroute">Você marcou para voltar depois. Este endereço está no fim da fila.</div>` : ""}
       ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">Desfazer entrega</button>`}
@@ -262,7 +274,8 @@
     markers.forEach(m => m.remove()); markers.clear();
     order.forEach(a => {
       const m = L.marker([a.lat, a.lng], { icon: pinHtml(a), zIndexOffset: addrDone(a) ? 0 : 500 }).addTo(map);
-      m.on("click", () => select(a.key, false));
+      // Marcando local de um pacote novo: tocar num pino coloca o pacote no mesmo endereço.
+      m.on("click", () => (pinMode ? onMapPin({ latlng: L.latLng(a.lat, a.lng) }) : select(a.key, false)));
       markers.set(a.key, m);
     });
     drawLine();
@@ -404,10 +417,13 @@
       html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
-          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), a.srcs?.includes("ml") ? "Mercado Livre" : ""].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
+          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
           <span class="count">${a.pkgs.length}</span></button>`).join("")}</div>`;
       i = j;
     }
+    const leg = nextLeg();
+    $("legBtn").hidden = leg.length < 2;
+    if (leg.length > 1) { $("legBtn").href = Core.links.gmapsLeg(leg); $("legBtn").textContent = `Próximas ${leg.length} paradas no Google Maps (${leg[0].n} a ${leg[leg.length - 1].n})`; }
     $("list").innerHTML = html || `<p class="empty-list">Nada encontrado para "${esc(q)}".</p>`;
   }
   $("q").addEventListener("input", renderList);
@@ -496,7 +512,7 @@
   // ---------- ajustes ----------
   function fillAjustes() {
     $("fileInfo").textContent = `${D.at} · ${D.pkgs.length} da Shopee${D.extra?.length ? ` + ${D.extra.length} adicionados` : ""} · ${A.length} endereços`;
-    $("extraList").innerHTML = (D.extra || []).length ? D.extra.map(p => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.address)}</b><br><span class="sub">${p.src === "ml" ? "Mercado Livre" : "Outro"}${p.code ? " · " + esc(p.code) : ""}</span></span><button type="button" class="line" data-rmextra="${esc(p.tn)}">Remover</button></div>`).join("") : `<p class="sub">Nenhum pacote adicionado à mão.</p>`;
+    $("extraList").innerHTML = (D.extra || []).length ? D.extra.map(p => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.address)}</b><br><span class="sub">${esc(PLATFORMS[p.src]?.name || p.src)}${p.code ? " · " + esc(p.code) : ""}</span></span><button type="button" class="line" data-rmextra="${esc(p.tn)}">Remover</button></div>`).join("") : `<p class="sub">Nenhum pacote adicionado à mão.</p>`;
     $("fKm").placeholder = ((D.km || 0) / 1000).toFixed(1) + " (estimado)";
     const sorted = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
     $("start").innerHTML = sorted.map(a => `<option value="${esc(a.key)}">${esc(a.label)}${a.shopeeStops.length ? " (Shopee " + a.shopeeStops.join(", ") + ")" : ""}</option>`).join("");
@@ -515,7 +531,7 @@
     $("scanOverlay").hidden = false;
     $("scanSheet").innerHTML = `<div class="addr-big">Adicionar pacote</div>
       <div class="form">
-        <label for="aSrc" class="full">De onde é<select id="aSrc"><option value="ml">Mercado Livre</option><option value="outro">Outro</option></select></label>
+        <label for="aSrc" class="full">De onde é<select id="aSrc">${Object.entries(PLATFORMS).filter(([k]) => k !== "shopee").map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("")}</select></label>
         <label for="aAddr" class="full">Endereço (rua e número)<input id="aAddr" type="search" autocomplete="off" placeholder="ex. Rua Tatuapé, 130" value="${esc(addDraft.address)}"></label>
       </div>
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" id="aFind">Buscar endereço</button><button type="button" class="line" data-pin="1">Marcar no mapa</button></div>
