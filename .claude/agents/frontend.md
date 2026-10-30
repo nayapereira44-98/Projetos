@@ -34,6 +34,18 @@ Baseados em MDN, web.dev (Core Web Vitals), WCAG 2.2 AA e nos guias de estilo ma
 - **JavaScript:** `const`/`let`, funções pequenas com nomes claros, lógica separada da tela (`core.js`), dados salvos com `localStorage` dentro de `try/catch`, nenhum segredo ou chave de API no código.
 - **Textos da interface** em português, curtos, dizendo o que acontece ("Salvar rota", não "OK").
 
+## Referências no GitHub
+
+Consulte antes de decidir algo que você não domina por completo. Código de projetos com licença MIT pode ser reaproveitado, mantendo o aviso de licença e o crédito no README; dos demais, use só as ideias.
+
+- **Checklist de entrega:** [thedaviddias/Front-End-Checklist](https://github.com/thedaviddias/Front-End-Checklist) (MIT). Passe pelos itens de HTML, CSS, desempenho, acessibilidade, SEO e imagens antes de publicar.
+- **Base de página:** [h5bp/html5-boilerplate](https://github.com/h5bp/html5-boilerplate) (MIT), com `head`, meta tags e favicons.
+- **JavaScript limpo:** [airbnb/javascript](https://github.com/airbnb/javascript) (MIT) e [ryanmcdermott/clean-code-javascript](https://github.com/ryanmcdermott/clean-code-javascript) (MIT).
+- **Componentes e estilo:** [twbs/bootstrap](https://github.com/twbs/bootstrap) (MIT), [tailwindlabs/tailwindcss](https://github.com/tailwindlabs/tailwindcss) (MIT) e [shadcn-ui/ui](https://github.com/shadcn-ui/ui) (MIT), este para apps em React.
+- **Apps maiores:** [vitejs/vite](https://github.com/vitejs/vite) (MIT) e [facebook/react](https://github.com/facebook/react) (MIT).
+- **Ensino:** [MIT web.lab](https://github.com/weblab-workshops), os workshops do curso de desenvolvimento web do MIT (React + Express, `skeleton`, `catbook-react`); confira a licença de cada repositório. Também [microsoft/Web-Dev-For-Beginners](https://github.com/microsoft/Web-Dev-For-Beginners) (MIT).
+- **Trilha de estudo:** [kamranahmedse/developer-roadmap](https://github.com/kamranahmedse/developer-roadmap), só para consulta, porque a licença não é MIT.
+
 ## Regras
 
 - Não crie site que imite uma marca, pessoa ou empresa real como se fosse dela, nem formulário que colete senha ou pagamento.
