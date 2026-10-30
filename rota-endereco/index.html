@@ -816,6 +816,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .chip { font: 700 0.82rem var(--font-body); border-radius: 999px; padding: 4px 10px; background: var(--bg); color: var(--ink); }
 .chip.shp { background: var(--accent); color: var(--accent-ink); }
 .chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.ml { background: #ffe600; color: #2d3277; }
 .chip.warn { background: var(--bad); color: #fff; }
 .offroute { border: 2px dashed var(--accent); border-radius: 14px; padding: 10px 12px; font-size: 0.92rem; }
 .att { color: var(--bad); font-weight: 700; }
@@ -910,6 +911,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <!-- Paradas -->
     <section class="view" id="v-lista" hidden>
       <div class="pad">
+        <button type="button" class="primary" data-add="1">+ Adicionar pacote (Mercado Livre ou outro)</button>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
       </div>
@@ -922,7 +924,8 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
         <div class="card"><h2>Ritmo</h2><div class="grid2" id="kpis"></div><p class="sub" id="forecast"></p></div>
         <div class="card"><h2>Faturamento</h2><div class="grid2" id="money"></div>
           <div class="form">
-            <label for="fPay">Quanto a rota paga (R$)<input id="fPay" type="number" inputmode="decimal" step="0.01" placeholder="ex. 180"></label>
+            <label for="fPay">Shopee paga (R$)<input id="fPay" type="number" inputmode="decimal" step="0.01" placeholder="ex. 180"></label>
+            <label for="fPayMl">Mercado Livre paga (R$)<input id="fPayMl" type="number" inputmode="decimal" step="0.01" placeholder="ex. 90"></label>
             <label for="fMode">Como recebe<select id="fMode"><option value="rota">Valor da rota</option><option value="pacote">Por pacote</option></select></label>
             <label for="fPrice">Combustível (R$/litro)<input id="fPrice" type="number" inputmode="decimal" step="0.01"></label>
             <label for="fKml">Consumo (km/litro)<input id="fKml" type="number" inputmode="decimal" step="0.1"></label>
@@ -941,6 +944,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
           <label class="btn brand" for="file">Abrir ou atualizar planilha</label>
           <p class="sub">Abrir de novo a planilha da mesma rota mantém o que você já entregou e encaixa os pacotes novos.</p>
         </div>
+        <div class="card"><h2>Pacotes adicionados à mão</h2><div id="extraList" style="display:grid;gap:8px"></div><button type="button" class="brand" data-add="1">+ Adicionar pacote</button></div>
         <div class="card"><h2>Ordem das paradas</h2>
           <label for="start" class="sub">Começar pelo endereço</label><select id="start"></select>
           <button id="recalc" type="button" class="brand">Refazer a ordem a partir daqui</button>

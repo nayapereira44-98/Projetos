@@ -350,7 +350,8 @@ const Core = (() => {
         label: nums.length > 1 ? list[0].address.split(",")[0].replace(/\s+\d+[a-z]?\s*$/i, "").trim() + ", " + nums.join(" / ") : list[0].address.split(",").slice(0, 2).join(",").replace(/\s+,/g, ",").trim(),
         bairro: list[0].bairro,
         shopeeStops: [...new Set(list.map(p => p.shopeeStop).filter(v => v != null))].sort((a, b) => a - b),
-        unseq: list.filter(p => p.seq == null).length,
+        unseq: list.filter(p => p.seq == null && !p.src).length,
+        srcs: [...new Set(list.map(p => p.src).filter(Boolean))],
       };
     });
   }

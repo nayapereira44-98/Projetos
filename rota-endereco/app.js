@@ -88,6 +88,7 @@
   const attempt = p => (seen[p.tn] || []).filter(x => x <= dayOf(D?.createdAt || Date.now())).length || 1;
   const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
   const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
+  const all = () => D.pkgs.concat(D.extra || []);
   const pkgDone = p => !!ok[p.tn];
   const addrDone = a => a.pkgs.every(pkgDone);
   const extra = p => p.address.split(",").slice(2).join(",").trim();
@@ -96,7 +97,7 @@
   const nextAddr = () => order.find(a => !addrDone(a));
 
   function derive() {
-    A = Core.buildAddresses(D.pkgs);
+    A = Core.buildAddresses(all());
     byKey = new Map(A.map(a => [a.key, a]));
     byTn = new Map();
     A.forEach(a => a.pkgs.forEach(p => byTn.set(p.tn, a)));
@@ -116,6 +117,10 @@
   function numberOrder() {
     if (!orderOk()) plan(null);
     order = D.order.map(k => byKey.get(k));
+    // "Ninguém atendeu": o endereço vai para o fim até ser entregue.
+    const later = (D.later || []).filter(k => byKey.has(k) && !addrDone(byKey.get(k)));
+    D.later = later;
+    order = order.filter(a => !later.includes(a.key)).concat(later.map(k => byKey.get(k)));
     order.forEach((a, i) => (a.n = i + 1));
   }
 
@@ -174,9 +179,9 @@
   function renderAll() {
     if (!active) return;
     numberOrder();
-    const done = D.pkgs.filter(pkgDone).length;
-    $("meta").textContent = `${order.filter(addrDone).length}/${order.length} paradas · ${done}/${D.pkgs.length} pacotes`;
-    $("bar").hidden = false; $("barFill").style.width = (done / D.pkgs.length * 100).toFixed(1) + "%";
+    const done = all().filter(pkgDone).length;
+    $("meta").textContent = `${order.filter(addrDone).length}/${order.length} paradas · ${done}/${all().length} pacotes`;
+    $("bar").hidden = false; $("barFill").style.width = (done / all().length * 100).toFixed(1) + "%";
     renderTimer();
     renderSheet();
     renderList();
@@ -205,17 +210,19 @@
     return `
       <div class="eyebrow">${a === nx ? "Próxima parada" : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc(a.bairro)}</div></div>
-      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${a.srcs?.includes("ml") ? `<span class="chip ml">Mercado Livre</span>` : ""}${a.srcs?.includes("outro") ? `<span class="chip ml">Outro</span>` : ""}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "fora da rota"}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.src === "ml" ? "Mercado Livre" : p.src ? "Outro" : p.shopeeStop != null ? "Shopee " + p.shopeeStop : "fora da rota"}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
         <a class="btn" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a>
       </div>
+      ${pend.length && !(D.later || []).includes(a.key) ? `<button type="button" class="line" data-later="${esc(a.key)}">Ninguém atendeu: voltar depois</button>` : ""}
+      ${(D.later || []).includes(a.key) && pend.length ? `<div class="offroute">Você marcou para voltar depois. Este endereço está no fim da fila.</div>` : ""}
       ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">Desfazer entrega</button>`}
       ${!sess.start ? `<button type="button" class="brand" data-start="1">Iniciar entregas (contar o tempo)</button>` : ""}
       ${sameStreet.length || near.length ? `<div class="street-more"><div class="eyebrow">Ainda nesta rua e por perto</div>
@@ -229,7 +236,7 @@
     if (!a) a = nextAddr();
     if (!a) {
       sh.innerHTML = `<div class="grabwrap"><span class="grab"></span></div><div class="addr-big">Rota concluída</div>
-        <p class="sub">${D.pkgs.length} pacotes em ${order.length} endereços${sess.start && !sess.end ? ` em ${dur(Date.now() - sess.start)}` : ""}.</p>
+        <p class="sub">${all().length} pacotes em ${order.length} endereços${sess.start && !sess.end ? ` em ${dur(Date.now() - sess.start)}` : ""}.</p>
         ${sess.start && !sess.end ? `<button type="button" class="primary deliver" data-end="1">Finalizar entregas</button>` : `<a class="btn brand" href="#painel">Ver meu painel</a>`}`;
       return;
     }
@@ -241,6 +248,7 @@
   function ensureMap() {
     if (map || !window.L || !active) return;
     map = L.map("map", { zoomControl: false });
+    map.on("click", onMapPin);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     drawMarkers(true);
   }
@@ -345,6 +353,17 @@
     }
     else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
     else if (d.grab) $("sheet").classList.toggle("min");
+    else if (d.later) {
+      D.later = (D.later || []).filter(k => k !== d.later).concat(d.later);
+      selKey = null; save(); renderAll();
+      const nx = nextAddr(); if (nx && map) map.panTo([nx.lat, nx.lng]);
+      toast("Endereço movido para o fim. Siga para a próxima.");
+    }
+    else if (d.add) openAdd();
+    else if (d.addsave) saveAdd();
+    else if (d.geo != null) pickGeo(+d.geo);
+    else if (d.pin) startPin();
+    else if (d.rmextra) { D.extra = (D.extra || []).filter(p => p.tn !== d.rmextra); delete ok[d.rmextra]; derive(); plan(nextAddr()?.key); save(); fillAjustes(); drawMarkers(false); renderAll(); toast("Pacote removido"); }
     else if (d.start) startSession();
     else if (d.end) endSession();
     else if (d.reopen) { delete sess.end; save(); renderAll(); toast("Cronômetro retomado"); }
@@ -373,7 +392,7 @@
       const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
       if (/^\d{1,3}$/.test(q)) rows = order.filter(a => a.shopeeStops.includes(+q));
       else {
-        const m = new Set(Core.matchTN(D.pkgs, q).map(p => byTn.get(p.tn)));
+        const m = new Set(Core.matchTN(all(), q).map(p => byTn.get(p.tn)));
         rows = order.filter(a => m.has(a) || norm(a.label).includes(norm(q)));
       }
     }
@@ -385,7 +404,7 @@
       html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
-          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${shopee(a) || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
+          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), a.srcs?.includes("ml") ? "Mercado Livre" : ""].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
           <span class="count">${a.pkgs.length}</span></button>`).join("")}</div>`;
       i = j;
     }
@@ -397,13 +416,14 @@
   function stats() {
     const now = sess.end || Date.now();
     const elapsed = sess.start ? now - sess.start : 0;
-    const doneA = order.filter(addrDone).length, doneP = D.pkgs.filter(pkgDone).length;
+    const doneA = order.filter(addrDone).length, doneP = all().filter(pkgDone).length;
     const leftA = order.length - doneA;
     const perAddr = doneA ? elapsed / doneA : null;
-    const pkgsPerAddr = D.pkgs.length / order.length;
+    const pkgsPerAddr = all().length / order.length;
     const finish = perAddr && !sess.end ? Date.now() + perAddr * leftA : null;
     const km = fin.km ?? +(((D.km || 0) / 1000).toFixed(1));
-    const gain = fin.pay ? (fin.mode === "pacote" ? fin.pay * doneP : fin.pay) : null;
+    const gainShopee = fin.pay ? (fin.mode === "pacote" ? fin.pay * D.pkgs.filter(pkgDone).length : fin.pay) : 0;
+    const gain = fin.pay || fin.payMl ? gainShopee + (fin.payMl || 0) : null;
     const fuel = fin.kml > 0 && fin.price ? km / fin.kml * fin.price : 0;
     const profit = gain != null ? gain - fuel : null;
     const hours = elapsed / 3.6e6;
@@ -421,7 +441,7 @@
     renderSession();
     const s = stats();
     $("kpis").innerHTML = [
-      [`${s.doneP}/${D.pkgs.length}`, "pacotes entregues"],
+      [`${s.doneP}/${all().length}`, "pacotes entregues"],
       [`${s.doneA}/${order.length}`, "paradas feitas"],
       [s.perAddr ? dur(s.perAddr) : "–", "tempo médio por parada"],
       [s.hours > 0.05 ? (s.doneP / s.hours).toFixed(1) : "–", "pacotes por hora"],
@@ -466,7 +486,7 @@
     location.hash = "#painel";
     toast(`Dia encerrado: ${s.doneP} pacotes em ${dur(s.elapsed)}`);
   }
-  [["fPay", "pay"], ["fPrice", "price"], ["fKml", "kml"], ["fKm", "km"]].forEach(([id, k]) => {
+  [["fPay", "pay"], ["fPayMl", "payMl"], ["fPrice", "price"], ["fKml", "kml"], ["fKm", "km"]].forEach(([id, k]) => {
     $(id).value = fin[k] ?? "";
     $(id).addEventListener("input", e => { const v = parseFloat(String(e.target.value).replace(",", ".")); fin[k] = isFinite(v) ? v : null; store.set("re:fin", fin); if (active) renderPainel(); });
   });
@@ -475,7 +495,8 @@
 
   // ---------- ajustes ----------
   function fillAjustes() {
-    $("fileInfo").textContent = `${D.at} · ${D.pkgs.length} pacotes · ${A.length} endereços`;
+    $("fileInfo").textContent = `${D.at} · ${D.pkgs.length} da Shopee${D.extra?.length ? ` + ${D.extra.length} adicionados` : ""} · ${A.length} endereços`;
+    $("extraList").innerHTML = (D.extra || []).length ? D.extra.map(p => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.address)}</b><br><span class="sub">${p.src === "ml" ? "Mercado Livre" : "Outro"}${p.code ? " · " + esc(p.code) : ""}</span></span><button type="button" class="line" data-rmextra="${esc(p.tn)}">Remover</button></div>`).join("") : `<p class="sub">Nenhum pacote adicionado à mão.</p>`;
     $("fKm").placeholder = ((D.km || 0) / 1000).toFixed(1) + " (estimado)";
     const sorted = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
     $("start").innerHTML = sorted.map(a => `<option value="${esc(a.key)}">${esc(a.label)}${a.shopeeStops.length ? " (Shopee " + a.shopeeStops.join(", ") + ")" : ""}</option>`).join("");
@@ -486,10 +507,95 @@
   }
   $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
 
+  // ---------- adicionar pacote (Mercado Livre ou outro) ----------
+  // O endereço vem da busca do OpenStreetMap (perto da rota) ou de um toque no mapa.
+  let addDraft = null, geoResults = [], pinMode = false;
+  function openAdd(keep) {
+    if (!keep) addDraft = { src: "ml", address: "", compl: "", code: "", lat: null, lng: null };
+    $("scanOverlay").hidden = false;
+    $("scanSheet").innerHTML = `<div class="addr-big">Adicionar pacote</div>
+      <div class="form">
+        <label for="aSrc" class="full">De onde é<select id="aSrc"><option value="ml">Mercado Livre</option><option value="outro">Outro</option></select></label>
+        <label for="aAddr" class="full">Endereço (rua e número)<input id="aAddr" type="search" autocomplete="off" placeholder="ex. Rua Tatuapé, 130" value="${esc(addDraft.address)}"></label>
+      </div>
+      <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" id="aFind">Buscar endereço</button><button type="button" class="line" data-pin="1">Marcar no mapa</button></div>
+      <div id="aGeo" class="street-more">${addDraft.lat != null ? `<div class="chip ok">Local marcado: ${addDraft.lat.toFixed(5)}, ${addDraft.lng.toFixed(5)}</div>` : ""}</div>
+      <div class="form">
+        <label for="aCompl" class="full">Complemento ou observação<input id="aCompl" type="text" value="${esc(addDraft.compl)}" placeholder="ex. casa 2, portão azul"></label>
+        <label for="aCode" class="full">Código do pacote (opcional)<input id="aCode" type="text" autocapitalize="characters" value="${esc(addDraft.code)}" placeholder="final do código da etiqueta"></label>
+      </div>
+      <button type="button" class="primary deliver" data-addsave="1">Colocar na rota</button>
+      <button type="button" class="line" data-close="1">Cancelar</button>`;
+    $("aSrc").value = addDraft.src;
+    ["aSrc", "aAddr", "aCompl", "aCode"].forEach(id => $(id).addEventListener("input", syncDraft));
+    $("aFind").addEventListener("click", findAddr);
+    $("aAddr").addEventListener("keydown", e => { if (e.key === "Enter") findAddr(); });
+  }
+  function syncDraft() { addDraft.src = $("aSrc").value; addDraft.address = $("aAddr").value.trim(); addDraft.compl = $("aCompl").value.trim(); addDraft.code = $("aCode").value.trim(); }
+  async function findAddr() {
+    syncDraft();
+    if (addDraft.address.length < 4) return toast("Digite a rua e o número.");
+    $("aGeo").innerHTML = `<p class="sub">Procurando…</p>`;
+    const lats = A.map(a => a.lat), lngs = A.map(a => a.lng);
+    const city = D.pkgs[0]?.city || "";
+    const vb = lats.length ? `&viewbox=${Math.min(...lngs) - 0.05},${Math.max(...lats) + 0.05},${Math.max(...lngs) + 0.05},${Math.min(...lats) - 0.05}&bounded=1` : "";
+    try {
+      const q = encodeURIComponent(addDraft.address + (city ? ", " + city : ""));
+      let r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=br&limit=5&addressdetails=1&q=${q}${vb}`)).json();
+      if (!r.length && vb) r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=br&limit=5&addressdetails=1&q=${q}`)).json();
+      geoResults = r;
+      $("aGeo").innerHTML = r.length
+        ? `<div class="eyebrow">Escolha o endereço certo</div>` + r.map((g, i) => `<button type="button" data-geo="${i}"><span>${esc(g.display_name.split(",").slice(0, 4).join(","))}</span></button>`).join("")
+        : `<p class="sub">Não achei. Confira o nome da rua ou use "Marcar no mapa".</p>`;
+    } catch { $("aGeo").innerHTML = `<p class="sub">Sem internet para buscar o endereço. Use "Marcar no mapa".</p>`; }
+  }
+  function pickGeo(i) {
+    const g = geoResults[i]; if (!g) return;
+    syncDraft();
+    addDraft.lat = +g.lat; addDraft.lng = +g.lon;
+    const a = g.address || {};
+    if (a.road && !/\d/.test(addDraft.address)) addDraft.address = a.road + (a.house_number ? ", " + a.house_number : "");
+    openAdd(true);
+  }
+  function startPin() {
+    syncDraft();
+    $("scanOverlay").hidden = true;
+    pinMode = true;
+    location.hash = "#mapa";
+    $("maptip").hidden = false; $("maptip").textContent = "Toque no mapa onde é a entrega";
+    $("sheet").classList.add("min");
+  }
+  function onMapPin(e) {
+    if (!pinMode) return;
+    pinMode = false; $("maptip").hidden = true;
+    addDraft.lat = e.latlng.lat; addDraft.lng = e.latlng.lng;
+    openAdd(true);
+  }
+  function saveAdd() {
+    syncDraft();
+    if (!addDraft.address) return toast("Digite o endereço.");
+    if (addDraft.lat == null) return toast("Escolha o endereço na busca ou marque no mapa.");
+    const address = addDraft.address + (addDraft.compl ? ", " + addDraft.compl : "");
+    const p = {
+      tn: addDraft.code ? addDraft.code.toUpperCase() : "ML" + Date.now().toString(36).toUpperCase(),
+      code: addDraft.code, src: addDraft.src, address, bairro: "", city: D.pkgs[0]?.city || "", cep: "",
+      lat: addDraft.lat, lng: addDraft.lng, seq: null, shopeeStop: null, at: D.at,
+      ...Core.parseAddress(address), window: Core.parseWindow(address),
+    };
+    if (all().some(x => x.tn === p.tn)) return toast("Esse código já está na rota.");
+    D.extra = (D.extra || []).concat(p);
+    derive(); plan(nextAddr()?.key); save();
+    $("scanOverlay").hidden = true;
+    numberOrder(); fillAjustes(); drawMarkers(false); renderAll();
+    const a = byTn.get(p.tn);
+    toast(`Entrou na rota como parada ${a.n}`);
+    select(a.key);
+  }
+
   // ---------- escanear ----------
   const findPkgByCode = text => {
     const t = String(text || "").toUpperCase().replace(/\s+/g, "");
-    return D?.pkgs.find(p => p.tn && t.includes(p.tn.toUpperCase())) || null;
+    return D ? all().find(p => p.tn && t.includes(p.tn.toUpperCase())) || null : null;
   };
   function zxHints() {
     const F = ZXing.BarcodeFormat, hints = new Map();
