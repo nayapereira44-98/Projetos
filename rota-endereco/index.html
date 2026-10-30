@@ -3,27 +3,698 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5f3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <!-- ARTIFACT-START -->
-<title>Rota por Endereço</title>
+<title>Rota Certa</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: uma coluna de motorista. Cartão do próximo endereço no topo; lista agrupada por rua, com a placa da rua como cabeçalho. */
+/* Leaflet 1.9.4 (BSD-2-Clause, © Volodymyr Agafonkin) */
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+/* Layout: app de tela cheia. Barra do topo com progresso e cronômetro; conteúdo da aba no meio; barra de abas fixa embaixo
+   com o botão de escanear no centro. Na aba Mapa, o mapa ocupa tudo e o cartão do endereço sobe de baixo, como num app de entrega. */
 :root {
-  --bg: #f3f4f1;
+  --bg: #f2f3ef;
   --surface: #ffffff;
-  --ink: #16191d;
-  --muted: #5b6168;
-  --line: #d9dcd6;
-  --accent: #d9480f;
+  --ink: #15181b;
+  --muted: #5e646b;
+  --line: #dfe2dc;
+  --brand: #1f5f3a;
+  --brand-ink: #f4f7f2;
+  --accent: #e8590c;
   --accent-ink: #ffffff;
-  --sign: #1f5f3a;
-  --sign-ink: #f5f7f2;
   --ok: #2b8a3e;
+  --ok-soft: #e4f3e7;
   --bad: #c92a2a;
-  --soft: #fff1e6;
+  --pin: #e8590c;
+  --pin-done: #9aa19a;
+  --shadow: 0 8px 28px rgba(0,0,0,0.18);
   --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -31,185 +702,267 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
-    --accent: #ff7a3d; --accent-ink: #1a0d05; --sign: #2e7a4f; --sign-ink: #f1f6ef;
-    --ok: #5fcf75; --bad: #ff6b6b; --soft: #2e2017; color-scheme: dark;
+    --bg: #0f1210; --surface: #1a1e1b; --ink: #eef1ec; --muted: #a2a9a1; --line: #2d332e;
+    --brand: #2e7a4f; --brand-ink: #f1f6ef; --accent: #ff7a3d; --accent-ink: #1a0d05;
+    --ok: #5fcf75; --ok-soft: #1b2e20; --bad: #ff6b6b; --pin: #ff7a3d; --pin-done: #5f665f;
+    --shadow: 0 8px 28px rgba(0,0,0,0.5); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #111412; --surface: #1b1f1c; --ink: #eef1ec; --muted: #a3aaa2; --line: #2f3530;
-  --accent: #ff7a3d; --accent-ink: #1a0d05; --sign: #2e7a4f; --sign-ink: #f1f6ef;
-  --ok: #5fcf75; --bad: #ff6b6b; --soft: #2e2017; color-scheme: dark;
+  --bg: #0f1210; --surface: #1a1e1b; --ink: #eef1ec; --muted: #a2a9a1; --line: #2d332e;
+  --brand: #2e7a4f; --brand-ink: #f1f6ef; --accent: #ff7a3d; --accent-ink: #1a0d05;
+  --ok: #5fcf75; --ok-soft: #1b2e20; --bad: #ff6b6b; --pin: #ff7a3d; --pin-done: #5f665f;
+  --shadow: 0 8px 28px rgba(0,0,0,0.5); color-scheme: dark;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font-body);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 12px 48px;
-}
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
-.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 var(--font-body); overflow: hidden; }
 h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
-h1 { font-size: 1.6rem; font-weight: 800; }
-h2 { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 p { margin: 0; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.top small { display: block; color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
 button, .btn {
-  font: 700 1rem var(--font-body); border-radius: 10px; border: 2px solid var(--ink); background: var(--surface); color: var(--ink);
-  padding: 10px 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; text-align: center;
+  font: 700 1rem var(--font-body); border: 0; border-radius: 14px; background: var(--bg); color: var(--ink);
+  padding: 12px 16px; min-height: 50px; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
 }
-.btn.primary, button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-button.ghost { border-color: var(--line); }
-button.danger { border-color: var(--bad); color: var(--bad); }
-button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
-input[type=search], input[type=number], select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 46px; width: 100%; min-width: 0; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.btn.primary, button.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.brand, button.brand { background: var(--brand); color: var(--brand-ink); }
+button.line, .btn.line { background: transparent; border: 2px solid var(--line); }
+button.danger { background: transparent; border: 2px solid var(--bad); color: var(--bad); }
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible, label:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+input[type=search], input[type=number], input[type=time], select {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 50px; width: 100%; min-width: 0;
+}
 .sub { color: var(--muted); font-size: 0.88rem; }
 .mono { font-family: var(--font-data); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.empty ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+svg.i { width: 24px; height: 24px; flex: none; }
 
-.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-@media (min-width: 560px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
-.stat b { display: block; font: 800 1.4rem var(--font-display); font-variant-numeric: tabular-nums; }
-.stat span { color: var(--muted); font-size: 0.8rem; }
+/* Estrutura de tela cheia */
+.app { height: 100%; display: flex; flex-direction: column; }
+.appbar {
+  background: var(--brand); color: var(--brand-ink);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+}
+.appbar h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; }
+.appbar .meta { font-size: 0.82rem; opacity: 0.9; overflow-wrap: anywhere; }
+.timer { font: 700 0.95rem var(--font-data); background: rgba(255,255,255,0.16); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+.timer.run { background: var(--accent); color: var(--accent-ink); }
+.bar { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: rgba(255,255,255,0.22); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--brand-ink); transition: width .3s; }
+main { flex: 1; min-height: 0; position: relative; }
+.view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.pad { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; max-width: 760px; margin: 0 auto; }
 
-/* Próximo endereço */
-.next { background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
-.next .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; }
-.next .addr { font: 800 1.45rem/1.15 var(--font-display); }
-.next .row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.next .btn, .next button { border-color: var(--sign-ink); background: transparent; color: var(--sign-ink); min-height: 46px; padding: 8px; }
-.next .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.next button.okb { background: var(--sign-ink); color: var(--sign); grid-column: 1 / -1; min-height: 54px; font-size: 1.1rem; }
-.next ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.next li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; background: rgba(0,0,0,0.16); border-radius: 8px; padding: 6px 8px; }
-.next li button { min-height: 38px; padding: 4px 10px; font-size: 0.85rem; }
-.next li.done { opacity: 0.55; text-decoration: line-through; }
-.next .street-left { font-size: 0.9rem; opacity: 0.92; }
+/* Barra de abas */
+.tabbar {
+  background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end;
+  padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+}
+.tabbar a, .tabbar label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; color: var(--muted); text-decoration: none; font-size: 0.72rem; font-weight: 700; cursor: pointer; min-height: 52px; justify-content: center; }
+.tabbar a[aria-current="page"] { color: var(--brand); }
+.tabbar .scan { margin-top: -26px; }
+.tabbar .scan span.circle { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: var(--shadow); border: 4px solid var(--surface); }
+.tabbar .scan span.circle svg { width: 30px; height: 30px; }
+.tabbar .scan { color: var(--accent); }
 
-.shp { display: inline-flex; gap: 4px; flex-wrap: wrap; }
-.shp span { font: 800 0.85rem var(--font-display); border: 2px solid currentColor; border-radius: 6px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+/* Cartões */
+.card { background: var(--surface); border-radius: 18px; padding: 16px; display: grid; gap: 12px; box-shadow: 0 1px 0 var(--line); }
+.card h2 { font-size: 1.05rem; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kpi { background: var(--bg); border-radius: 14px; padding: 12px; min-width: 0; }
+.kpi b { display: block; font: 800 1.5rem var(--font-display); font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 0.8rem; color: var(--muted); }
+.kpi.good b { color: var(--ok); }
+.kpi.bad b { color: var(--bad); }
+.form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.form label { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); min-width: 0; }
+.form .full { grid-column: 1 / -1; }
+.hero { text-align: center; padding: 28px 16px; display: grid; gap: 14px; justify-items: center; }
+.hero .logo { width: 72px; height: 72px; border-radius: 22px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; }
+.hero .logo svg { width: 40px; height: 40px; }
+.hero h2 { font-size: 1.5rem; }
+.steps { text-align: left; margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
 
-/* Busca */
-.scanbtns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
-.scanbtns .btn, .scanbtns button { min-height: 54px; }
-.hit { border: 3px solid var(--accent); border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
-.hit .big { font: 800 2.6rem/1 var(--font-display); color: var(--accent); }
-.hit.miss { border-color: var(--bad); }
+/* Mapa */
+#v-mapa { overflow: hidden; }
+#map { position: absolute; inset: 0; background: var(--bg); z-index: 0; }
+.leaflet-container { font: inherit; background: var(--bg); }
+.pin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--pin); color: #fff; font: 800 13px var(--font-display); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.pin.multi { width: 36px; height: 36px; font-size: 14px; outline: 3px solid rgba(232,89,12,0.35); }
+.pin.done { background: var(--pin-done); }
+.pin.next { background: var(--brand); width: 42px; height: 42px; font-size: 16px; outline: 4px solid rgba(31,95,58,0.35); }
+.pin.sel { outline: 4px solid var(--ink); }
+.me-dot { width: 18px; height: 18px; border-radius: 50%; background: #1c7ed6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(28,126,214,0.25); }
+.fabs { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 12px; display: grid; gap: 10px; z-index: 500; }
+.fab { width: 50px; height: 50px; min-height: 0; padding: 0; border-radius: 50%; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.fab.on { background: #1c7ed6; color: #fff; }
+.maptip { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 500; background: var(--surface); border-radius: 999px; padding: 8px 14px; box-shadow: var(--shadow); font-size: 0.85rem; font-weight: 700; max-width: calc(100% - 140px); text-align: center; }
 
-/* Lista por rua */
-.street { display: grid; gap: 6px; }
-.street-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--sign); color: var(--sign-ink); border-radius: 8px; padding: 6px 10px; }
-.street-head b { font: 800 1rem var(--font-display); }
-.street-head span { font-size: 0.82rem; opacity: 0.9; }
-.street.done .street-head { opacity: 0.5; }
-.addr-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-.addr-row.done { opacity: 0.5; }
-.addr-row.current { outline: 3px solid var(--accent); outline-offset: -1px; }
-.addr-row .n { font: 800 1.2rem var(--font-display); text-align: center; font-variant-numeric: tabular-nums; }
-.addr-row .num { font: 800 1.1rem var(--font-display); }
-.addr-row .shp { color: var(--accent); }
-.addr-row button { min-height: 40px; padding: 4px 10px; font-size: 0.85rem; }
-.addr-row.done button { border-color: var(--ok); color: var(--ok); }
+/* Cartão que sobe de baixo */
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 600; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: var(--shadow);
+  max-height: 62%; overflow-y: auto; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  display: grid; gap: 12px;
+}
+.sheet.min { max-height: 128px; overflow: hidden; }
+.grab { width: 44px; height: 5px; border-radius: 99px; background: var(--line); margin: 2px auto 0; border: 0; padding: 0; min-height: 0; }
+.grabwrap { display: flex; justify-content: center; padding: 6px 0; min-height: 22px; cursor: pointer; background: none; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.addr-big { font: 800 1.45rem/1.15 var(--font-display); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 700 0.82rem var(--font-body); border-radius: 999px; padding: 4px 10px; background: var(--bg); color: var(--ink); }
+.chip.shp { background: var(--accent); color: var(--accent-ink); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.together { background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 10px 12px; font-weight: 700; }
+.pkgs { display: grid; gap: 8px; }
+.pkg { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; background: var(--bg); border-radius: 14px; padding: 10px 12px; text-align: left; min-height: 58px; font-weight: 400; width: 100%; }
+.pkg .box { width: 30px; height: 30px; border-radius: 9px; border: 2px solid var(--muted); display: grid; place-items: center; }
+.pkg.done .box { background: var(--ok); border-color: var(--ok); color: #fff; }
+.pkg.done .t { text-decoration: line-through; opacity: 0.6; }
+.pkg .t b { font: 700 1.1rem var(--font-data); letter-spacing: 0.03em; }
+.pkg.me { outline: 3px solid var(--accent); }
+.nav3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.nav3 .btn { background: var(--bg); min-height: 48px; padding: 8px; }
+.deliver { min-height: 60px; font-size: 1.12rem; width: 100%; }
+.street-more { display: grid; gap: 6px; }
+.street-more button { justify-content: flex-start; text-align: left; font-weight: 400; background: var(--bg); min-height: 48px; }
+.street-more button b { font-family: var(--font-display); }
 
-details.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-details.box summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+/* Lista */
+.search { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-bottom: 8px; }
+.street { display: grid; gap: 8px; }
+.street-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 4px 2px 0; }
+.street-head b { font: 800 1.02rem var(--font-display); }
+.street-head span { font-size: 0.8rem; color: var(--muted); }
+.row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; background: var(--surface); border-radius: 16px; padding: 10px 12px; text-align: left; font-weight: 400; width: 100%; box-shadow: 0 1px 0 var(--line); }
+.row .n { width: 42px; height: 42px; border-radius: 50%; background: var(--pin); color: #fff; display: grid; place-items: center; font: 800 1rem var(--font-display); }
+.row.done .n { background: var(--pin-done); }
+.row.done { opacity: 0.6; }
+.row.next .n { background: var(--brand); }
+.row .num { font: 800 1.08rem var(--font-display); }
+.row .count { font: 800 0.9rem var(--font-display); background: var(--bg); border-radius: 10px; padding: 4px 8px; }
+.empty-list { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+/* Painel */
+.session { background: var(--brand); color: var(--brand-ink); border-radius: 20px; padding: 18px; display: grid; gap: 12px; }
+.session .clock { font: 800 2.4rem var(--font-display); font-variant-numeric: tabular-nums; }
+.session button { background: var(--brand-ink); color: var(--brand); }
+.session button.stop { background: var(--accent); color: var(--accent-ink); }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+table.t th, table.t td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+table.t th:first-child, table.t td:first-child { text-align: left; }
 .scroll { overflow-x: auto; }
-table.dp { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-table.dp th, table.dp td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-table.dp td:first-child, table.dp td:nth-child(2) { font: 800 1rem var(--font-display); white-space: nowrap; }
-.here { border: 3px solid var(--sign); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
-.here .street-now { font: 800 1.35rem/1.15 var(--font-display); }
-.here .dist { font: 700 0.9rem var(--font-data); color: var(--muted); }
-.near-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; }
-.near-row .m { font: 700 0.85rem var(--font-data); text-align: right; color: var(--muted); }
-.near-row .acts { display: flex; gap: 6px; }
-.near-row .btn, .near-row button { min-height: 40px; padding: 4px 10px; font-size: 0.85rem; }
-.foot { color: var(--muted); font-size: 0.82rem; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 20; max-width: calc(100% - 32px); }
-video { width: 100%; border-radius: 12px; background: #000; }
+
+/* Resultado do escaneamento */
+.overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; }
+.overlay .sheet { position: relative; max-height: 86%; width: 100%; border-radius: 22px 22px 0 0; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.bigno { font: 800 3rem/1 var(--font-display); color: var(--brand); }
+.miss { border: 3px solid var(--bad); border-radius: 16px; padding: 14px; display: grid; gap: 6px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 14px; font-weight: 700; z-index: 1100; max-width: calc(100% - 32px); text-align: center; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
 <body>
 <!-- BODY-START -->
-<div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Rota por Endereço</h1>
-      <small id="subtitle">Cada rua de uma vez, com o de-para da Shopee</small>
-    </div>
-    <label class="btn primary" for="file" id="fileBtn">Abrir planilha</label>
-    <input id="file" type="file" accept=".xlsx">
+<div class="app">
+  <header class="appbar">
+    <div><h1>Rota Certa</h1><div class="meta" id="meta">Abra a planilha da rota para começar</div></div>
+    <span class="timer" id="timer" hidden></span>
+    <div class="bar" id="bar" hidden><i id="barFill"></i></div>
   </header>
 
-  <section id="resume" class="card" hidden></section>
-
-  <section id="empty" class="card empty">
-    <h2>Como funciona</h2>
-    <ol>
-      <li>Exporte a rota em Excel no app da Shopee e toque em <b>Abrir planilha</b>.</li>
-      <li>Cada parada é um <b>endereço</b> (rua + número). Pacotes do mesmo endereço ficam juntos, mesmo com números de parada da Shopee diferentes.</li>
-      <li>As ruas são feitas <b>inteiras, uma de cada vez</b>, em ordem de número. Assim você não volta na mesma rua.</li>
-      <li>Ao lado de cada endereço aparece a <b>parada da Shopee</b>, para você fazer o de-para com a etiqueta.</li>
-    </ol>
-    <p class="sub">A planilha é lida e fica salva só neste aparelho.</p>
-  </section>
-
-  <div id="app" class="wrap" hidden>
-    <div class="stats" id="stats"></div>
-    <section class="next" id="next" aria-live="polite"></section>
-
-    <section class="card">
-      <h2>Achar pacote</h2>
-      <div class="scanbtns">
-        <label class="btn primary" for="photo">Escanear etiqueta</label>
-        <input id="photo" type="file" accept="image/*" capture="environment">
-        <button id="live" type="button" class="ghost" hidden>Câmera contínua</button>
+  <main>
+    <!-- Início -->
+    <section class="view" id="v-inicio">
+      <div class="pad">
+        <div class="card hero">
+          <div class="logo"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+          <h2>Entregue por endereço, sem voltar na mesma rua</h2>
+          <div id="resume" hidden></div>
+          <label class="btn primary" for="file" style="width:100%">Abrir planilha da Shopee</label>
+          <ol class="steps sub">
+            <li>No app da Shopee, toque em baixar (↓) para exportar a rota em Excel.</li>
+            <li>Abra aqui. Cada parada vira um <b>endereço</b>, com todos os pacotes dele juntos.</li>
+            <li>No mapa você vê todas as paradas. O cartão de baixo mostra o que entregar ali.</li>
+            <li>Toque em <b>Iniciar entregas</b> para contar o tempo e ver o seu painel no fim.</li>
+          </ol>
+        </div>
       </div>
-      <video id="video" playsinline muted hidden></video>
-      <label for="q" class="sub">ou digite o final do código ou o número da parada da Shopee</label>
-      <input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="ex. 0507 ou 49">
-      <div id="found" aria-live="assertive"></div>
     </section>
 
-    <section class="card" id="locCard">
-      <div class="top"><h2>Onde estou</h2><button id="locBtn" type="button" class="primary">Ativar localizador</button></div>
-      <p class="sub" id="locInfo">Mostra a rua da rota mais perto de você e os endereços pendentes ao redor.</p>
-      <label for="locStreet" class="sub">Sem GPS? Digite a rua em que você está</label>
-      <input id="locStreet" type="search" list="streetList" autocomplete="off" placeholder="ex. Oscar Ribeira">
-      <datalist id="streetList"></datalist>
-      <div id="locOut" aria-live="polite"></div>
+    <!-- Mapa -->
+    <section class="view" id="v-mapa" hidden>
+      <div id="map" aria-label="Mapa com todas as paradas"></div>
+      <div class="maptip" id="maptip" hidden></div>
+      <div class="fabs">
+        <button class="fab" id="btnLocate" type="button" aria-label="Mostrar onde estou"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+        <button class="fab" id="btnFit" type="button" aria-label="Ver todas as paradas"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <section class="sheet" id="sheet" aria-live="polite"></section>
     </section>
 
-    <details class="box">
-      <summary>De-para: parada da Shopee → endereço</summary>
-      <div class="scroll"><table class="dp" id="dp"></table></div>
-    </details>
-
-    <details class="box" id="cfg">
-      <summary>Ajustes</summary>
-      <div class="card" style="border:0;padding:10px 0 0">
-        <label for="start" class="sub">Começar pelo endereço</label>
-        <select id="start"></select>
-        <button id="recalc" type="button" class="primary">Refazer a ordem</button>
-        <p class="sub">Refazer mantém as entregas já marcadas.</p>
-        <button id="clear" type="button" class="danger">Começar do zero</button>
+    <!-- Paradas -->
+    <section class="view" id="v-lista" hidden>
+      <div class="pad">
+        <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
+        <div id="list" style="display:grid;gap:14px"></div>
       </div>
-    </details>
+    </section>
 
-    <div class="top"><h2>Ruas na ordem</h2><button id="copy" type="button" class="ghost">Copiar lista</button></div>
-    <div id="list" class="wrap"></div>
-    <p class="foot" id="foot"></p>
-  </div>
+    <!-- Painel -->
+    <section class="view" id="v-painel" hidden>
+      <div class="pad">
+        <div class="session" id="session"></div>
+        <div class="card"><h2>Ritmo</h2><div class="grid2" id="kpis"></div><p class="sub" id="forecast"></p></div>
+        <div class="card"><h2>Faturamento</h2><div class="grid2" id="money"></div>
+          <div class="form">
+            <label for="fPay">Quanto a rota paga (R$)<input id="fPay" type="number" inputmode="decimal" step="0.01" placeholder="ex. 180"></label>
+            <label for="fMode">Como recebe<select id="fMode"><option value="rota">Valor da rota</option><option value="pacote">Por pacote</option></select></label>
+            <label for="fPrice">Combustível (R$/litro)<input id="fPrice" type="number" inputmode="decimal" step="0.01"></label>
+            <label for="fKml">Consumo (km/litro)<input id="fKml" type="number" inputmode="decimal" step="0.1"></label>
+            <label for="fKm" class="full">Km do dia (rota + ida e volta do CD)<input id="fKm" type="number" inputmode="decimal" step="0.1"></label>
+            <label for="fEnd" class="full">Até que horas você quer trabalhar hoje<input id="fEnd" type="time"></label>
+          </div>
+        </div>
+        <div class="card"><h2>Seus dias</h2><div class="scroll"><table class="t" id="hist"></table></div></div>
+      </div>
+    </section>
+
+    <!-- Ajustes -->
+    <section class="view" id="v-ajustes" hidden>
+      <div class="pad">
+        <div class="card"><h2>Planilha</h2><p class="sub" id="fileInfo"></p>
+          <label class="btn brand" for="file">Abrir ou atualizar planilha</label>
+          <p class="sub">Abrir de novo a planilha da mesma rota mantém o que você já entregou e encaixa os pacotes novos.</p>
+        </div>
+        <div class="card"><h2>Ordem das paradas</h2>
+          <label for="start" class="sub">Começar pelo endereço</label><select id="start"></select>
+          <button id="recalc" type="button" class="brand">Refazer a ordem a partir daqui</button>
+          <p class="sub">Só os endereços que faltam mudam de ordem.</p>
+        </div>
+        <div class="card"><h2>De-para: parada Shopee → endereço</h2><div class="scroll"><table class="t" id="dp"></table></div></div>
+        <div class="card"><h2>Recomeçar</h2><button id="clear" type="button" class="danger">Começar do zero</button><p class="sub">Apaga a rota deste aparelho. O histórico de dias fica guardado.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Menu">
+    <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
+    <a href="#lista" data-tab="lista"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Paradas</a>
+    <label class="scan" for="photo"><span class="circle"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></span>Escanear</label>
+    <a href="#painel" data-tab="painel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel</a>
+    <a href="#ajustes" data-tab="ajustes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</a>
+  </nav>
 </div>
+<input id="file" type="file" accept=".xlsx">
+<input id="photo" type="file" accept="image/*" capture="environment">
+<div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js"></script>
 <script src="app.js"></script>

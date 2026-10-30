@@ -1,16 +1,20 @@
-// Rota por Endereço — interface. Cada parada é um endereço; a parada da Shopee é só referência (de-para).
-// Depende de ../rota-certa/core.js (global Core) e do ZXing (leitura de código de barras).
+// Rota Certa (v2) — app de entrega por endereço com mapa, escaneamento, cronômetro e painel.
+// Depende de ../rota-certa/core.js (global Core), Leaflet (global L, mapa) e ZXing (código de barras).
 (() => {
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const tail = tn => tn.slice(-5);
-  const km = m => (m / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " km";
+  const hhmm = t => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)); const h = Math.floor(m / 60); return h ? `${h}h${String(m % 60).padStart(2, "0")}` : `${m} min`; };
+  const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(v => String(v).padStart(2, "0")).join(":"); };
+  const brl = v => (v == null || !isFinite(v) ? "–" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
   const store = {
     get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
-  const toast = msg => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2400); };
+  const toast = msg => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2600); };
   const buzz = ms => { try { navigator.vibrate?.(ms); } catch {} };
+  const ICON_CHECK = `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>`;
 
   // Leitor .xlsx mínimo: lê o diretório central do zip e descompacta com DecompressionStream nativo.
   async function readXlsxFile(file) {
@@ -66,14 +70,19 @@
   }
 
   // ---------- estado ----------
-  // D: o dia (pacotes, ordem dos endereços). ok: entregas por código SPX, guardadas à parte para sobreviver a uma planilha nova.
-  let D = store.get("re:day", null), ok = {}, A = [], byKey = new Map(), byTn = new Map(), order = [];
-  const okKey = () => "re:ok:" + D.at;
-  const save = () => { store.set("re:day", D); store.set(okKey(), ok); };
+  // D: rota do dia. ok: hora de cada entrega, por código SPX. sess: início e fim das entregas.
+  let D = store.get("re:day", null), ok = {}, sess = {}, A = [], byKey = new Map(), byTn = new Map(), order = [];
+  let fin = { pay: null, mode: "rota", price: 6.29, kml: 11, km: null, endTime: "18:00", ...store.get("re:fin", {}) };
+  let hist = store.get("re:hist", []);
+  let selKey = null, active = false;
+  const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
+  const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
   const pkgDone = p => !!ok[p.tn];
   const addrDone = a => a.pkgs.every(pkgDone);
-  const shp = a => (a.shopeeStops.length ? `<span>Shopee ${a.shopeeStops.join(" · ")}</span>` : "") + (a.unseq ? `<span>sem nº</span>` : "");
   const extra = p => p.address.split(",").slice(2).join(",").trim();
+  const streetName = a => a.label.split(",")[0].trim();
+  const shopee = a => (a.shopeeStops.length ? "Shopee " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
+  const nextAddr = () => order.find(a => !addrDone(a));
 
   function derive() {
     A = Core.buildAddresses(D.pkgs);
@@ -83,7 +92,7 @@
   }
   const orderOk = () => D.order && D.order.length === A.length && D.order.every(k => byKey.has(k));
 
-  // Refaz a ordem só dos endereços pendentes, começando por `startKey`; os já entregues ficam na frente.
+  // Ordem só dos endereços pendentes, a partir de `startKey`; os já entregues ficam na frente.
   function plan(startKey) {
     const doneA = (orderOk() ? D.order.map(k => byKey.get(k)) : A).filter(addrDone);
     const pend = A.filter(a => !addrDone(a));
@@ -91,11 +100,12 @@
     const start = pend.some(a => a.key === startKey) ? startKey : pend.reduce((b, a) => ((a.shopeeStops[0] ?? 1e9) < (b.shopeeStops[0] ?? 1e9) ? a : b)).key;
     const r = Core.addressRoute(pend, start);
     D.order = doneA.concat(r.order).map(a => a.key);
-    D.km = r.km;
-    if (!D.shopeeKm) {
-      const sh = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
-      D.shopeeKm = sh.slice(1).reduce((t, a, i) => t + Core.hav(sh[i], a) * Core.STREET_FACTOR, 0);
-    }
+    if (!D.km) D.km = r.km;
+  }
+  function numberOrder() {
+    if (!orderOk()) plan(null);
+    order = D.order.map(k => byKey.get(k));
+    order.forEach((a, i) => (a.n = i + 1));
   }
 
   // ---------- planilha ----------
@@ -107,218 +117,363 @@
       if (!pkgs.length) throw new Error("A planilha não tem pacotes com coordenadas.");
       const at = String(pkgs[0].at || f.name);
       if (D && D.at === at) {
-        $("resume").hidden = true;
-        // Mesma rota exportada de novo: mantém as entregas e encaixa os pacotes novos.
         const before = new Set(D.pkgs.map(p => p.tn));
         const fresh = pkgs.filter(p => !before.has(p.tn)).length;
-        D.pkgs = pkgs; derive();
-        const next = order.find(a => !addrDone(a));
-        plan(next && byKey.has(next.key) ? next.key : null);
-        save(); show();
+        D.pkgs = pkgs; D.file = f.name; derive();
+        if (!active) { ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); }
+        const nx = order.find(a => !addrDone(a));
+        plan(nx && byKey.has(nx.key) ? nx.key : null);
+        save(); start();
         toast(fresh ? `${fresh} pacote(s) novo(s) encaixados na rota` : "Planilha atualizada");
       } else {
-        D = { at, file: f.name, pkgs, createdAt: Date.now(), order: null };
-        ok = {};
-        derive(); plan(null); save();
-        $("resume").hidden = true;
-        show();
-        toast(`${A.length} endereços, ${pkgs.length} pacotes`);
+        D = { at, file: f.name, pkgs, createdAt: Date.now(), order: null, km: null };
+        ok = {}; sess = {}; fin.km = null; store.set("re:fin", fin);
+        derive(); plan(null); save(); start();
+        location.hash = "#mapa";
+        toast(`${A.length} endereços · ${pkgs.length} pacotes`);
       }
     } catch (err) {
       toast(err.message || "Não consegui ler a planilha.");
     } finally { e.target.value = ""; }
   });
 
-  function show() {
-    $("empty").hidden = true; $("app").hidden = false;
-    $("fileBtn").textContent = "Atualizar planilha";
-    $("subtitle").textContent = `${D.at} · ${D.file.replace(/\.xlsx$/i, "")}`;
-    const sorted = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
-    $("start").innerHTML = sorted.map(a => `<option value="${esc(a.key)}">${esc(a.label)}${a.shopeeStops.length ? " (Shopee " + a.shopeeStops.join(", ") + ")" : ""}</option>`).join("");
-    render();
+  function start() {
+    active = true;
+    $("resume").hidden = true;
+    numberOrder();
+    fillAjustes();
+    if (!location.hash || location.hash === "#inicio") location.hash = "#mapa";
+    route(); renderAll();
+    if (map) { drawMarkers(true); }
   }
 
-  // ---------- tela ----------
-  function render() {
-    if (!orderOk()) plan(null);
-    order = D.order.map(k => byKey.get(k));
-    order.forEach((a, i) => (a.n = i + 1));
-    const doneA = order.filter(addrDone).length, donePk = D.pkgs.filter(pkgDone).length;
-    const saved = (D.shopeeKm || 0) - (D.km || 0);
-    $("stats").innerHTML = [
-      [`${doneA}/${order.length}`, "endereços feitos"],
-      [`${donePk}/${D.pkgs.length}`, "pacotes entregues"],
-      [km(D.km || 0), "percurso estimado"],
-      [saved > 50 ? "−" + km(saved) : "≈", "contra a ordem da Shopee"],
-    ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join("");
+  // ---------- abas ----------
+  const TABS = ["mapa", "lista", "painel", "ajustes"];
+  function route() {
+    let tab = location.hash.slice(1);
+    if (!active) tab = "inicio";
+    else if (!TABS.includes(tab)) tab = "mapa";
+    ["inicio", ...TABS].forEach(t => ($("v-" + t).hidden = t !== tab));
+    document.querySelectorAll(".tabbar a").forEach(a => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+    if (tab === "mapa") { ensureMap(); setTimeout(() => map?.invalidateSize(), 50); }
+  }
+  window.addEventListener("hashchange", route);
 
-    const ni = order.findIndex(a => !addrDone(a)), n = order[ni];
-    if (n) {
-      const sameStreet = [];
-      for (let i = ni + 1; i < order.length && order[i].street === n.street; i++) if (!addrDone(order[i])) sameStreet.push(order[i]);
-      $("next").innerHTML = `
-        <div class="eyebrow">Próximo endereço · ${n.n} de ${order.length}</div>
-        <div class="addr">${esc(n.label)}</div>
-        <div class="sub" style="color:inherit;opacity:.9">${esc(n.bairro)} · ${n.pkgs.length} pacote${n.pkgs.length > 1 ? "s" : ""} · <span class="shp">${shp(n) || "–"}</span></div>
-        ${sameStreet.length ? `<div class="street-left">Depois, nesta mesma rua: nº ${sameStreet.map(a => a.num || "?").join(", ")}</div>` : `<div class="street-left">Último endereço desta rua.</div>`}
-        <ul>${n.pkgs.map(p => `<li class="${pkgDone(p) ? "done" : ""}"><span><b class="mono">${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}${extra(p) ? " · " + esc(extra(p)) : ""}</span>${n.pkgs.length > 1 ? `<button type="button" data-p="${esc(p.tn)}">${pkgDone(p) ? "Desfazer" : "Entregue"}</button>` : ""}</li>`).join("")}</ul>
-        <div class="row">
-          <a class="btn primary" href="${Core.links.waze(n)}" target="_blank" rel="noopener">Waze</a>
-          <a class="btn" href="${Core.links.gmaps(n)}" target="_blank" rel="noopener">Google</a>
-          <a class="btn" href="${Core.links.apple(n)}" target="_blank" rel="noopener">Apple</a>
-          <button type="button" class="okb" data-a="${esc(n.key)}">Entreguei ${n.pkgs.length > 1 ? "tudo " : ""}aqui</button>
-        </div>`;
-    } else {
-      $("next").innerHTML = `<div class="addr">Rota concluída</div><div>${D.pkgs.length} pacotes em ${order.length} endereços.</div>`;
+  function renderAll() {
+    if (!active) return;
+    numberOrder();
+    const done = D.pkgs.filter(pkgDone).length;
+    $("meta").textContent = `${order.filter(addrDone).length}/${order.length} paradas · ${done}/${D.pkgs.length} pacotes`;
+    $("bar").hidden = false; $("barFill").style.width = (done / D.pkgs.length * 100).toFixed(1) + "%";
+    renderTimer();
+    renderSheet();
+    renderList();
+    renderPainel();
+    if (map) updateMarkers();
+  }
+
+  // ---------- cronômetro ----------
+  function renderTimer() {
+    const t = $("timer");
+    t.hidden = !active;
+    if (!sess.start) { t.textContent = "Iniciar"; t.className = "timer"; }
+    else if (!sess.end) { t.textContent = clock(Date.now() - sess.start); t.className = "timer run"; }
+    else { t.textContent = "Fim " + dur(sess.end - sess.start); t.className = "timer"; }
+  }
+  $("timer").addEventListener("click", () => { if (active && !sess.start) startSession(); else location.hash = "#painel"; });
+  function startSession() { sess = { start: Date.now() }; save(); renderAll(); toast("Entregas iniciadas. Bom trabalho!"); }
+  setInterval(() => { if (active && sess.start && !sess.end) { renderTimer(); if (!$("v-painel").hidden) renderSession(); } }, 1000);
+
+  // ---------- cartão do endereço ----------
+  function addrCard(a, tn) {
+    const nx = nextAddr();
+    const pend = a.pkgs.filter(p => !pkgDone(p));
+    const sameStreet = order.filter(x => x !== a && x.street === a.street && !addrDone(x)).sort((x, y) => x.num - y.num);
+    const near = order.filter(x => x !== a && x.street !== a.street && !addrDone(x)).map(x => ({ x, d: Core.hav(a, x) })).filter(o => o.d <= 100).sort((p, q) => p.d - q.d).slice(0, 3);
+    return `
+      <div class="eyebrow">${a === nx ? "Próxima parada" : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
+      <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc(a.bairro)}</div></div>
+      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}</div>
+      ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
+      <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
+        <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+      <div class="nav3">
+        <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
+        <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
+        <a class="btn" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a>
+      </div>
+      ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">Desfazer entrega</button>`}
+      ${!sess.start ? `<button type="button" class="brand" data-start="1">Iniciar entregas (contar o tempo)</button>` : ""}
+      ${sameStreet.length || near.length ? `<div class="street-more"><div class="eyebrow">Ainda nesta rua e por perto</div>
+        ${sameStreet.map(x => `<button type="button" data-sel="${esc(x.key)}"><span><b>nº ${x.nums?.join(" / ") || "?"}</b> · parada ${x.n} · ${x.pkgs.length} pct${shopee(x) ? " · " + shopee(x) : ""}</span></button>`).join("")}
+        ${near.map(({ x, d }) => `<button type="button" data-sel="${esc(x.key)}"><span><b>${esc(x.label)}</b> · ${Math.round(d)} m · parada ${x.n}</span></button>`).join("")}</div>` : ""}`;
+  }
+
+  function renderSheet() {
+    const sh = $("sheet");
+    let a = selKey && byKey.get(selKey);
+    if (!a) a = nextAddr();
+    if (!a) {
+      sh.innerHTML = `<div class="grabwrap"><span class="grab"></span></div><div class="addr-big">Rota concluída</div>
+        <p class="sub">${D.pkgs.length} pacotes em ${order.length} endereços${sess.start && !sess.end ? ` em ${dur(Date.now() - sess.start)}` : ""}.</p>
+        ${sess.start && !sess.end ? `<button type="button" class="primary deliver" data-end="1">Finalizar entregas</button>` : `<a class="btn brand" href="#painel">Ver meu painel</a>`}`;
+      return;
     }
+    sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Recolher ou abrir o cartão"><span class="grab"></span></button>${addrCard(a)}`;
+  }
 
-    // Lista agrupada por rua (trechos seguidos da mesma rua).
+  // ---------- mapa ----------
+  let map = null, markers = new Map(), line = null, me = null, watchId = null, here = null, fitted = false;
+  function ensureMap() {
+    if (map || !window.L || !active) return;
+    map = L.map("map", { zoomControl: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    drawMarkers(true);
+  }
+  function pinHtml(a) {
+    const nx = nextAddr();
+    const cls = addrDone(a) ? "done" : a === nx ? "next" : a.pkgs.length > 1 ? "multi" : "";
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}">${addrDone(a) ? "✓" : a.n}</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
+  }
+  function drawMarkers(fit) {
+    if (!map) return;
+    markers.forEach(m => m.remove()); markers.clear();
+    order.forEach(a => {
+      const m = L.marker([a.lat, a.lng], { icon: pinHtml(a), zIndexOffset: addrDone(a) ? 0 : 500 }).addTo(map);
+      m.on("click", () => select(a.key, false));
+      markers.set(a.key, m);
+    });
+    drawLine();
+    if (fit && order.length && !fitted) { map.fitBounds(L.latLngBounds(order.map(a => [a.lat, a.lng])), { padding: [40, 40] }); fitted = true; }
+  }
+  function drawLine() {
+    line?.remove();
+    const pts = order.filter(a => !addrDone(a)).map(a => [a.lat, a.lng]);
+    const css = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#1f5f3a";
+    line = pts.length > 1 ? L.polyline(pts, { color: css, weight: 4, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(map) : null;
+  }
+  function updateMarkers() {
+    if (!map) return;
+    if (markers.size !== order.length) return drawMarkers(false);
+    order.forEach(a => { const m = markers.get(a.key); if (m) { m.setIcon(pinHtml(a)); m.setZIndexOffset(addrDone(a) ? 0 : a === nextAddr() ? 1000 : 500); } });
+    drawLine();
+  }
+  function select(key, pan = true) {
+    selKey = key;
+    location.hash = "#mapa";
+    $("sheet").classList.remove("min");
+    renderSheet(); updateMarkers();
+    const a = byKey.get(key);
+    if (map && a && pan) map.setView([a.lat, a.lng], Math.max(map.getZoom(), 17));
+  }
+  $("btnFit").addEventListener("click", () => { if (map && order.length) map.fitBounds(L.latLngBounds(order.map(a => [a.lat, a.lng])), { padding: [40, 40] }); });
+
+  // Localizador: ponto azul ao vivo e a rua pendente mais perto.
+  $("btnLocate").addEventListener("click", () => {
+    if (watchId != null) {
+      navigator.geolocation.clearWatch(watchId); watchId = null; me?.remove(); me = null; here = null;
+      $("btnLocate").classList.remove("on"); $("maptip").hidden = true; return;
+    }
+    if (!navigator.geolocation) return toast("Este navegador não tem localização.");
+    $("btnLocate").classList.add("on");
+    let first = true;
+    watchId = navigator.geolocation.watchPosition(pos => {
+      here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      if (map) {
+        if (!me) me = L.marker([here.lat, here.lng], { icon: L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 2000 }).addTo(map);
+        else me.setLatLng([here.lat, here.lng]);
+        if (first) map.setView([here.lat, here.lng], 17);
+      }
+      first = false;
+      const pend = order.filter(a => !addrDone(a));
+      if (pend.length) {
+        const n = pend.map(a => ({ a, d: Core.hav(here, a) })).sort((x, y) => x.d - y.d)[0];
+        const left = pend.filter(a => a.street === n.a.street).sort((x, y) => x.num - y.num);
+        $("maptip").hidden = false;
+        $("maptip").innerHTML = `<button type="button" data-sel="${esc(n.a.key)}" style="min-height:0;padding:0;background:none;font:inherit">Perto: ${esc(streetName(n.a))} · ${Math.round(n.d)} m · faltam nº ${left.map(a => a.nums?.join("/") || "?").join(", ")}</button>`;
+      }
+    }, () => {
+      navigator.geolocation.clearWatch(watchId); watchId = null; $("btnLocate").classList.remove("on");
+      toast("A localização foi bloqueada. Permita a localização para este site nos ajustes do celular.");
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  });
+
+  // ---------- ações ----------
+  function deliverAddr(a) {
+    const done = addrDone(a);
+    if (!done && !sess.start) { sess = { start: Date.now() }; toast("Cronômetro iniciado"); }
+    a.pkgs.forEach(p => (done ? delete ok[p.tn] : (ok[p.tn] = ok[p.tn] || Date.now())));
+    save();
+    if (!done) {
+      buzz(60);
+      selKey = null;
+      const nx = nextAddr();
+      renderAll();
+      if (nx) { toast(`Entregue! Próxima: ${nx.label}`); if (map) map.panTo([nx.lat, nx.lng]); }
+      else toast("Todos os pacotes entregues!");
+    } else renderAll();
+  }
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button, [data-sel]");
+    if (e.target.id === "scanOverlay") { $("scanOverlay").hidden = true; return; }
+    if (!t) return;
+    const d = t.dataset;
+    if (d.resume === "go") { derive(); ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); start(); return; }
+    if (d.resume === "clear" || t.id === "clear") return twoTap(t, clearDay);
+    if (!active) return;
+    if (d.a) { deliverAddr(byKey.get(d.a)); if (t.closest("#scanSheet")) $("scanOverlay").hidden = true; }
+    else if (d.p) {
+      const tn = d.p;
+      if (!ok[tn] && !sess.start) sess = { start: Date.now() };
+      ok[tn] ? delete ok[tn] : (ok[tn] = Date.now());
+      save(); renderAll();
+      if (t.closest("#scanSheet")) openScan(byTn.get(tn), tn);
+    }
+    else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
+    else if (d.grab) $("sheet").classList.toggle("min");
+    else if (d.start) startSession();
+    else if (d.end) endSession();
+    else if (d.reopen) { delete sess.end; save(); renderAll(); toast("Cronômetro retomado"); }
+    else if (d.close) $("scanOverlay").hidden = true;
+  });
+  function twoTap(t, fn) {
+    if (t.dataset.armed) return fn();
+    const l = t.textContent; t.dataset.armed = "1"; t.textContent = "Toque de novo para confirmar";
+    setTimeout(() => { delete t.dataset.armed; t.textContent = l; }, 4000);
+  }
+  function clearDay() {
+    if (D) { store.set(okKey(), null); store.set(sessKey(), null); }
+    store.set("re:day", null);
+    D = null; ok = {}; sess = {}; active = false; selKey = null;
+    markers.forEach(m => m.remove()); markers.clear(); line?.remove(); fitted = false;
+    $("meta").textContent = "Abra a planilha da rota para começar"; $("timer").hidden = true; $("bar").hidden = true;
+    location.hash = "#inicio"; route();
+    toast("Pronto. Abra a planilha para começar.");
+  }
+
+  // ---------- lista ----------
+  function renderList() {
+    const q = $("q").value.trim();
+    let rows = order;
+    if (q) {
+      const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+      if (/^\d{1,3}$/.test(q)) rows = order.filter(a => a.shopeeStops.includes(+q));
+      else {
+        const m = new Set(Core.matchTN(D.pkgs, q).map(p => byTn.get(p.tn)));
+        rows = order.filter(a => m.has(a) || norm(a.label).includes(norm(q)));
+      }
+    }
+    const nx = nextAddr();
     let html = "";
-    for (let i = 0; i < order.length;) {
-      let j = i; while (j < order.length && order[j].street === order[i].street && !order[i].key.startsWith("geo|")) j++;
-      if (j === i) j = i + 1;
-      const g = order.slice(i, j), pk = g.reduce((t, a) => t + a.pkgs.length, 0);
-      const streetName = g[0].label.split(",")[0];
-      html += `<section class="street${g.every(addrDone) ? " done" : ""}">
-        <div class="street-head"><b>${esc(streetName)}</b><span>${esc(g[0].bairro)} · ${g.length} endereço${g.length > 1 ? "s" : ""} · ${pk} pct${g.length > 1 ? ` · nº ${g[0].num} → ${g[g.length - 1].num}` : ""}</span></div>
-        ${g.map(a => `<div class="addr-row${addrDone(a) ? " done" : ""}${a === n ? " current" : ""}">
-          <div class="n">${a.n}</div>
-          <div><span class="num">${a.num ? "nº " + a.num : esc(a.label)}</span> <span class="shp">${shp(a)}</span>
-            <div class="sub mono">${a.pkgs.map(p => esc(tail(p.tn)) + (extra(p) ? " · " + esc(extra(p)) : "")).join("<br>")}</div></div>
-          <button type="button" data-a="${esc(a.key)}">${addrDone(a) ? "Feito ✓" : "Entregue"}</button>
-        </div>`).join("")}
-      </section>`;
+    for (let i = 0; i < rows.length;) {
+      let j = i; while (j < rows.length && rows[j].street === rows[i].street && rows[j].n - rows[i].n === j - i) j++;
+      const g = rows.slice(i, j), pk = g.reduce((t, a) => t + a.pkgs.length, 0), left = g.filter(a => !addrDone(a)).length;
+      html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
+        ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
+          <span class="n">${addrDone(a) ? "✓" : a.n}</span>
+          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${shopee(a) || "sem nº"} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
+          <span class="count">${a.pkgs.length}</span></button>`).join("")}</div>`;
       i = j;
     }
-    $("list").innerHTML = html;
+    $("list").innerHTML = html || `<p class="empty-list">Nada encontrado para "${esc(q)}".</p>`;
+  }
+  $("q").addEventListener("input", renderList);
 
-    // De-para.
+  // ---------- painel ----------
+  function stats() {
+    const now = sess.end || Date.now();
+    const elapsed = sess.start ? now - sess.start : 0;
+    const doneA = order.filter(addrDone).length, doneP = D.pkgs.filter(pkgDone).length;
+    const leftA = order.length - doneA;
+    const perAddr = doneA ? elapsed / doneA : null;
+    const pkgsPerAddr = D.pkgs.length / order.length;
+    const finish = perAddr && !sess.end ? Date.now() + perAddr * leftA : null;
+    const km = fin.km ?? +(((D.km || 0) / 1000).toFixed(1));
+    const gain = fin.pay ? (fin.mode === "pacote" ? fin.pay * doneP : fin.pay) : null;
+    const fuel = fin.kml > 0 && fin.price ? km / fin.kml * fin.price : 0;
+    const profit = gain != null ? gain - fuel : null;
+    const hours = elapsed / 3.6e6;
+    return { elapsed, doneA, doneP, leftA, perAddr, pkgsPerAddr, finish, km, gain, fuel, profit, hours };
+  }
+  function renderSession() {
+    const s = stats();
+    $("session").innerHTML = !sess.start
+      ? `<h2>Pronto para começar?</h2><p>Toque quando sair para a primeira entrega. O app conta o tempo e monta o seu painel.</p><button type="button" data-start="1">Iniciar entregas</button>`
+      : !sess.end
+        ? `<div class="eyebrow" style="color:inherit;opacity:.85">Entregando desde ${hhmm(sess.start)}</div><div class="clock">${clock(s.elapsed)}</div><button type="button" class="stop" data-end="1">Finalizar entregas</button>`
+        : `<div class="eyebrow" style="color:inherit;opacity:.85">Entregas de ${hhmm(sess.start)} às ${hhmm(sess.end)}</div><div class="clock">${dur(s.elapsed)}</div><button type="button" data-reopen="1">Retomar cronômetro</button>`;
+  }
+  function renderPainel() {
+    renderSession();
+    const s = stats();
+    $("kpis").innerHTML = [
+      [`${s.doneP}/${D.pkgs.length}`, "pacotes entregues"],
+      [`${s.doneA}/${order.length}`, "paradas feitas"],
+      [s.perAddr ? dur(s.perAddr) : "–", "tempo médio por parada"],
+      [s.hours > 0.05 ? (s.doneP / s.hours).toFixed(1) : "–", "pacotes por hora"],
+    ].map(([b, l]) => `<div class="kpi"><b>${b}</b><span>${l}</span></div>`).join("");
+    let fc = "";
+    if (!sess.start) fc = "Inicie as entregas para ver a previsão de término.";
+    else if (s.finish && (s.doneA < 3 || s.elapsed < 5 * 60000)) fc = "A previsão aparece depois de 3 paradas e 5 minutos de entrega.";
+    else if (s.finish) {
+      fc = `No seu ritmo, faltam ${s.leftA} paradas e você termina por volta de ${hhmm(s.finish)}.`;
+      const [h, m] = (fin.endTime || "").split(":").map(Number);
+      if (isFinite(h)) {
+        const end = new Date(); end.setHours(h, m || 0, 0, 0);
+        const spare = end - s.finish;
+        fc += spare > 0
+          ? ` Até ${fin.endTime} ainda cabem cerca de ${Math.floor(spare / s.perAddr * s.pkgsPerAddr)} pacotes a mais.`
+          : ` Nesse ritmo você passa ${dur(-spare)} das ${fin.endTime}.`;
+      }
+    } else if (sess.end) fc = `Você fez ${s.doneP} pacotes em ${dur(s.elapsed)}${s.perAddr ? `, ${dur(s.perAddr)} por parada` : ""}.`;
+    else fc = "A previsão aparece depois da primeira entrega.";
+    $("forecast").textContent = fc;
+    $("money").innerHTML = [
+      [brl(s.gain), "ganho"],
+      [brl(s.fuel), `combustível (${s.km} km)`],
+      [brl(s.profit), "lucro", s.profit == null ? "" : s.profit >= 0 ? "good" : "bad"],
+      [s.profit != null && s.hours > 0.25 ? brl(s.profit / s.hours) : "–", "lucro por hora"],
+      [s.gain != null && s.doneP ? brl(s.gain / s.doneP) : "–", "ganho por pacote"],
+      [s.profit != null && s.doneP ? brl(s.profit / s.doneP) : "–", "lucro por pacote"],
+    ].map(([b, l, c]) => `<div class="kpi ${c || ""}"><b>${b}</b><span>${l}</span></div>`).join("");
+    const rows = hist.slice().sort((a, b) => b.t - a.t);
+    const sum = k => rows.reduce((t, r) => t + (r[k] || 0), 0);
+    $("hist").innerHTML = rows.length
+      ? `<thead><tr><th>Dia</th><th>Pct</th><th>Tempo</th><th>Ganho</th><th>Lucro</th></tr></thead><tbody>${rows.map(r => `<tr><td>${new Date(r.t).toLocaleDateString("pt-BR")}</td><td>${r.p}</td><td>${dur(r.ms)}</td><td>${brl(r.g)}</td><td>${brl(r.l)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td><b>Total</b></td><td><b>${sum("p")}</b></td><td><b>${dur(sum("ms"))}</b></td><td><b>${brl(sum("g"))}</b></td><td><b>${brl(sum("l"))}</b></td></tr></tfoot>`
+      : `<tbody><tr><td class="sub" style="white-space:normal">Quando você tocar em "Finalizar entregas", o dia aparece aqui.</td></tr></tbody>`;
+  }
+  function endSession() {
+    if (!sess.start) return;
+    sess.end = Date.now();
+    const s = stats();
+    hist = hist.filter(r => r.id !== D.at + sess.start).concat({ id: D.at + sess.start, t: sess.start, p: s.doneP, a: s.doneA, ms: s.elapsed, g: s.gain || 0, l: s.profit || 0 });
+    store.set("re:hist", hist); save(); renderAll();
+    location.hash = "#painel";
+    toast(`Dia encerrado: ${s.doneP} pacotes em ${dur(s.elapsed)}`);
+  }
+  [["fPay", "pay"], ["fPrice", "price"], ["fKml", "kml"], ["fKm", "km"]].forEach(([id, k]) => {
+    $(id).value = fin[k] ?? "";
+    $(id).addEventListener("input", e => { const v = parseFloat(String(e.target.value).replace(",", ".")); fin[k] = isFinite(v) ? v : null; store.set("re:fin", fin); if (active) renderPainel(); });
+  });
+  $("fMode").value = fin.mode; $("fMode").addEventListener("change", e => { fin.mode = e.target.value; store.set("re:fin", fin); if (active) renderPainel(); });
+  $("fEnd").value = fin.endTime || ""; $("fEnd").addEventListener("change", e => { fin.endTime = e.target.value; store.set("re:fin", fin); if (active) renderPainel(); });
+
+  // ---------- ajustes ----------
+  function fillAjustes() {
+    $("fileInfo").textContent = `${D.at} · ${D.pkgs.length} pacotes · ${A.length} endereços`;
+    $("fKm").placeholder = ((D.km || 0) / 1000).toFixed(1) + " (estimado)";
+    const sorted = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
+    $("start").innerHTML = sorted.map(a => `<option value="${esc(a.key)}">${esc(a.label)}${a.shopeeStops.length ? " (Shopee " + a.shopeeStops.join(", ") + ")" : ""}</option>`).join("");
     const rows = [];
     order.forEach(a => a.pkgs.forEach(p => rows.push({ s: p.shopeeStop, a, p })));
     rows.sort((x, y) => (x.s ?? 1e9) - (y.s ?? 1e9) || x.a.n - y.a.n);
-    $("dp").innerHTML = `<thead><tr><th>Shopee</th><th>Nosso nº</th><th>Endereço</th><th>Pacote</th></tr></thead><tbody>${rows.map(r => `<tr style="${pkgDone(r.p) ? "opacity:.5" : ""}"><td>${r.s ?? "sem nº"}</td><td>${r.a.n}</td><td>${esc(r.a.label)}</td><td class="mono">${esc(tail(r.p.tn))}</td></tr>`).join("")}</tbody>`;
-    $("streetList").innerHTML = [...new Set(A.map(streetName))].sort().map(n => `<option value="${esc(n)}"></option>`).join("");
-    renderHere();
-    $("foot").textContent = "Ordem por endereço: cada rua é feita inteira antes da próxima, em ordem de número. A distância é estimada em linha reta com fator de ruas.";
+    $("dp").innerHTML = `<thead><tr><th>Shopee</th><th>Nossa parada</th><th>Endereço</th><th>Pacote</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.s ?? "sem nº"}</td><td>${r.a.n}</td><td style="text-align:left">${esc(r.a.label)}</td><td class="mono">${esc(tail(r.p.tn))}</td></tr>`).join("")}</tbody>`;
   }
+  $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
 
-  // ---------- ações ----------
-  function toggleAddr(a) {
-    const done = addrDone(a);
-    a.pkgs.forEach(p => (done ? delete ok[p.tn] : (ok[p.tn] = ok[p.tn] || Date.now())));
-    save(); render();
-    if (!done) toast(`Endereço ${a.n} entregue`);
-  }
-  document.addEventListener("click", e => {
-    const t = e.target.closest("button");
-    if (!t || !D) return;
-    if (t.dataset.a) { toggleAddr(byKey.get(t.dataset.a)); if (t.closest("#found")) $("found").innerHTML = ""; }
-    else if (t.dataset.p) { const tn = t.dataset.p; ok[tn] ? delete ok[tn] : (ok[tn] = Date.now()); save(); render(); if (t.closest("#found")) showFound(byTn.get(tn), tn); }
-    else if (t.dataset.resume === "go") { $("resume").hidden = true; derive(); show(); }
-    else if (t.dataset.resume === "clear" || t.id === "clear") {
-      if (!t.dataset.armed) { const l = t.textContent; t.dataset.armed = "1"; t.textContent = "Toque de novo para apagar"; setTimeout(() => { delete t.dataset.armed; t.textContent = l; }, 4000); return; }
-      store.set("re:day", null); if (D) store.set(okKey(), null);
-      D = null; ok = {};
-      $("app").hidden = true; $("resume").hidden = true; $("empty").hidden = false;
-      $("fileBtn").textContent = "Abrir planilha"; $("subtitle").textContent = "Cada rua de uma vez, com o de-para da Shopee";
-      toast("Pronto. Abra a planilha para começar.");
-    }
-  });
-  $("recalc").addEventListener("click", () => { plan($("start").value); save(); render(); toast("Ordem refeita"); });
-  $("copy").addEventListener("click", async () => {
-    const txt = order.map(a => `${a.n}. ${a.label} — Shopee ${a.shopeeStops.join(", ") || "sem nº"} — ${a.pkgs.map(p => tail(p.tn)).join(" ")}`).join("\n");
-    try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); } catch { toast("Não foi possível copiar neste navegador"); }
-  });
-
-  // ---------- onde estou ----------
-  // GPS quando o navegador deixa; senão, a rua digitada vira o ponto de referência.
-  let here = null, hereSrc = "", hereStreet = null, watchId = null, wake = null;
-  const streetName = a => a.label.split(",")[0].trim();
-  function renderHere() {
-    if (!here || !D) { $("locOut").innerHTML = ""; return; }
-    const pend = order.filter(a => !addrDone(a));
-    if (!pend.length) { $("locOut").innerHTML = `<p class="sub">Todos os endereços foram entregues.</p>`; return; }
-    const dist = a => Core.hav(here, a);
-    const nearest = pend.map(a => ({ a, d: dist(a) })).sort((x, y) => x.d - y.d);
-    // Rua digitada com pendência manda; senão, a rua do endereço pendente mais perto.
-    const st = hereSrc === "rua" && pend.some(a => a.street === hereStreet) ? hereStreet : nearest[0].a.street;
-    const onStreet = pend.filter(a => a.street === st).sort((x, y) => x.num - y.num);
-    const head = nearest.find(x => x.a.street === st);
-    const closestAny = order.map(a => ({ a, d: dist(a) })).sort((x, y) => x.d - y.d)[0];
-    const atDoneStreet = hereSrc === "gps" && closestAny.d < 60 && closestAny.a.street !== st && order.filter(a => a.street === closestAny.a.street).every(addrDone);
-    const row = ({ a, d }) => `<div class="near-row"><div class="m">${d < 1000 ? Math.round(d) + " m" : (d / 1000).toFixed(1) + " km"}</div>
-      <div><b>${esc(a.label)}</b><div class="sub">nosso nº ${a.n} · <span class="shp">${shp(a) || "–"}</span> · ${a.pkgs.length} pct · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></div></div>
-      <div class="acts"><a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><button type="button" data-a="${esc(a.key)}">Entregue</button></div></div>`;
-    $("locOut").innerHTML = `<div class="here">
-      ${atDoneStreet ? `<p class="sub">Você está na ${esc(streetName(closestAny.a))}, que já foi concluída.</p>` : ""}
-      <div class="sub">Rua com entrega pendente mais perto de você</div>
-      <div class="street-now">${esc(streetName(head.a))}</div>
-      <div class="dist">${hereSrc === "gps" ? Math.round(head.d) + " m · " : ""}${esc(head.a.bairro)} · faltam ${onStreet.length} endereço${onStreet.length > 1 ? "s" : ""}: nº ${onStreet.map(a => a.num || "?").join(", ")}</div>
-      <div class="sub" style="margin-top:4px">Mais perto de você</div>
-      ${(hereSrc === "rua" ? onStreet.map(a => ({ a, d: Core.hav(here, a) })).concat(nearest.filter(x => x.a.street !== st)) : nearest).slice(0, 6).map(row).join("")}
-    </div>`;
-  }
-  $("locBtn").addEventListener("click", async () => {
-    if (watchId != null) {
-      navigator.geolocation.clearWatch(watchId); watchId = null;
-      try { await wake?.release(); } catch {} wake = null;
-      $("locBtn").textContent = "Ativar localizador"; $("locInfo").textContent = "Localizador desligado.";
-      return;
-    }
-    if (!navigator.geolocation) return void ($("locInfo").textContent = "Este navegador não tem localização. Digite a rua abaixo.");
-    $("locInfo").textContent = "Procurando sua localização…";
-    watchId = navigator.geolocation.watchPosition(pos => {
-      here = { lat: pos.coords.latitude, lng: pos.coords.longitude }; hereSrc = "gps";
-      $("locInfo").textContent = `Localização ao vivo (precisão de ${Math.round(pos.coords.accuracy)} m), atualizada às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`;
-      $("locStreet").value = "";
-      renderHere();
-    }, () => {
-      navigator.geolocation.clearWatch(watchId); watchId = null;
-      $("locBtn").textContent = "Ativar localizador";
-      $("locInfo").textContent = "A localização foi bloqueada aqui. Neste link do claude.ai o navegador não libera o GPS. Digite a rua em que você está, logo abaixo.";
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
-    $("locBtn").textContent = "Desligar localizador";
-    try { wake = await navigator.wakeLock?.request("screen"); } catch {}
-  });
-  const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/^(r|rua|av|avenida)\.?\s+/, "").trim();
-  $("locStreet").addEventListener("input", e => {
-    const q = norm(e.target.value);
-    if (q.length < 3 || !D) return;
-    const hit = A.filter(a => norm(streetName(a)).includes(q));
-    if (!hit.length) { $("locOut").innerHTML = `<p class="sub">Nenhuma rua da rota tem esse nome.</p>`; return; }
-    // Ponto de referência: meio dos endereços dessa rua.
-    here = { lat: hit.reduce((t, a) => t + a.lat, 0) / hit.length, lng: hit.reduce((t, a) => t + a.lng, 0) / hit.length }; hereSrc = "rua"; hereStreet = hit[0].street;
-    $("locInfo").textContent = `Usando a ${streetName(hit[0])} como referência.`;
-    renderHere();
-  });
-
-  // ---------- achar pacote ----------
-  function showFound(a, tn) {
-    if (!a) return;
-    $("found").innerHTML = `<div class="hit">
-      <div class="big">${a.n}</div>
-      <b>${esc(a.label)}</b>
-      <div class="sub">${esc(a.bairro)} · <span class="shp">${shp(a) || "–"}</span>${addrDone(a) ? " · já entregue" : ""}</div>
-      <div>${a.pkgs.map(p => `<div class="${p.tn === tn ? "" : "sub"}"><b class="mono">${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}${extra(p) ? " · " + esc(extra(p)) : ""}${pkgDone(p) ? " ✓" : ""} <button type="button" data-p="${esc(p.tn)}">${pkgDone(p) ? "Desfazer" : "Entregue"}</button></div>`).join("")}</div>
-      <div class="actions"><a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>${!addrDone(a) && a.pkgs.length > 1 ? `<button type="button" class="primary" data-a="${esc(a.key)}">Entreguei tudo aqui</button>` : ""}</div>
-    </div>`;
-    buzz(60);
-  }
-  $("q").addEventListener("input", e => {
-    const q = e.target.value.trim();
-    if (!D || !q) { $("found").innerHTML = ""; return; }
-    if (/^\d{1,3}$/.test(q)) {
-      const n = +q, hits = order.filter(a => a.shopeeStops.includes(n));
-      $("found").innerHTML = hits.length ? "" : `<p class="sub">A parada ${n} da Shopee não está nesta planilha.</p>`;
-      if (hits.length === 1) showFound(hits[0], hits[0].pkgs.find(p => p.shopeeStop === n).tn);
-      else if (hits.length > 1) $("found").innerHTML = `<p><b>A parada Shopee ${n} está em ${hits.length} endereços:</b> ${hits.map(a => `nº ${a.n} (${esc(a.label)})`).join(" · ")}</p>`;
-      return;
-    }
-    const m = Core.matchTN(D.pkgs, q);
-    if (m.length === 1 && q.replace(/[^A-Za-z0-9]/g, "").length >= 4) showFound(byTn.get(m[0].tn), m[0].tn);
-    else $("found").innerHTML = m.length > 1 ? `<p class="sub">${m.length} pacotes terminam assim. Digite mais um caractere.</p>` : q.length >= 4 ? `<p class="sub">Nenhum pacote desta rota termina assim.</p>` : "";
-  });
-
+  // ---------- escanear ----------
   const findPkgByCode = text => {
     const t = String(text || "").toUpperCase().replace(/\s+/g, "");
     return D?.pkgs.find(p => p.tn && t.includes(p.tn.toUpperCase())) || null;
@@ -360,48 +515,34 @@
     } finally { URL.revokeObjectURL(url); }
   }
 
-  const onCode = (p, read) => {
-    if (p) { $("q").value = ""; return showFound(byTn.get(p.tn), p.tn); }
-    $("found").innerHTML = `<div class="hit miss"><b>${read.length ? "Este pacote não está nesta rota" : "Não consegui ler o código"}</b><div class="sub">${read.length ? "Código lido: " + esc(read.join(", ")) : "Fotografe só a etiqueta, de perto e com luz, ou digite o final do código."}</div></div>`;
-    buzz([200, 80, 200]);
-  };
+  function openScan(a, tn, missHtml) {
+    $("scanOverlay").hidden = false;
+    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${a.n}</div>${addrCard(a, tn)}
+      <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sel="${esc(a.key)}">Ver no mapa</button><button type="button" class="line" data-close="1">Fechar</button></div>`;
+  }
   $("photo").addEventListener("change", async e => {
     const f = e.target.files[0];
     e.target.value = "";
-    if (!f || !D) return;
+    if (!f) return;
+    if (!active) return toast("Abra a planilha da rota antes de escanear.");
     if (!window.ZXing) return toast("O leitor de código não carregou. Confira a internet.");
-    $("found").innerHTML = `<p class="sub">Lendo a etiqueta…</p>`;
-    try { const { p, read } = await decodePhoto(f); onCode(p, read); } catch { onCode(null, []); }
-  });
-  let live = null;
-  if (window.ZXing && navigator.mediaDevices?.getUserMedia) $("live").hidden = false;
-  $("live").addEventListener("click", async () => {
-    if (live) { live.reset(); live = null; $("video").hidden = true; $("live").textContent = "Câmera contínua"; return; }
-    live = new ZXing.BrowserMultiFormatReader(zxHints(), 250);
-    let last = "", lastAt = 0;
-    $("video").hidden = false; $("live").textContent = "Fechar câmera";
+    openScan(null, null, `<p class="sub">Lendo a etiqueta…</p>`);
     try {
-      await live.decodeFromVideoDevice(undefined, $("video"), res => {
-        if (!res) return;
-        const txt = res.getText();
-        if (txt === last && Date.now() - lastAt < 3000) return;
-        last = txt; lastAt = Date.now();
-        onCode(findPkgByCode(txt), [txt]);
-      });
-    } catch {
-      live?.reset(); live = null; $("video").hidden = true; $("live").textContent = "Câmera contínua";
-      toast("A câmera ao vivo não abriu aqui. Use Escanear etiqueta.");
-    }
+      const { p, read } = await decodePhoto(f);
+      if (p) { buzz(60); return openScan(byTn.get(p.tn), p.tn); }
+      buzz([200, 80, 200]);
+      openScan(null, null, `<div class="miss"><b>${read.length ? "Este pacote não está nesta rota" : "Não consegui ler o código"}</b><span class="sub">${read.length ? "Código lido: " + esc(read.join(", ")) : "Fotografe só a etiqueta, de perto e com luz."}</span></div>
+        <label class="btn primary" for="photo">Tentar de novo</label><button type="button" class="line" data-close="1">Fechar</button>`);
+    } catch { openScan(null, null, `<div class="miss"><b>Não consegui ler o código</b></div><button type="button" class="line" data-close="1">Fechar</button>`); }
   });
 
   // ---------- início: o dia salvo só volta se você pedir ----------
   if (D) {
-    ok = store.get(okKey(), {});
-    derive();
-    const pend = D.pkgs.filter(p => !ok[p.tn]).length;
+    const okSaved = store.get("re:ok:" + D.at, {});
+    const pend = D.pkgs.filter(p => !okSaved[p.tn]).length;
     $("resume").hidden = false;
-    $("resume").innerHTML = `<h2>Rota salva</h2><p>${esc(D.at)} · ${D.pkgs.length} pacotes · <b>${pend} pendentes</b></p>
-      <div class="actions"><button type="button" class="primary" data-resume="go">Continuar</button><button type="button" class="ghost" data-resume="clear">Começar do zero</button></div>
-      <p class="sub">Abrir a planilha desta mesma rota mantém as entregas; a de outra rota começa do zero.</p>`;
+    $("resume").innerHTML = `<div class="card" style="background:var(--bg)"><b>Rota salva: ${esc(D.at)}</b><span class="sub">${D.pkgs.length} pacotes · ${pend} pendentes</span>
+      <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" data-resume="go">Continuar</button><button type="button" class="line" data-resume="clear">Começar do zero</button></div></div>`;
   }
+  route();
 })();

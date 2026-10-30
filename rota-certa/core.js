@@ -298,12 +298,27 @@ const Core = (() => {
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     });
-    return [...map.entries()].map(([key, list]) => {
+    // Números diferentes no mesmo ponto (condomínio, mesma casa) viram uma parada só:
+    // mesma rua a até 25 m, ou qualquer rua a até 10 m.
+    const groups = [...map.entries()];
+    const centre = l => ({ lat: l.reduce((t, p) => t + p.lat, 0) / l.length, lng: l.reduce((t, p) => t + p.lng, 0) / l.length });
+    for (let i = 0; i < groups.length; i++) {
+      for (let j = i + 1; j < groups.length; j++) {
+        const [ki, li] = groups[i], [kj, lj] = groups[j];
+        const d = hav(centre(li), centre(lj));
+        if (d <= 10 || (d <= 25 && li[0].street && li[0].street === lj[0].street)) {
+          groups[i] = [ki, li.concat(lj)];
+          groups.splice(j, 1); j = i;
+        }
+      }
+    }
+    return groups.map(([key, list]) => {
       list.sort((a, b) => (a.shopeeStop ?? 1e9) - (b.shopeeStop ?? 1e9) || a.tn.localeCompare(b.tn));
+      const nums = [...new Set(list.map(p => parseInt(p.number, 10)).filter(n => n > 0))].sort((a, b) => a - b);
       const lat = list.reduce((s, p) => s + p.lat, 0) / list.length, lng = list.reduce((s, p) => s + p.lng, 0) / list.length;
       return {
-        key, pkgs: list, lat, lng, street: list[0].street, num: parseInt(list[0].number, 10) || 0,
-        label: list[0].address.split(",").slice(0, 2).join(",").replace(/\s+,/g, ",").trim(),
+        key, pkgs: list, lat, lng, street: list[0].street, num: nums[0] || 0, nums,
+        label: nums.length > 1 ? list[0].address.split(",")[0].replace(/\s+\d+[a-z]?\s*$/i, "").trim() + ", " + nums.join(" / ") : list[0].address.split(",").slice(0, 2).join(",").replace(/\s+,/g, ",").trim(),
         bairro: list[0].bairro,
         shopeeStops: [...new Set(list.map(p => p.shopeeStop).filter(v => v != null))].sort((a, b) => a - b),
         unseq: list.filter(p => p.seq == null).length,

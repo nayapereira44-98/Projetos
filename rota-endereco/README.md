@@ -1,16 +1,30 @@
-# Rota por Endereço
+# Rota Certa (por endereço)
 
-Versão simplificada do Rota Certa, pensada para a rua. A planilha (.xlsx) exportada do app SPX Motorista Parceiro vira uma rota em que **cada parada é um endereço** (rua + número), e não o ponto de parada da Shopee.
+App de entrega para quem usa o SPX Motorista Parceiro. Ele lê a planilha (.xlsx) que o app da Shopee exporta e monta a rota **por endereço**. O número de parada da Shopee aparece só como referência para o de-para com a etiqueta.
 
-- Pacotes do mesmo endereço ficam juntos, mesmo quando a Shopee deu números de parada diferentes para eles.
-- **Cada rua é feita inteira, de uma vez**, em ordem de número. Uma rua só é dividida quando dois números seguidos ficam a mais de 250 m um do outro. A ordem dos trechos de rua (e o sentido de cada um) é otimizada para andar menos.
-- O número da **parada da Shopee** aparece ao lado de cada endereço, só para o de-para com a etiqueta. Há também uma tabela **De-para: parada da Shopee → endereço**.
-- O próximo endereço mostra os pacotes (final do código, número da Shopee e complemento), os números que ainda faltam na mesma rua e os botões Waze, Google e Apple Maps.
-- **Achar pacote**: escaneie a etiqueta (foto) ou digite o final do código ou o número da parada da Shopee.
-- As entregas são marcadas por endereço ou por pacote, em qualquer ordem. **Refazer a ordem** recalcula só os endereços que faltam.
-- **Onde estou**: com **Ativar localizador**, o GPS do celular mostra a rua com entrega pendente mais perto de você, os números que faltam nela e os 6 endereços pendentes mais próximos (distância, nosso nº, parada da Shopee, Waze e Entregue). A lista se atualiza enquanto você anda, e a tela fica acesa. Onde o navegador bloqueia o GPS (como no link do claude.ai), dá para digitar a rua em que você está.
-- O app não abre a rota sozinho: ele pergunta se você quer continuar ou começar do zero. Reabrir a planilha da mesma rota mantém as entregas e encaixa os pacotes novos.
+Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona para `rota-endereco/`).
 
-Com a planilha de 29/10 (86 pacotes): 81 endereços em 38 ruas, cerca de 9,9 km contra 13,6 km na ordem da Shopee. Na ordem da Shopee, 11 ruas eram visitadas mais de uma vez; aqui são 4, todas ruas longas com trechos separados.
+## Telas (barra de abas embaixo)
+- **Mapa**: mapa de verdade (OpenStreetMap) com **todas as paradas** numeradas. Laranja é pendente, cinza é entregue, verde é a próxima; parada com vários pacotes tem destaque. Uma linha liga as pendentes na ordem.
+  - O cartão de baixo mostra a parada escolhida, ou a próxima: endereço, número da Shopee, **todos os pacotes do endereço** (cada um marcável), Waze/Google/Apple, **Entreguei aqui** e "Ainda nesta rua e por perto".
+  - **Localizador** (botão de mira): ponto azul ao vivo e o aviso "Perto: Rua X · 22 m · faltam nº …".
+- **Paradas**: lista agrupada por rua, com busca por rua, final do código ou número da parada da Shopee.
+- **Escanear** (botão central): foto da etiqueta. Mostra a parada, todos os pacotes daquele endereço e "Ver no mapa".
+- **Painel**:
+  - **Iniciar entregas / Finalizar entregas**, com o cronômetro no topo do app;
+  - pacotes e paradas feitos, tempo médio por parada e pacotes por hora;
+  - previsão de término e quantos pacotes ainda cabem até o horário escolhido;
+  - faturamento: ganho, combustível, lucro, lucro por hora e por pacote;
+  - histórico dos dias.
+- **Ajustes**: abrir ou atualizar a planilha (a mesma rota mantém as entregas), refazer a ordem a partir de um endereço, tabela de-para Shopee → parada e começar do zero.
 
-Arquivos: `index.html`, `app.js` e `build.py`, que gera um HTML único. A lógica de endereço (`buildAddresses`, `streetSegments`, `addressRoute`) fica em `../rota-certa/core.js`.
+## Regras de rota
+- Uma parada por endereço. Números diferentes no **mesmo ponto** (até 25 m na mesma rua, ou 10 m em qualquer rua) viram uma parada só, por exemplo "José Pioli, 212 / 225 / 245" (Shopee 30 + 31).
+- Cada rua é feita inteira, em ordem de número. A ordem e o sentido dos trechos são otimizados (`Core.addressRoute`).
+
+Planilha de 29/10: 86 pacotes viram 74 paradas, com cerca de 9,9 km contra 13,6 km na ordem da Shopee.
+
+## Arquivos
+`index.html` (tela e estilos, com o CSS do Leaflet embutido), `app.js` e `build.py`, que gera o HTML único. A lógica fica em `../rota-certa/core.js`.
+
+Créditos: [Leaflet](https://leafletjs.com) (BSD-2), mapas © colaboradores do OpenStreetMap, [ZXing](https://github.com/zxing-js/library) (Apache-2.0).
