@@ -75,6 +75,17 @@
   let fin = { pay: null, mode: "rota", price: 6.29, kml: 11, km: null, endTime: "18:00", ...store.get("re:fin", {}) };
   let hist = store.get("re:hist", []);
   let selKey = null, active = false;
+  // Dias em que cada código apareceu numa planilha: o mesmo pacote em outro dia é nova tentativa.
+  let seen = store.get("re:seen", {});
+  const dayOf = t => new Date(t).toISOString().slice(0, 10);
+  function markSeen(pkgs, t) {
+    const d = dayOf(t);
+    pkgs.forEach(p => { const l = seen[p.tn] || []; if (!l.includes(d)) seen[p.tn] = l.concat(d).sort(); });
+    const cut = dayOf(Date.now() - 30 * 864e5);
+    Object.keys(seen).forEach(k => { seen[k] = seen[k].filter(x => x >= cut); if (!seen[k].length) delete seen[k]; });
+    store.set("re:seen", seen);
+  }
+  const attempt = p => (seen[p.tn] || []).filter(x => x <= dayOf(D?.createdAt || Date.now())).length || 1;
   const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
   const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
   const pkgDone = p => !!ok[p.tn];
@@ -126,6 +137,7 @@
         save(); start();
         toast(fresh ? `${fresh} pacote(s) novo(s) encaixados na rota` : "Planilha atualizada");
       } else {
+        markSeen(pkgs, Date.now());
         D = { at, file: f.name, pkgs, createdAt: Date.now(), order: null, km: null };
         ok = {}; sess = {}; fin.km = null; store.set("re:fin", fin);
         derive(); plan(null); save(); start();
@@ -193,11 +205,12 @@
     return `
       <div class="eyebrow">${a === nx ? "Próxima parada" : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc(a.bairro)}</div></div>
-      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}</div>
+      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "sem nº"}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${p.shopeeStop != null ? "Shopee " + p.shopeeStop : "fora da rota"}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
@@ -372,7 +385,7 @@
       html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
-          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${shopee(a) || "sem nº"} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
+          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${shopee(a) || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
           <span class="count">${a.pkgs.length}</span></button>`).join("")}</div>`;
       i = j;
     }

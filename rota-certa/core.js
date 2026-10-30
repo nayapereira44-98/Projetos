@@ -40,7 +40,8 @@ const Core = (() => {
     const s = stripAccents(String(addr || "")).toLowerCase();
     const hm = (h, m) => String(+h).padStart(2, "0") + ":" + String(m ? +m : 0).padStart(2, "0");
     const until = s.match(/\bate\s*(?:as\s*)?(\d{1,2})\s*(?:[:h]\s*(\d{2})?)/);
-    const after = s.match(/\b(?:apos|depois\s+d[ae]s?)\s*(?:as\s*)?(\d{1,2})\s*(?:[:h]\s*(\d{2})?)/);
+    const after = s.match(/\b(?:apos|depois\s+d[ae]s?)\s*(?:as\s*)?(\d{1,2})\s*(?:[:h]\s*(\d{2})?)/)
+      || s.match(/\bso\s+(?:estou|esta|tem\s+(?:alguem|gente))\b[^0-9]{0,25}?(?:a\s*partir\s*d[ae]s?\s*|as\s*)?(\d{1,2})\s*(?:[:h]\s*(\d{2})?)/);
     const w = {};
     if (until && +until[1] < 24) w.until = hm(until[1], until[2]);
     if (after && +after[1] < 24) w.after = hm(after[1], after[2]);
@@ -291,7 +292,35 @@ const Core = (() => {
 
   // ---------- rota por endereço ----------
   // Uma parada por endereço (rua + número); a parada da Shopee vira só referência.
+  // Mesmo CEP + nome parecido = mesma rua ("Dr Joaquim Afonso de P Neves" e "Doutor Joaquim Affonso de Paula Neves").
+  function lev(a, b) {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
+  function similarStreet(a, b) {
+    const ta = a.split(" ").filter(t => t.length > 2), tb = b.split(" ").filter(t => t.length > 2);
+    const [s, l] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+    if (!s.length) return false;
+    const hit = s.filter(t => l.some(u => u === t || u.startsWith(t) || t.startsWith(u) || (t.length > 3 && lev(t, u) <= 2))).length;
+    return hit / s.length >= 0.6;
+  }
+  function unifyStreets(pkgs) {
+    const byCep = new Map();
+    pkgs.forEach(p => { const c = String(p.cep || "").replace(/\D/g, ""); if (c.length === 8 && p.street) { if (!byCep.has(c)) byCep.set(c, []); byCep.get(c).push(p); } });
+    byCep.forEach(list => {
+      const names = [...new Set(list.map(p => p.street))].sort((a, b) => b.length - a.length);
+      names.forEach((n, i) => {
+        const canon = names.slice(0, i).find(m => similarStreet(n, m));
+        if (canon) list.forEach(p => { if (p.street === n) p.street = canon; });
+      });
+    });
+    return pkgs;
+  }
+
   function buildAddresses(pkgs) {
+    unifyStreets(pkgs);
     const map = new Map();
     pkgs.forEach(p => {
       const key = p.street && p.number ? p.street + "|" + p.number : "geo|" + p.lat.toFixed(4) + "," + p.lng.toFixed(4);
@@ -407,6 +436,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, streetSegments, addressRoute, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
