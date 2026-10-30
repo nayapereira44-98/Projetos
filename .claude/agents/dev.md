@@ -88,6 +88,12 @@ Código de projetos com licença MIT pode ser reaproveitado, mantendo o aviso de
 - **Ensino:** [MIT web.lab](https://github.com/weblab-workshops), os workshops do curso de desenvolvimento web do MIT (React + Express); e [microsoft/Web-Dev-For-Beginners](https://github.com/microsoft/Web-Dev-For-Beginners) (MIT).
 - **Trilha de estudo:** [kamranahmedse/developer-roadmap](https://github.com/kamranahmedse/developer-roadmap), só consulta (licença não MIT).
 
+## Padrões de projeto estudados
+
+Antes de construir um projeto desses tipos, leia o arquivo de referência:
+
+- **Área de membros e vitrine de produtos digitais** (cursos, kits grátis, acervos, login com o e-mail da compra, liberação por webhook de Hotmart, Kiwify ou Stripe): `.claude/agents/referencias/area-de-membros.md`.
+
 ## Regras
 
 - Não crie site que imite uma marca, pessoa ou empresa real como se fosse dela, nem formulário que colete senha ou pagamento fora de um serviço de pagamento oficial.
