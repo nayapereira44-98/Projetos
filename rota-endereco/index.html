@@ -124,6 +124,13 @@ details.box summary { cursor: pointer; font-weight: 700; min-height: 32px; }
 table.dp { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 table.dp th, table.dp td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 table.dp td:first-child, table.dp td:nth-child(2) { font: 800 1rem var(--font-display); white-space: nowrap; }
+.here { border: 3px solid var(--sign); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.here .street-now { font: 800 1.35rem/1.15 var(--font-display); }
+.here .dist { font: 700 0.9rem var(--font-data); color: var(--muted); }
+.near-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; }
+.near-row .m { font: 700 0.85rem var(--font-data); text-align: right; color: var(--muted); }
+.near-row .acts { display: flex; gap: 6px; }
+.near-row .btn, .near-row button { min-height: 40px; padding: 4px 10px; font-size: 0.85rem; }
 .foot { color: var(--muted); font-size: 0.82rem; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 700; z-index: 20; max-width: calc(100% - 32px); }
 video { width: 100%; border-radius: 12px; background: #000; }
@@ -169,6 +176,15 @@ video { width: 100%; border-radius: 12px; background: #000; }
       <label for="q" class="sub">ou digite o final do código ou o número da parada da Shopee</label>
       <input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="ex. 0507 ou 49">
       <div id="found" aria-live="assertive"></div>
+    </section>
+
+    <section class="card" id="locCard">
+      <div class="top"><h2>Onde estou</h2><button id="locBtn" type="button" class="primary">Ativar localizador</button></div>
+      <p class="sub" id="locInfo">Mostra a rua da rota mais perto de você e os endereços pendentes ao redor.</p>
+      <label for="locStreet" class="sub">Sem GPS? Digite a rua em que você está</label>
+      <input id="locStreet" type="search" list="streetList" autocomplete="off" placeholder="ex. Oscar Ribeira">
+      <datalist id="streetList"></datalist>
+      <div id="locOut" aria-live="polite"></div>
     </section>
 
     <details class="box">

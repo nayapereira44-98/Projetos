@@ -8,6 +8,7 @@ Versão simplificada do Rota Certa, pensada para a rua. A planilha (.xlsx) expor
 - O próximo endereço mostra os pacotes (final do código, número da Shopee e complemento), os números que ainda faltam na mesma rua e os botões Waze, Google e Apple Maps.
 - **Achar pacote**: escaneie a etiqueta (foto) ou digite o final do código ou o número da parada da Shopee.
 - As entregas são marcadas por endereço ou por pacote, em qualquer ordem. **Refazer a ordem** recalcula só os endereços que faltam.
+- **Onde estou**: com **Ativar localizador**, o GPS do celular mostra a rua com entrega pendente mais perto de você, os números que faltam nela e os 6 endereços pendentes mais próximos (distância, nosso nº, parada da Shopee, Waze e Entregue). A lista se atualiza enquanto você anda, e a tela fica acesa. Onde o navegador bloqueia o GPS (como no link do claude.ai), dá para digitar a rua em que você está.
 - O app não abre a rota sozinho: ele pergunta se você quer continuar ou começar do zero. Reabrir a planilha da mesma rota mantém as entregas e encaixa os pacotes novos.
 
 Com a planilha de 29/10 (86 pacotes): 81 endereços em 38 ruas, cerca de 9,9 km contra 13,6 km na ordem da Shopee. Na ordem da Shopee, 11 ruas eram visitadas mais de uma vez; aqui são 4, todas ruas longas com trechos separados.
