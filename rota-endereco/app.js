@@ -151,6 +151,11 @@
         plan(nx && byKey.has(nx.key) ? nx.key : null);
         save(); start();
         toast(fresh ? `${fresh} pacote(s) novo(s) encaixados na rota` : "Planilha atualizada");
+      } else if (D && !D.pkgs.length && active) {
+        markSeen(pkgs, Date.now());
+        Object.assign(D, { at, file: f.name, pkgs, order: null, km: null });
+        derive(); plan(null); save(); start();
+        toast(`Shopee somada à rota: ${pkgs.length} pacotes`);
       } else {
         markSeen(pkgs, Date.now());
         D = { at, file: f.name, pkgs, createdAt: Date.now(), order: null, km: null };
@@ -355,6 +360,8 @@
     const d = t.dataset;
     if (d.resume === "go") { derive(); ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); start(); return; }
     if (d.resume === "clear" || t.id === "clear") return twoTap(t, clearDay);
+    if (d.importGo) return void runImport();
+    if (d.close) { $("scanOverlay").hidden = true; return; }
     if (!active) return;
     if (d.a) { deliverAddr(byKey.get(d.a)); if (t.closest("#scanSheet")) $("scanOverlay").hidden = true; }
     else if (d.p) {
@@ -373,6 +380,12 @@
       toast("Endereço movido para o fim. Siga para a próxima.");
     }
     else if (d.add) openAdd();
+    else if (d.place != null) {
+      const p = (D.unplaced || [])[+d.place]; if (!p) return;
+      D.unplaced.splice(+d.place, 1); save();
+      addDraft = { src: p.src, address: p.address, compl: "", code: p.code || p.tn, lat: null, lng: null };
+      openAdd(true);
+    }
     else if (d.addsave) saveAdd();
     else if (d.geo != null) pickGeo(+d.geo);
     else if (d.pin) startPin();
@@ -512,6 +525,7 @@
   // ---------- ajustes ----------
   function fillAjustes() {
     $("fileInfo").textContent = `${D.at} · ${D.pkgs.length} da Shopee${D.extra?.length ? ` + ${D.extra.length} adicionados` : ""} · ${A.length} endereços`;
+    $("unplaced").innerHTML = (D.unplaced || []).length ? `<div class="offroute"><b>${D.unplaced.length} endereço(s) não encontrado(s) no mapa.</b> Toque para buscar de novo ou marcar no mapa.</div>` + D.unplaced.map((p, i) => `<button type="button" class="row" style="grid-template-columns:minmax(0,1fr) auto" data-place="${i}"><span><b>${esc(p.address)}</b><br><span class="sub">${esc(PLATFORMS[p.src]?.name || p.src)}${p.code ? " · " + esc(p.code) : ""}</span></span><span class="count">Localizar</span></button>`).join("") : "";
     $("extraList").innerHTML = (D.extra || []).length ? D.extra.map(p => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(p.address)}</b><br><span class="sub">${esc(PLATFORMS[p.src]?.name || p.src)}${p.code ? " · " + esc(p.code) : ""}</span></span><button type="button" class="line" data-rmextra="${esc(p.tn)}">Remover</button></div>`).join("") : `<p class="sub">Nenhum pacote adicionado à mão.</p>`;
     $("fKm").placeholder = ((D.km || 0) / 1000).toFixed(1) + " (estimado)";
     const sorted = A.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
@@ -606,6 +620,120 @@
     const a = byTn.get(p.tn);
     toast(`Entrou na rota como parada ${a.n}`);
     select(a.key);
+  }
+
+  // ---------- planilha de outra plataforma (Mercado Livre e as próximas) ----------
+  // O formato ainda não é conhecido: as colunas são reconhecidas pelo nome; se não der, a entregadora escolhe.
+  // Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo, regra do serviço) e guardado no aparelho.
+  const ROLES = [
+    ["address", "Endereço (rua)", ["endereco", "address", "logradouro", "rua", "destino", "destination", "street"]],
+    ["number", "Número", ["numero", "number", "n°", "nº", "num"]],
+    ["compl", "Complemento", ["complemento", "complement", "referencia", "observacao", "obs", "apto"]],
+    ["code", "Código do pacote", ["codigo", "tracking", "rastreio", "pacote", "shipment", "envio", "etiqueta", "pedido", "order", "id"]],
+    ["name", "Destinatário", ["destinatario", "cliente", "nome", "recebedor", "buyer", "receiver"]],
+    ["bairro", "Bairro", ["bairro", "neighborhood", "district"]],
+    ["city", "Cidade", ["cidade", "city", "municipio"]],
+    ["cep", "CEP", ["cep", "zip", "postal"]],
+    ["lat", "Latitude", ["latitude", "lat"]],
+    ["lng", "Longitude", ["longitude", "lng", "lon"]],
+  ];
+  const normH = s => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  let imp = null; // { src, file, rows, head, map }
+  function parseCsv(text) {
+    const first = text.split(/\r?\n/)[0] || "";
+    const sep = [";", ",", "\t"].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+    const rows = []; let row = [], cell = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === sep) { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(c => String(c).trim()));
+  }
+  function guessMap(head) {
+    const map = {}, used = new Set();
+    ROLES.forEach(([role, , keys]) => {
+      const i = head.findIndex((h, j) => !used.has(j) && keys.some(k => (k.length <= 3 ? normH(h).split(/[^a-z0-9°º]+/).includes(k) : normH(h).includes(k))));
+      if (i >= 0) { map[role] = i; used.add(i); }
+    });
+    return map;
+  }
+  $("fileOther").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const rows = /\.csv$/i.test(f.name) || f.type === "text/csv" ? parseCsv(await f.text()) : await readXlsxFile(f);
+      const hi = rows.findIndex(r => Object.keys(guessMap(r.map(String))).length >= 2);
+      const h = hi >= 0 ? hi : 0;
+      imp = { src: $("otherSrc").value, file: f.name, head: rows[h].map(c => String(c ?? "")), rows: rows.slice(h + 1).filter(r => r.some(c => String(c ?? "").trim())) };
+      imp.map = guessMap(imp.head);
+      if (!imp.rows.length) return toast("O arquivo não tem linhas de pacotes.");
+      showMapping(imp.map.address == null);
+    } catch { toast("Não consegui ler esse arquivo. Envie em Excel (.xlsx) ou CSV."); }
+  });
+  function showMapping(needs) {
+    $("scanOverlay").hidden = false;
+    const opt = role => `<option value="">— não tem —</option>` + imp.head.map((h, i) => `<option value="${i}" ${imp.map[role] === i ? "selected" : ""}>${esc(h || "Coluna " + (i + 1))} · ex.: ${esc(String(imp.rows[0][i] ?? "").slice(0, 24))}</option>`).join("");
+    $("scanSheet").innerHTML = `<div class="addr-big">Planilha ${esc(PLATFORMS[imp.src]?.name || imp.src)}</div>
+      <p class="sub">${imp.rows.length} linhas em "${esc(imp.file)}". ${needs ? "<b>Não reconheci a coluna do endereço.</b> Diga qual coluna é cada informação:" : "Confira as colunas que reconheci:"}</p>
+      <div class="form">${ROLES.map(([role, label]) => `<label for="m_${role}" class="${["address", "code"].includes(role) ? "full" : ""}">${label}${role === "address" ? " *" : ""}<select id="m_${role}">${opt(role)}</select></label>`).join("")}</div>
+      <button type="button" class="primary deliver" data-import-go="1">Colocar ${imp.rows.length} pacotes na rota</button>
+      <button type="button" class="line" data-close="1">Cancelar</button>`;
+  }
+  async function runImport() {
+    ROLES.forEach(([role]) => { const v = $("m_" + role).value; if (v === "") delete imp.map[role]; else imp.map[role] = +v; });
+    if (imp.map.address == null) return toast("Escolha a coluna do endereço.");
+    if (!D) { D = { at: "dia-" + dayOf(Date.now()), file: "", pkgs: [], createdAt: Date.now(), order: null, km: null }; ok = {}; sess = {}; }
+    const cell = (r, role) => (imp.map[role] == null ? "" : String(r[imp.map[role]] ?? "").trim());
+    const city = cell(imp.rows[0], "city") || D.pkgs[0]?.city || "";
+    const have = new Set(all().map(p => p.tn));
+    const cache = store.get("re:geo", {});
+    const todo = [], fail = [];
+    imp.rows.forEach((r, i) => {
+      let street = cell(r, "address"), num = cell(r, "number"), compl = cell(r, "compl");
+      if (!street) return;
+      const base = num && !street.includes(num) ? `${street}, ${num}` : street;
+      const code = cell(r, "code");
+      const tn = (code || `${imp.src.toUpperCase()}-${base}-${i}`).toUpperCase();
+      if (have.has(tn)) return;
+      const lat = parseFloat(cell(r, "lat").replace(",", ".")), lng = parseFloat(cell(r, "lng").replace(",", "."));
+      todo.push({ tn, code, base, compl, name: cell(r, "name"), bairro: cell(r, "bairro"), cep: cell(r, "cep"), city: cell(r, "city") || city, lat: isFinite(lat) && Math.abs(lat) > 0.01 ? lat : null, lng: isFinite(lng) ? lng : null });
+    });
+    if (!todo.length) { $("scanOverlay").hidden = true; return toast("Esses pacotes já estão na rota."); }
+    const lats = A.map(a => a.lat), lngs = A.map(a => a.lng);
+    const vb = lats.length ? `&viewbox=${Math.min(...lngs) - 0.08},${Math.max(...lats) + 0.08},${Math.max(...lngs) + 0.08},${Math.min(...lats) - 0.08}` : "";
+    const added = [];
+    for (let i = 0; i < todo.length; i++) {
+      const t = todo[i];
+      $("scanSheet").innerHTML = `<div class="addr-big">Localizando endereços</div><p>${i + 1} de ${todo.length}: ${esc(t.base)}</p><div class="bar" style="background:var(--line)"><i style="width:${((i + 1) / todo.length * 100).toFixed(0)}%;background:var(--brand)"></i></div>`;
+      if (t.lat == null) {
+        const q = [t.base, t.bairro, t.city, t.cep].filter(Boolean).join(", ");
+        if (cache[q]) [t.lat, t.lng] = cache[q];
+        else {
+          try {
+            const r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=br&limit=1&q=${encodeURIComponent(q)}${vb}`)).json();
+            if (r[0]) { t.lat = +r[0].lat; t.lng = +r[0].lon; cache[q] = [t.lat, t.lng]; }
+          } catch {}
+          await new Promise(res => setTimeout(res, 1100));
+        }
+      }
+      const address = t.base + (t.compl ? ", " + t.compl : "");
+      const p = { tn: t.tn, code: t.code, src: imp.src, address, bairro: t.bairro, city: t.city, cep: t.cep, recipient: t.name, lat: t.lat, lng: t.lng, seq: null, shopeeStop: null, at: D.at, ...Core.parseAddress(address), window: Core.parseWindow(address) };
+      if (t.lat == null) fail.push(p); else added.push(p);
+    }
+    store.set("re:geo", cache);
+    D.extra = (D.extra || []).concat(added);
+    D.unplaced = (D.unplaced || []).concat(fail);
+    derive(); plan(nextAddr()?.key); save();
+    if (!active) start(); else { numberOrder(); fillAjustes(); drawMarkers(true); renderAll(); }
+    $("scanOverlay").hidden = true;
+    toast(`${added.length} pacote(s) ${PLATFORMS[imp.src]?.name || ""} na rota${fail.length ? ` · ${fail.length} sem localização (veja em Ajustes)` : ""}`);
+    location.hash = fail.length ? "#ajustes" : "#mapa";
   }
 
   // ---------- escanear ----------

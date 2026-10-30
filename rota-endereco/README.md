@@ -25,6 +25,7 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
 - As plataformas ficam cadastradas em `PLATFORMS` (`app.js`). Para incluir outra, basta uma linha ali e a leitura do arquivo dela.
 - **Próximas 10 paradas no Google Maps**: manda as 10 próximas pendentes, na ordem do app e com todas as plataformas, para o Google Maps. É o máximo que o link aceita. Com o celular no CarPlay ou Android Auto, a sequência aparece na tela do carro.
+- **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
 ## Regras de rota

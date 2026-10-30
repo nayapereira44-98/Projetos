@@ -888,6 +888,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
           <h2>Entregue por endereço, sem voltar na mesma rua</h2>
           <div id="resume" hidden></div>
           <label class="btn primary" for="file" style="width:100%">Abrir planilha da Shopee</label>
+          <label class="btn brand" for="fileOther" style="width:100%">Abrir planilha do Mercado Livre</label>
           <ol class="steps sub">
             <li>No app da Shopee, toque em baixar (↓) para exportar a rota em Excel.</li>
             <li>Abra aqui. Cada parada vira um <b>endereço</b>, com todos os pacotes dele juntos.</li>
@@ -912,7 +913,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <!-- Paradas -->
     <section class="view" id="v-lista" hidden>
       <div class="pad">
-        <button type="button" class="primary" data-add="1">+ Adicionar pacote (Mercado Livre ou outro)</button>
+        <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
@@ -942,8 +943,11 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <!-- Ajustes -->
     <section class="view" id="v-ajustes" hidden>
       <div class="pad">
-        <div class="card"><h2>Planilha</h2><p class="sub" id="fileInfo"></p>
-          <label class="btn brand" for="file">Abrir ou atualizar planilha</label>
+        <div class="card"><h2>Planilhas do dia</h2><p class="sub" id="fileInfo"></p>
+          <label class="btn brand" for="file">Planilha da Shopee (abrir ou atualizar)</label>
+          <div class="form"><label for="otherSrc" class="full">Planilha de outra plataforma<select id="otherSrc"><option value="ml">Mercado Livre</option><option value="outro">Outra</option></select></label></div>
+          <label class="btn primary" for="fileOther">Somar planilha (Excel ou CSV) à rota</label>
+          <div id="unplaced" style="display:grid;gap:8px"></div>
           <p class="sub">Abrir de novo a planilha da mesma rota mantém o que você já entregou e encaixa os pacotes novos.</p>
         </div>
         <div class="card"><h2>Pacotes adicionados à mão</h2><div id="extraList" style="display:grid;gap:8px"></div><button type="button" class="brand" data-add="1">+ Adicionar pacote</button></div>
@@ -967,6 +971,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
   </nav>
 </div>
 <input id="file" type="file" accept=".xlsx">
+<input id="fileOther" type="file" accept=".xlsx,.csv,text/csv">
 <input id="photo" type="file" accept="image/*" capture="environment">
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
