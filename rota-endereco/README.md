@@ -8,13 +8,15 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
 - **Mapa**: mapa de verdade (OpenStreetMap) com **todas as paradas** numeradas. Laranja é pendente, cinza é entregue, verde é a próxima; parada com vários pacotes tem destaque. Uma linha liga as pendentes na ordem.
   - O cartão de baixo mostra a parada escolhida, ou a próxima: endereço, número da Shopee, **todos os pacotes do endereço** (cada um marcável), Waze/Google/Apple, **Entreguei aqui** e "Ainda nesta rua e por perto".
   - **Localizador** (botão de mira): ponto azul ao vivo e o aviso "Perto: Rua X · 22 m · faltam nº …".
+- **+ Adicionar pacote** (Mercado Livre ou outro): digite o endereço e escolha o resultado da busca (OpenStreetMap, perto da rota), ou toque no mapa. Complemento e código são opcionais. O pacote entra na rota com a marca "Mercado Livre" e continua lá quando você reabre a planilha da Shopee.
+- **Ninguém atendeu: voltar depois**: o endereço vai para o fim da fila até ser entregue.
 - **Paradas**: lista agrupada por rua, com busca por rua, final do código ou número da parada da Shopee.
 - **Escanear** (botão central): foto da etiqueta. Mostra a parada, todos os pacotes daquele endereço e "Ver no mapa".
 - **Painel**:
   - **Iniciar entregas / Finalizar entregas**, com o cronômetro no topo do app;
   - pacotes e paradas feitos, tempo médio por parada e pacotes por hora;
   - previsão de término e quantos pacotes ainda cabem até o horário escolhido;
-  - faturamento: ganho, combustível, lucro, lucro por hora e por pacote;
+  - faturamento: Shopee + Mercado Livre, combustível, lucro, lucro por hora e por pacote;
   - histórico dos dias.
 - **Ajustes**: abrir ou atualizar a planilha (a mesma rota mantém as entregas), refazer a ordem a partir de um endereço, tabela de-para Shopee → parada e começar do zero.
 
