@@ -236,7 +236,7 @@
     return `
       <div class="eyebrow">${a === nx ? "Próxima parada" : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc(a.bairro)}</div></div>
-      <div class="chips">${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${navText(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
       ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
@@ -272,11 +272,11 @@
     if (!sheetOpen) {
       const pend = a.pkgs.filter(p => !pkgDone(p));
       sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Abrir o cartão"><span class="grab"></span></button>
-        <div class="mini">
+        <div class="mini${here && a === nextAddr() && Core.hav(here, a) < 60 ? " arrived" : ""}">
           <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${a.n}</span>
           <button type="button" class="mini-body" data-grab="1">
             <b>${esc(a.label)}</b>
-            <span class="chips">${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
+            <span class="chips">${navText(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
             <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
           </button>
         </div>
@@ -291,27 +291,40 @@
   }
 
   // ---------- mapa ----------
-  let map = null, markers = new Map(), line = null, me = null, watchId = null, here = null, fitted = false;
-  let sheetOpen = false, bigMap = false;
+  // Como nos apps de entrega: GPS ligado, câmera enquadrando você e a próxima parada, caminho pelas ruas até ela,
+  // só as próximas 10 em destaque e aviso quando você chega.
+  let map = null, markers = new Map(), seqLine = null, pathLine = null, me = null, accCircle = null, watchId = null, here = null, fitted = false;
+  let sheetOpen = false, bigMap = false, follow = true, showDone = store.get("re:showDone", false);
+  let nav = { key: null }, arrivedKey = null, gpsWarned = false;
+  const brand = () => getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#1f5f3a";
+  const fmtDist = m => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`);
+  const upcoming = () => order.filter(a => !addrDone(a)).slice(0, 10);
   function ensureMap() {
     if (map || !window.L || !active) return;
     map = L.map("map", { zoomControl: false });
     map.on("click", onMapPin);
+    map.on("dragstart", () => { if (here) { follow = false; $("btnRecenter").hidden = false; } });
     if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($("map"));
+    const sheetH = () => $("v-mapa").style.setProperty("--sheet-h", ($("sheet").hidden ? 0 : $("sheet").offsetHeight) + "px");
+    if (window.ResizeObserver) new ResizeObserver(sheetH).observe($("sheet"));
+    sheetH();
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     drawMarkers(true);
+    startGps(true);
   }
   function pinHtml(a) {
-    const nx = nextAddr();
-    const cls = addrDone(a) ? "done" : a === nx ? "next" : a.pkgs.length > 1 ? "multi" : "";
+    const nx = nextAddr(), up = upcoming();
+    const cls = addrDone(a) ? "done" : a === nx ? "next" : !up.includes(a) ? "far" : a.pkgs.length > 1 ? "multi" : "";
     const left = a.pkgs.filter(p => !pkgDone(p)).length;
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}">${addrDone(a) ? "✓" : a.n}${left > 1 ? `<span class="cnt">${left}</span>` : ""}</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
+    const size = cls === "next" ? 46 : cls === "far" ? 26 : 34;
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}">${addrDone(a) ? "✓" : a.n}${left > 1 ? `<span class="cnt">${left}</span>` : ""}</div>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
   }
+  const visibleStops = () => order.filter(a => showDone || !addrDone(a));
   function drawMarkers(fit) {
     if (!map) return;
     markers.forEach(m => m.remove()); markers.clear();
-    order.forEach(a => {
-      const m = L.marker([a.lat, a.lng], { icon: pinHtml(a), zIndexOffset: addrDone(a) ? 0 : 500 }).addTo(map);
+    visibleStops().forEach(a => {
+      const m = L.marker([a.lat, a.lng], { icon: pinHtml(a), zIndexOffset: zOf(a) }).addTo(map);
       // Marcando local de um pacote novo: tocar num pino coloca o pacote no mesmo endereço.
       m.on("click", () => (pinMode ? onMapPin({ latlng: L.latLng(a.lat, a.lng) }) : select(a.key, false)));
       markers.set(a.key, m);
@@ -319,17 +332,28 @@
     drawLine();
     if (fit && order.length && !fitted) { map.fitBounds(L.latLngBounds(order.map(a => [a.lat, a.lng])), { padding: [40, 40] }); fitted = true; }
   }
+  const zOf = a => (addrDone(a) ? 0 : a === nextAddr() ? 1000 : upcoming().includes(a) ? 600 : 300);
+  // Linha tracejada só pelas próximas 10 paradas: o resto do dia não polui o mapa.
   function drawLine() {
-    line?.remove();
-    const pts = order.filter(a => !addrDone(a)).map(a => [a.lat, a.lng]);
-    const css = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#1f5f3a";
-    line = pts.length > 1 ? L.polyline(pts, { color: css, weight: 4, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(map) : null;
+    seqLine?.remove();
+    const pts = upcoming().map(a => [a.lat, a.lng]);
+    seqLine = pts.length > 1 ? L.polyline(pts, { color: brand(), weight: 3, opacity: 0.5, dashArray: "2 8", lineCap: "round" }).addTo(map) : null;
   }
   function updateMarkers() {
     if (!map) return;
-    if (markers.size !== order.length) return drawMarkers(false);
-    order.forEach(a => { const m = markers.get(a.key); if (m) { m.setIcon(pinHtml(a)); m.setZIndexOffset(addrDone(a) ? 0 : a === nextAddr() ? 1000 : 500); } });
+    const keys = visibleStops().map(a => a.key);
+    if (keys.length !== markers.size || keys.some(k => !markers.has(k))) return drawMarkers(false);
+    visibleStops().forEach(a => { const m = markers.get(a.key); m.setIcon(pinHtml(a)); m.setZIndexOffset(zOf(a)); });
     drawLine();
+  }
+  // Enquadra você e a próxima parada, deixando espaço para o cartão de baixo.
+  function frame() {
+    if (!map) return;
+    const nx = nextAddr();
+    const bottom = ($("sheet").hidden ? 0 : $("sheet").offsetHeight) + 30;
+    if (here && nx) map.fitBounds(L.latLngBounds([[here.lat, here.lng], [nx.lat, nx.lng]]), { paddingTopLeft: [50, 90], paddingBottomRight: [50, bottom], maxZoom: 18 });
+    else if (nx) map.setView([nx.lat, nx.lng], 17);
+    $("btnRecenter").hidden = true;
   }
   function select(key, pan = true) {
     selKey = key;
@@ -337,43 +361,87 @@
     sheetOpen = true; bigMap = false; $("sheet").hidden = false;
     renderSheet(); updateMarkers();
     const a = byKey.get(key);
-    if (map && a && pan) map.setView([a.lat, a.lng], Math.max(map.getZoom(), 17));
+    if (map && a && pan) { follow = false; if (here) $("btnRecenter").hidden = false; map.setView([a.lat, a.lng], Math.max(map.getZoom(), 17)); }
   }
   $("btnBig").addEventListener("click", () => {
     bigMap = !bigMap; $("sheet").hidden = bigMap; $("btnBig").classList.toggle("on", bigMap);
-    toast(bigMap ? "Mapa em tela cheia. Toque de novo para ver o cartão." : "Cartão de volta");
+    $("v-mapa").style.setProperty("--sheet-h", (bigMap ? 0 : $("sheet").offsetHeight) + "px");
+    if (follow) setTimeout(frame, 50);
   });
-  $("btnFit").addEventListener("click", () => { if (map && order.length) map.fitBounds(L.latLngBounds(order.map(a => [a.lat, a.lng])), { padding: [40, 40] }); });
+  $("btnFit").addEventListener("click", () => {
+    if (!map || !order.length) return;
+    follow = false; if (here) $("btnRecenter").hidden = false;
+    map.fitBounds(L.latLngBounds(visibleStops().concat(here ? [here] : []).map(a => [a.lat, a.lng])), { padding: [40, 40] });
+  });
+  $("btnRecenter").addEventListener("click", () => { follow = true; selKey = null; renderSheet(); frame(); });
 
-  // Localizador: ponto azul ao vivo e a rua pendente mais perto.
-  $("btnLocate").addEventListener("click", () => {
-    if (watchId != null) {
-      navigator.geolocation.clearWatch(watchId); watchId = null; me?.remove(); me = null; here = null;
-      $("btnLocate").classList.remove("on"); $("maptip").hidden = true; return;
-    }
-    if (!navigator.geolocation) return toast("Este navegador não tem localização.");
+  // GPS: liga sozinho ao abrir o mapa (o celular pede permissão uma vez).
+  function startGps(auto) {
+    if (watchId != null || !navigator.geolocation) return;
+    if (auto && store.get("re:gpsOff", false)) return;
     $("btnLocate").classList.add("on");
-    let first = true;
-    watchId = navigator.geolocation.watchPosition(pos => {
-      here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      if (map) {
-        if (!me) me = L.marker([here.lat, here.lng], { icon: L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 2000 }).addTo(map);
-        else me.setLatLng([here.lat, here.lng]);
-        if (first) map.setView([here.lat, here.lng], 17);
-      }
-      first = false;
-      const pend = order.filter(a => !addrDone(a));
-      if (pend.length) {
-        const n = pend.map(a => ({ a, d: Core.hav(here, a) })).sort((x, y) => x.d - y.d)[0];
-        const left = pend.filter(a => a.street === n.a.street).sort((x, y) => x.num - y.num);
-        $("maptip").hidden = false;
-        $("maptip").innerHTML = `<button type="button" data-sel="${esc(n.a.key)}" style="min-height:0;padding:0;background:none;font:inherit">Perto: ${esc(streetName(n.a))} · ${Math.round(n.d)} m · faltam nº ${left.map(a => a.nums?.join("/") || "?").join(", ")}</button>`;
-      }
-    }, () => {
-      navigator.geolocation.clearWatch(watchId); watchId = null; $("btnLocate").classList.remove("on");
-      toast("A localização foi bloqueada. Permita a localização para este site nos ajustes do celular.");
-    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    // Só desliga se a permissão for negada; falha momentânea (túnel, prédio) não interrompe.
+    watchId = navigator.geolocation.watchPosition(onPos, err => {
+      if (err.code === 1) { stopGps(false); if (!gpsWarned) { gpsWarned = true; toast("Sem permissão de localização. Libere para este site nos ajustes do celular."); } }
+    }, { enableHighAccuracy: true, maximumAge: 3000 });
+  }
+  function stopGps(remember) {
+    if (watchId != null) navigator.geolocation.clearWatch(watchId);
+    watchId = null; here = null; me?.remove(); me = null; accCircle?.remove(); accCircle = null; pathLine?.remove(); pathLine = null;
+    $("btnLocate").classList.remove("on");
+    if (remember) store.set("re:gpsOff", true);
+    renderSheet();
+  }
+  function onPos(pos) {
+    const first = !here;
+    here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    if (map) {
+      const ll = [here.lat, here.lng];
+      if (!me) me = L.marker(ll, { icon: L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 2000, interactive: false }).addTo(map);
+      else me.setLatLng(ll);
+      if (!accCircle) accCircle = L.circle(ll, { radius: pos.coords.accuracy, color: "#1c7ed6", weight: 1, opacity: 0.4, fillOpacity: 0.08, interactive: false }).addTo(map);
+      else accCircle.setLatLng(ll).setRadius(pos.coords.accuracy);
+      if (follow || first) frame();
+    }
+    updateNav(false);
+  }
+  $("btnLocate").addEventListener("click", () => {
+    if (watchId == null) { store.set("re:gpsOff", false); follow = true; startGps(false); toast("Localização ligada"); return; }
+    if (!follow) { follow = true; frame(); return; }
+    stopGps(true); toast("Localização desligada");
   });
+
+  // Caminho pelas ruas até a próxima parada (OSRM), recalculado quando você anda 60 m ou a parada muda.
+  async function updateNav(force) {
+    const nx = nextAddr();
+    if (!map || !here || !nx) { pathLine?.remove(); pathLine = null; return; }
+    const d = Core.hav(here, nx);
+    if (d < 40 && arrivedKey !== nx.key) {
+      arrivedKey = nx.key; buzz([120, 60, 120]);
+      selKey = null; sheetOpen = false; renderSheet();
+      toast(`Você chegou: ${nx.label}`);
+    }
+    if (!force && nav.key === nx.key && nav.from && Core.hav(nav.from, here) < 60 && Date.now() - nav.at < 60000) { renderSheet(); return; }
+    nav = { key: nx.key, from: { ...here }, at: Date.now(), m: d * Core.STREET_FACTOR, s: null };
+    let coords = [[here.lat, here.lng], [nx.lat, nx.lng]];
+    try {
+      const r = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${here.lng},${here.lat};${nx.lng},${nx.lat}?overview=full&geometries=geojson`)).json();
+      const rt = r.routes?.[0];
+      if (rt && nav.key === nx.key) { nav.m = rt.distance; nav.s = rt.duration; coords = rt.geometry.coordinates.map(([x, y]) => [y, x]); }
+    } catch {}
+    if (nav.key !== nx.key) return;
+    pathLine?.remove();
+    pathLine = L.polyline(coords, { color: brand(), weight: 6, opacity: 0.85, lineCap: "round", lineJoin: "round" }).addTo(map);
+    renderSheet();
+  }
+  // Texto "a 600 m · 3 min" para o cartão.
+  function navText(a) {
+    if (!here || nav.key !== a.key) return "";
+    const live = Core.hav(here, a);
+    if (live < 60) return `<span class="chip arrived">Você chegou</span>`;
+    const m = Math.max(live, Math.min(nav.m || live, live * 2));
+    return `<span class="chip dist">${fmtDist(m)}${nav.s ? ` · ${Math.max(1, Math.round(nav.s / 60))} min` : ""}</span>`;
+  }
 
   // ---------- ações ----------
   function deliverAddr(a) {
@@ -386,7 +454,11 @@
       selKey = null; sheetOpen = false;
       const nx = nextAddr();
       renderAll();
-      if (nx) { toast(`Entregue! Próxima: ${nx.label}`); if (map) map.panTo([nx.lat, nx.lng]); }
+      if (nx) {
+        toast(`Entregue! Próxima: ${nx.label}`);
+        if (map) { if (here) { follow = true; frame(); } else map.panTo([nx.lat, nx.lng]); }
+        updateNav(true);
+      }
       else toast("Todos os pacotes entregues!");
     } else renderAll();
   }
@@ -441,7 +513,7 @@
     if (D) { store.set(okKey(), null); store.set(sessKey(), null); }
     store.set("re:day", null);
     D = null; ok = {}; sess = {}; active = false; selKey = null;
-    markers.forEach(m => m.remove()); markers.clear(); line?.remove(); fitted = false;
+    markers.forEach(m => m.remove()); markers.clear(); seqLine?.remove(); pathLine?.remove(); fitted = false; nav = { key: null };
     $("meta").textContent = "Abra a planilha da rota para começar"; $("timer").hidden = true; $("bar").hidden = true;
     location.hash = "#inicio"; route();
     toast("Pronto. Abra a planilha para começar.");
@@ -572,6 +644,8 @@
     rows.sort((x, y) => (x.s ?? 1e9) - (y.s ?? 1e9) || x.a.n - y.a.n);
     $("dp").innerHTML = `<thead><tr><th>Shopee</th><th>Nossa parada</th><th>Endereço</th><th>Pacote</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.s ?? "sem nº"}</td><td>${r.a.n}</td><td style="text-align:left">${esc(r.a.label)}</td><td class="mono">${esc(tail(r.p.tn))}</td></tr>`).join("")}</tbody>`;
   }
+  $("showDone").checked = showDone;
+  $("showDone").addEventListener("change", e => { showDone = e.target.checked; store.set("re:showDone", showDone); drawMarkers(false); });
   $("bagMode").value = bagMode;
   $("bagMode").addEventListener("change", e => { bagMode = e.target.value; store.set("re:bag", bagMode); renderAll(); toast("Sacos atualizados"); });
   $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });

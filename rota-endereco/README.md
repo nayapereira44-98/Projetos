@@ -15,6 +15,15 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
   - o botão de tela cheia esconde o cartão;
   - o mapa recalcula o tamanho sozinho;
   - **o contador preto no pino** mostra quantos pacotes faltam no endereço.
+- **Mapa "eu + próxima entrega"** (pedido de 31/10, inspirado nos apps de entrega):
+  - o GPS liga sozinho ao abrir o mapa e mostra o ponto azul com o círculo de precisão;
+  - a câmera enquadra você e a próxima parada e acompanha enquanto você anda;
+  - se você arrastar o mapa, aparece **Recentralizar**;
+  - o **caminho pelas ruas** até a próxima parada é desenhado (OSRM), e o cartão mostra "a 600 m · 3 min";
+  - a próxima parada pulsa, as 10 seguintes ficam em destaque com a linha tracejada, as demais ficam pequenas e os endereços entregues somem (há opção em Ajustes);
+  - a menos de 40 m do endereço, o celular vibra e o cartão mostra **"Você chegou"**;
+  - uma falha momentânea do GPS não desliga a localização: só a permissão negada desliga.
+  - Mapa de fundo: OpenStreetMap. O CARTO exige chave. Para a versão paga, avaliar um provedor com plano comercial (ex.: MapTiler ou Stadia).
 - **Sacos de 10 em 10**: cada endereço mostra "Saco 21–30", pelo número da etiqueta da Shopee (padrão) ou pela parada do app (Ajustes → Sacos). O Mercado Livre aparece como saco próprio.
 - **Paradas**: lista agrupada por rua, com busca por rua, final do código ou número da parada da Shopee.
 - **Escanear** (botão central): foto da etiqueta. Mostra a parada, todos os pacotes daquele endereço e "Ver no mapa".
