@@ -807,7 +807,20 @@ main { flex: 1; min-height: 0; position: relative; }
   max-height: 62%; overflow-y: auto; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
   display: grid; gap: 12px;
 }
-.sheet.min { max-height: 128px; overflow: hidden; }
+.mini { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; }
+.mini-n { width: 52px; height: 52px; border-radius: 50%; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; font: 800 1.3rem var(--font-display); }
+.mini-n.multi { outline: 4px solid var(--accent); }
+.mini-body { display: grid; gap: 4px; text-align: left; background: none; padding: 0; min-height: 0; font-weight: 400; justify-items: start; }
+.mini-body b { font: 800 1.12rem/1.2 var(--font-display); }
+.mini-act { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 8px; }
+.mini-act .btn, .mini-act button { min-height: 52px; padding: 8px; }
+.chip.count { background: var(--ink); color: var(--bg); }
+.chip.bag { background: var(--brand); color: var(--brand-ink); }
+.bagt { font-weight: 700; color: var(--brand); }
+.bagbig { font: 800 1.6rem var(--font-display); background: var(--brand); color: var(--brand-ink); border-radius: 14px; padding: 8px 14px; justify-self: start; }
+.pin { position: relative; }
+.pin .cnt { position: absolute; top: -8px; right: -10px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--ink); color: var(--bg); font: 800 11px var(--font-display); display: grid; place-items: center; padding: 0 4px; border: 2px solid #fff; }
+.count small { font: 700 0.65rem var(--font-body); color: var(--muted); }
 .grab { width: 44px; height: 5px; border-radius: 99px; background: var(--line); margin: 2px auto 0; border: 0; padding: 0; min-height: 0; }
 .grabwrap { display: flex; justify-content: center; padding: 6px 0; min-height: 22px; cursor: pointer; background: none; }
 .eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
@@ -905,7 +918,8 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
       <div class="maptip" id="maptip" hidden></div>
       <div class="fabs">
         <button class="fab" id="btnLocate" type="button" aria-label="Mostrar onde estou"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
-        <button class="fab" id="btnFit" type="button" aria-label="Ver todas as paradas"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="fab" id="btnBig" type="button" aria-label="Mapa em tela cheia"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M21 9V3h-6M3 15v6h6M15 21h6v-6"/></svg></button>
+        <button class="fab" id="btnFit" type="button" aria-label="Ver todas as paradas"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2"/><circle cx="17" cy="6" r="2"/><circle cx="9" cy="17" r="2"/><circle cx="18" cy="16" r="2"/></svg></button>
       </div>
       <section class="sheet" id="sheet" aria-live="polite"></section>
     </section>
@@ -951,6 +965,11 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
           <p class="sub">Abrir de novo a planilha da mesma rota mantém o que você já entregou e encaixa os pacotes novos.</p>
         </div>
         <div class="card"><h2>Pacotes adicionados à mão</h2><div id="extraList" style="display:grid;gap:8px"></div><button type="button" class="brand" data-add="1">+ Adicionar pacote</button></div>
+        <div class="card"><h2>Sacos</h2>
+          <label for="bagMode" class="sub">Como você separou os pacotes nos sacos (de 10 em 10)</label>
+          <select id="bagMode"><option value="shopee">Pelo número da parada na etiqueta da Shopee (1–10, 11–20…)</option><option value="app">Pelo número da parada no app</option><option value="none">Não separei</option></select>
+          <p class="sub">O cartão de cada endereço mostra de qual saco pegar. Mercado Livre aparece como saco próprio.</p>
+        </div>
         <div class="card"><h2>Ordem das paradas</h2>
           <label for="start" class="sub">Começar pelo endereço</label><select id="start"></select>
           <button id="recalc" type="button" class="brand">Refazer a ordem a partir daqui</button>

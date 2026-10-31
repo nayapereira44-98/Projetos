@@ -10,6 +10,12 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
   - **Localizador** (botão de mira): ponto azul ao vivo e o aviso "Perto: Rua X · 22 m · faltam nº …".
 - **+ Adicionar pacote** (Mercado Livre ou outro): digite o endereço e escolha o resultado da busca (OpenStreetMap, perto da rota), ou toque no mapa. Complemento e código são opcionais. O pacote entra na rota com a marca "Mercado Livre" e continua lá quando você reabre a planilha da Shopee.
 - **Ninguém atendeu: voltar depois**: o endereço vai para o fim da fila até ser entregue.
+- **Praticidade no mapa** (pedido de 31/10):
+  - o cartão de baixo fica **compacto** (número, endereço, quantidade de pacotes, saco, finais dos códigos, **Waze** e **Entreguei**) e abre em "Detalhes";
+  - o botão de tela cheia esconde o cartão;
+  - o mapa recalcula o tamanho sozinho;
+  - **o contador preto no pino** mostra quantos pacotes faltam no endereço.
+- **Sacos de 10 em 10**: cada endereço mostra "Saco 21–30", pelo número da etiqueta da Shopee (padrão) ou pela parada do app (Ajustes → Sacos). O Mercado Livre aparece como saco próprio.
 - **Paradas**: lista agrupada por rua, com busca por rua, final do código ou número da parada da Shopee.
 - **Escanear** (botão central): foto da etiqueta. Mostra a parada, todos os pacotes daquele endereço e "Ver no mapa".
 - **Painel**:
