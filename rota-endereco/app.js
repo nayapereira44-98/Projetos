@@ -632,7 +632,7 @@
     pinMode = true;
     location.hash = "#mapa";
     $("maptip").hidden = false; $("maptip").textContent = "Toque no mapa onde é a entrega";
-    $("sheet").classList.add("min");
+    sheetOpen = false; renderSheet();
   }
   function onMapPin(e) {
     if (!pinMode) return;
