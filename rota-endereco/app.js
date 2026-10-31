@@ -102,6 +102,17 @@
   const platformsOf = a => [...new Set(a.pkgs.map(srcOf))];
   const pkgLabel = p => (p.src ? PLATFORMS[p.src]?.name || p.src : p.shopeeStop != null ? "Shopee " + p.shopeeStop : "Shopee, fora da rota");
   // Próximas paradas pendentes, na ordem do app, a partir da próxima (máximo que o Google Maps aceita num link).
+  // Sacos: a entregadora separa os pacotes de 10 em 10 (1–10, 11–20…), pelo número da etiqueta da Shopee ou pelo número da parada no app.
+  let bagMode = store.get("re:bag", "shopee");
+  const range10 = n => { const s = Math.floor((n - 1) / 10) * 10 + 1; return `${s}–${s + 9}`; };
+  const bagOf = (p, a) => {
+    if (bagMode === "none") return "";
+    if (p.src) return PLATFORMS[p.src]?.name || p.src;
+    if (bagMode === "app") return range10((a || byTn.get(p.tn)).n);
+    return p.shopeeStop != null ? range10(p.shopeeStop) : "sem nº";
+  };
+  const bagsOf = a => [...new Set(a.pkgs.filter(p => !pkgDone(p)).map(p => bagOf(p, a)).filter(Boolean))];
+  const bagChip = a => (bagsOf(a).length ? `<span class="chip bag">Saco ${bagsOf(a).join(" + ")}</span>` : "");
   const nextLeg = (n = 10) => order.filter(a => !addrDone(a)).slice(0, n);
   const shopee = a => (a.shopeeStops.length ? "Shopee " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
   const nextAddr = () => order.find(a => !addrDone(a));
@@ -231,7 +242,7 @@
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
@@ -257,22 +268,44 @@
         ${sess.start && !sess.end ? `<button type="button" class="primary deliver" data-end="1">Finalizar entregas</button>` : `<a class="btn brand" href="#painel">Ver meu painel</a>`}`;
       return;
     }
-    sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Recolher ou abrir o cartão"><span class="grab"></span></button>${addrCard(a)}`;
+    sh.classList.toggle("open", sheetOpen);
+    if (!sheetOpen) {
+      const pend = a.pkgs.filter(p => !pkgDone(p));
+      sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Abrir o cartão"><span class="grab"></span></button>
+        <div class="mini">
+          <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${a.n}</span>
+          <button type="button" class="mini-body" data-grab="1">
+            <b>${esc(a.label)}</b>
+            <span class="chips">${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
+            <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
+          </button>
+        </div>
+        <div class="mini-act">
+          <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
+          ${pend.length ? `<button type="button" class="primary" data-a="${esc(a.key)}">Entreguei${pend.length > 1 ? ` os ${pend.length}` : ""}</button>` : `<button type="button" class="line" data-grab="1">Ver</button>`}
+          <button type="button" class="line" data-grab="1" aria-label="Ver detalhes">Detalhes</button>
+        </div>`;
+      return;
+    }
+    sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Recolher o cartão"><span class="grab"></span></button>${addrCard(a)}`;
   }
 
   // ---------- mapa ----------
   let map = null, markers = new Map(), line = null, me = null, watchId = null, here = null, fitted = false;
+  let sheetOpen = false, bigMap = false;
   function ensureMap() {
     if (map || !window.L || !active) return;
     map = L.map("map", { zoomControl: false });
     map.on("click", onMapPin);
+    if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($("map"));
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     drawMarkers(true);
   }
   function pinHtml(a) {
     const nx = nextAddr();
     const cls = addrDone(a) ? "done" : a === nx ? "next" : a.pkgs.length > 1 ? "multi" : "";
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}">${addrDone(a) ? "✓" : a.n}</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
+    const left = a.pkgs.filter(p => !pkgDone(p)).length;
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}">${addrDone(a) ? "✓" : a.n}${left > 1 ? `<span class="cnt">${left}</span>` : ""}</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
   }
   function drawMarkers(fit) {
     if (!map) return;
@@ -301,11 +334,15 @@
   function select(key, pan = true) {
     selKey = key;
     location.hash = "#mapa";
-    $("sheet").classList.remove("min");
+    sheetOpen = true; bigMap = false; $("sheet").hidden = false;
     renderSheet(); updateMarkers();
     const a = byKey.get(key);
     if (map && a && pan) map.setView([a.lat, a.lng], Math.max(map.getZoom(), 17));
   }
+  $("btnBig").addEventListener("click", () => {
+    bigMap = !bigMap; $("sheet").hidden = bigMap; $("btnBig").classList.toggle("on", bigMap);
+    toast(bigMap ? "Mapa em tela cheia. Toque de novo para ver o cartão." : "Cartão de volta");
+  });
   $("btnFit").addEventListener("click", () => { if (map && order.length) map.fitBounds(L.latLngBounds(order.map(a => [a.lat, a.lng])), { padding: [40, 40] }); });
 
   // Localizador: ponto azul ao vivo e a rua pendente mais perto.
@@ -346,7 +383,7 @@
     save();
     if (!done) {
       buzz(60);
-      selKey = null;
+      selKey = null; sheetOpen = false;
       const nx = nextAddr();
       renderAll();
       if (nx) { toast(`Entregue! Próxima: ${nx.label}`); if (map) map.panTo([nx.lat, nx.lng]); }
@@ -372,7 +409,7 @@
       if (t.closest("#scanSheet")) openScan(byTn.get(tn), tn);
     }
     else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
-    else if (d.grab) $("sheet").classList.toggle("min");
+    else if (d.grab) { sheetOpen = !sheetOpen; renderSheet(); }
     else if (d.later) {
       D.later = (D.later || []).filter(k => k !== d.later).concat(d.later);
       selKey = null; save(); renderAll();
@@ -431,7 +468,7 @@
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
           <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
-          <span class="count">${a.pkgs.length}</span></button>`).join("")}</div>`;
+          <span class="count">${a.pkgs.length}${bagsOf(a).length ? `<br><small>${bagsOf(a).join("+")}</small>` : ""}</span></button>`).join("")}</div>`;
       i = j;
     }
     const leg = nextLeg();
@@ -535,6 +572,8 @@
     rows.sort((x, y) => (x.s ?? 1e9) - (y.s ?? 1e9) || x.a.n - y.a.n);
     $("dp").innerHTML = `<thead><tr><th>Shopee</th><th>Nossa parada</th><th>Endereço</th><th>Pacote</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.s ?? "sem nº"}</td><td>${r.a.n}</td><td style="text-align:left">${esc(r.a.label)}</td><td class="mono">${esc(tail(r.p.tn))}</td></tr>`).join("")}</tbody>`;
   }
+  $("bagMode").value = bagMode;
+  $("bagMode").addEventListener("change", e => { bagMode = e.target.value; store.set("re:bag", bagMode); renderAll(); toast("Sacos atualizados"); });
   $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
 
   // ---------- adicionar pacote (Mercado Livre ou outro) ----------
@@ -593,7 +632,7 @@
     pinMode = true;
     location.hash = "#mapa";
     $("maptip").hidden = false; $("maptip").textContent = "Toque no mapa onde é a entrega";
-    $("sheet").classList.add("min");
+    sheetOpen = false; renderSheet();
   }
   function onMapPin(e) {
     if (!pinMode) return;
@@ -780,7 +819,8 @@
 
   function openScan(a, tn, missHtml) {
     $("scanOverlay").hidden = false;
-    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${a.n}</div>${addrCard(a, tn)}
+    const tp = tn && all().find(p => p.tn === tn);
+    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${a.n}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sel="${esc(a.key)}">Ver no mapa</button><button type="button" class="line" data-close="1">Fechar</button></div>`;
   }
   $("photo").addEventListener("change", async e => {
