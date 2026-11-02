@@ -166,6 +166,9 @@
     });
   }
   const areaOf = a => (a && D?.areaOf ? D.areaOf[a.key] : null);
+  // Conferência na separação: pacote fotografado (ou marcado à mão) antes de sair.
+  const isChecked = p => !!D?.checked?.[p.tn];
+  const checkedOf = a => a.pkgs.filter(isChecked).length;
   const areaChip = a => (areaOf(a) ? `<span class="chip area">Área ${areaOf(a)}</span>` : "");
 
   function derive() {
@@ -294,7 +297,7 @@
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${!pkgDone(p) ? (isChecked(p) ? ` · <span class="chk on">conferido</span>` : ` · <span class="chk">sem foto</span>`) : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
@@ -549,7 +552,12 @@
     }
     else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
     else if (d.mode) setMode(d.mode);
-    else if (d.checkview) showChecked([], [], []);
+    else if (d.checkview) { onlyMissing = true; showChecked([], [], []); }
+    else if (d.chk) {
+      D.checked = D.checked || {};
+      D.checked[d.chk] ? delete D.checked[d.chk] : (D.checked[d.chk] = Date.now());
+      save(); renderList(); showChecked([], [], []);
+    }
     else if (d.grab) { sheetOpen = !sheetOpen; renderSheet(); }
     else if (d.later) {
       D.later = (D.later || []).filter(k => k !== d.later).concat(d.later);
@@ -615,12 +623,16 @@
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
           <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
-          <span class="count">${a.pkgs.length}${bagsOf(a).length ? `<br><small>${bagsOf(a).join("+")}</small>` : ""}</span></button>`).join("")}</div>`;
+          <span class="count">${a.pkgs.length}${bagsOf(a).length ? `<br><small>${bagsOf(a).join("+")}</small>` : ""}${!addrDone(a) ? `<br><small class="${checkedOf(a) === a.pkgs.length ? "chk on" : "chk"}">📷 ${checkedOf(a)}/${a.pkgs.length}</small>` : ""}</span></button>`).join("")}</div>`;
       i = j;
     }
     const leg = nextLeg();
     $("legBtn").hidden = leg.length < 2;
     if (leg.length > 1) { $("legBtn").href = Core.links.gmapsLeg(leg); $("legBtn").textContent = `Próximas ${leg.length} paradas no Google Maps (${leg[0].n} a ${leg[leg.length - 1].n})`; }
+    const pend = all().filter(p => !pkgDone(p)), got = pend.filter(isChecked).length;
+    $("checkBox").innerHTML = pend.length ? `<div class="top" style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>Conferência na separação</b><span class="sub">${got} de ${pend.length} conferidos${got < pend.length ? ` · faltam ${pend.length - got}` : " · tudo conferido ✓"}</span></div>
+      <div class="bar" style="background:var(--line)"><i style="width:${(got / pend.length * 100).toFixed(0)}%;background:${got === pend.length ? "var(--ok)" : "var(--brand)"}"></i></div>
+      <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photoMany">Fotografar pacotes</label><button type="button" class="line" data-checkview="1">Ver o que falta</button></div>` : "";
     $("list").innerHTML = html || `<p class="empty-list">Nada encontrado para "${esc(q)}".</p>`;
   }
   $("q").addEventListener("input", renderList);
@@ -996,7 +1008,7 @@
     openScan(null, null, `<p class="sub">Lendo a etiqueta…</p>`);
     try {
       const { p, read } = await decodePhoto(f);
-      if (p) { buzz(60); return openScan(byTn.get(p.tn), p.tn); }
+      if (p) { D.checked = D.checked || {}; D.checked[p.tn] = D.checked[p.tn] || Date.now(); save(); renderList(); buzz(60); return openScan(byTn.get(p.tn), p.tn); }
       buzz([200, 80, 200]);
       openScan(null, null, `<div class="miss"><b>${read.length ? "Este pacote não está nesta rota" : "Não consegui ler o código"}</b><span class="sub">${read.length ? "Código lido: " + esc(read.join(", ")) : "Fotografe só a etiqueta, de perto e com luz."}</span></div>
         <label class="btn primary" for="photo">Tentar de novo</label><button type="button" class="line" data-close="1">Fechar</button>`);
@@ -1025,25 +1037,30 @@
     save(); renderAll();
     showChecked(found, fails, others);
   });
+  let onlyMissing = false;
   function showChecked(found, fails, others) {
     const chk = D.checked || {};
     const areas = [...new Set(order.map(areaOf))].sort((x, y) => x - y);
     const rows = areas.map(n => {
-      const pk = order.filter(a => areaOf(a) === n).flatMap(a => a.pkgs.filter(p => !pkgDone(p)).map(p => ({ p, a })));
+      const all_ = order.filter(a => areaOf(a) === n).flatMap(a => a.pkgs.filter(p => !pkgDone(p)).map(p => ({ p, a })));
+      const pk = onlyMissing ? all_.filter(x => !chk[x.p.tn]) : all_;
       if (!pk.length) return "";
-      const got = pk.filter(x => chk[x.p.tn]);
-      return `<div class="card" style="background:var(--bg)"><div class="area-head" style="margin:0"><b>Área ${n}</b><span>${got.length}/${pk.length} conferidos</span></div>
-        <div class="mono sub">${pk.map(x => `${chk[x.p.tn] ? "✓" : "○"} ${esc(tail(x.p.tn))} <span style="font-family:var(--font-body)">${esc(x.a.label)}</span>`).join("<br>")}</div></div>`;
+      const got = all_.filter(x => chk[x.p.tn]);
+      return `<div class="card" style="background:var(--bg)"><div class="area-head" style="margin:0"><b>Área ${n}</b><span>${got.length}/${all_.length} conferidos</span></div>
+        <div class="chklist">${pk.map(x => `<button type="button" class="${chk[x.p.tn] ? "on" : ""}" data-chk="${esc(x.p.tn)}"><span class="box">${chk[x.p.tn] ? "✓" : ""}</span><b class="mono">${esc(tail(x.p.tn))}</b><span class="sub">${esc(x.a.label)}${bagOf(x.p, x.a) && bagMode !== "area" ? " · saco " + esc(bagOf(x.p, x.a)) : ""}</span></button>`).join("")}</div></div>`;
     }).join("");
     $("scanOverlay").hidden = false;
     $("scanSheet").innerHTML = `<div class="addr-big">Conferência por área</div>
       ${found.length || fails.length || others.length ? `<p>${found.length} etiqueta(s) lida(s)${others.length ? ` · ${others.length} de fora da rota` : ""}${fails.length ? ` · ${fails.length} foto(s) sem código legível (nº ${fails.join(", ")})` : ""}.</p>` : ""}
       ${found.length ? `<div class="chips">${found.map(p => `<span class="chip area">${esc(tail(p.tn))} → Área ${areaOf(byTn.get(p.tn))}</span>`).join("")}</div>` : ""}
-      <p class="sub">Coloque os pacotes de cada área juntos (saco ou caixa). ✓ = já conferido · ○ = ainda falta fotografar.</p>
+      <p class="sub">Coloque os pacotes de cada área juntos (saco ou caixa). Marcado = já conferido. Etiqueta não saiu na foto? Toque no pacote para marcar à mão.</p>
+      <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="onlyMissing" ${onlyMissing ? "checked" : ""} style="width:24px;height:24px"> Mostrar só os que faltam</label>
       ${rows}
       <label class="btn primary" for="photoMany">Fotografar mais pacotes</label>
       <button type="button" class="line" data-close="1">Fechar</button>`;
   }
+
+  document.addEventListener("change", e => { if (e.target.id === "onlyMissing") { onlyMissing = e.target.checked; showChecked([], [], []); } });
 
   // ---------- início: o dia salvo só volta se você pedir ----------
   if (D) {

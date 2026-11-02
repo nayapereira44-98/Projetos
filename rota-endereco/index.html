@@ -818,6 +818,13 @@ main { flex: 1; min-height: 0; position: relative; }
 .mini-body b { font: 800 1.12rem/1.2 var(--font-display); }
 .mini-act { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 8px; }
 .mini-act .btn, .mini-act button { min-height: 52px; padding: 8px; }
+.chk { font-weight: 700; color: var(--bad); }
+.chk.on { color: var(--ok); }
+.chklist { display: grid; gap: 6px; }
+.chklist button { display: grid; grid-template-columns: 30px auto minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; background: var(--surface); min-height: 48px; padding: 6px 10px; font-weight: 400; }
+.chklist .box { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--muted); display: grid; place-items: center; font-weight: 800; }
+.chklist button.on .box { background: var(--ok); border-color: var(--ok); color: #fff; }
+.chklist button.on { opacity: 0.7; }
 .chip.area { background: #7048e8; color: #fff; }
 .modes { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); top: 12px; z-index: 500; display: flex; background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); padding: 4px; }
 .modes button { min-height: 40px; padding: 6px 14px; border-radius: 999px; background: transparent; font-size: 0.9rem; }
@@ -949,7 +956,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <section class="view" id="v-lista" hidden>
       <div class="pad">
         <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
-        <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photoMany">Conferir pacotes por foto</label><button type="button" class="line" data-checkview="1">Ver conferência por área</button></div>
+        <div class="card" id="checkBox" style="gap:10px"></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
