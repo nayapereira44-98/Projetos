@@ -20,6 +20,11 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
   - O seletor **Perto de mim / Rota** no topo do mapa volta para a ordem da rota quando quiser.
   - **"Aqui tem entrega"**: a até 60 m de **qualquer** endereço pendente, mesmo fora da ordem ou numa rua errada, aparece um aviso laranja com os pacotes e o saco, e o celular vibra.
 - **Áreas (raio de 700 m, ajustável)**: endereços próximos formam a "Área 1, 2, 3…", numeradas na ordem da rota e fixas durante o dia. A lista de paradas é agrupada por área, e os sacos podem ser por área.
+- **Controle da conferência na separação** (pedido de 02/11):
+  - no topo da aba Paradas: "Conferidos 30 de 44 · faltam 14", com barra;
+  - cada endereço da lista mostra "📷 2/3", e cada pacote do cartão mostra "conferido" ou "sem foto";
+  - "Ver o que falta" lista por área só os pacotes ainda não conferidos. Tocar num pacote marca ou desmarca à mão, para quando a etiqueta não sai na foto;
+  - o botão Escanear do meio também marca o pacote como conferido.
 - **Conferir pacotes por foto**: escolha ou tire várias fotos de etiquetas de uma vez. O app lê os códigos, marca como conferidos e mostra cada pacote → área, com ✓/○ por área, para separar tudo de uma área junto.
 - **Mapa "eu + próxima entrega"** (pedido de 31/10, inspirado nos apps de entrega):
   - o GPS liga sozinho ao abrir o mapa e mostra o ponto azul com o círculo de precisão;
