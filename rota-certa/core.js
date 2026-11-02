@@ -327,6 +327,15 @@ const Core = (() => {
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(p);
     });
+    // CEP + número da casa identifica o endereço mesmo com a rua escrita de outro jeito ("R Doutor..." x "Rua Dr...").
+    // CEP usado em várias ruas (CEP geral da cidade) não conta, e os dois pontos precisam estar a até 300 m (CEP digitado errado).
+    const cepOf = p => String(p.cep || "").replace(/\D/g, "");
+    const cepStreets = new Map();
+    pkgs.forEach(p => { const c = cepOf(p); if (c.length === 8 && p.street) { if (!cepStreets.has(c)) cepStreets.set(c, new Set()); cepStreets.get(c).add(p.street); } });
+    const cepNum = l => {
+      const p = l.find(x => cepOf(x).length === 8 && parseInt(x.number, 10) > 0 && cepStreets.get(cepOf(x)).size <= 2);
+      return p ? cepOf(p) + "|" + parseInt(p.number, 10) : null;
+    };
     // Números diferentes no mesmo ponto (condomínio, mesma casa) viram uma parada só:
     // mesma rua a até 25 m, ou qualquer rua a até 10 m.
     const groups = [...map.entries()];
@@ -335,7 +344,8 @@ const Core = (() => {
       for (let j = i + 1; j < groups.length; j++) {
         const [ki, li] = groups[i], [kj, lj] = groups[j];
         const d = hav(centre(li), centre(lj));
-        if (d <= 10 || (d <= 25 && li[0].street && li[0].street === lj[0].street)) {
+        const sameCepNum = d <= 300 && cepNum(li) && cepNum(li) === cepNum(lj);
+        if (sameCepNum || d <= 10 || (d <= 25 && li[0].street && li[0].street === lj[0].street)) {
           groups[i] = [ki, li.concat(lj)];
           groups.splice(j, 1); j = i;
         }

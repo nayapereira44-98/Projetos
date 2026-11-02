@@ -50,6 +50,7 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
 ## Regras de rota
+- **CEP + número da casa** também identifica o mesmo endereço, mesmo com a rua escrita de outro jeito ou a coordenada imprecisa (até 300 m). Um CEP usado em mais de duas ruas (CEP geral da cidade) é ignorado. O cartão mostra o CEP.
 - Uma parada por endereço. Números diferentes no **mesmo ponto** (até 25 m na mesma rua, ou 10 m em qualquer rua) viram uma parada só, por exemplo "José Pioli, 212 / 225 / 245" (Shopee 30 + 31).
 - Cada rua é feita inteira, em ordem de número. A ordem e o sentido dos trechos são otimizados (`Core.addressRoute`).
 
