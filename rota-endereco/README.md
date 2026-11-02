@@ -15,6 +15,12 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
   - o botão de tela cheia esconde o cartão;
   - o mapa recalcula o tamanho sozinho;
   - **o contador preto no pino** mostra quantos pacotes faltam no endereço.
+- **Perto de mim (padrão, pedido de 02/11)**: a localização manda, não a ordem.
+  - A parada da vez é a **pendente mais perto de você**, terminando a área atual antes de ir para outra. O cartão "segura" o endereço enquanto você está nele (80 m) e só troca se outro ficar 50 m mais perto, para não mudar na hora do toque.
+  - O seletor **Perto de mim / Rota** no topo do mapa volta para a ordem da rota quando quiser.
+  - **"Aqui tem entrega"**: a até 60 m de **qualquer** endereço pendente, mesmo fora da ordem ou numa rua errada, aparece um aviso laranja com os pacotes e o saco, e o celular vibra.
+- **Áreas (raio de 700 m, ajustável)**: endereços próximos formam a "Área 1, 2, 3…", numeradas na ordem da rota e fixas durante o dia. A lista de paradas é agrupada por área, e os sacos podem ser por área.
+- **Conferir pacotes por foto**: escolha ou tire várias fotos de etiquetas de uma vez. O app lê os códigos, marca como conferidos e mostra cada pacote → área, com ✓/○ por área, para separar tudo de uma área junto.
 - **Mapa "eu + próxima entrega"** (pedido de 31/10, inspirado nos apps de entrega):
   - o GPS liga sozinho ao abrir o mapa e mostra o ponto azul com o círculo de precisão;
   - a câmera enquadra você e a próxima parada e acompanha enquanto você anda;

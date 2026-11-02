@@ -818,6 +818,16 @@ main { flex: 1; min-height: 0; position: relative; }
 .mini-body b { font: 800 1.12rem/1.2 var(--font-display); }
 .mini-act { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 8px; }
 .mini-act .btn, .mini-act button { min-height: 52px; padding: 8px; }
+.chip.area { background: #7048e8; color: #fff; }
+.modes { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); top: 12px; z-index: 500; display: flex; background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); padding: 4px; }
+.modes button { min-height: 40px; padding: 6px 14px; border-radius: 999px; background: transparent; font-size: 0.9rem; }
+.modes button.on { background: var(--brand); color: var(--brand-ink); }
+.heretip { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); right: 74px; top: 64px; z-index: 520; }
+.heretip button { width: 100%; text-align: left; justify-content: flex-start; background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); font-weight: 400; display: block; min-height: 0; padding: 10px 14px; line-height: 1.35; }
+.heretip button span { font: 700 0.85rem var(--font-data); }
+.area-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; background: #7048e8; color: #fff; border-radius: 12px; padding: 8px 12px; margin-top: 6px; }
+.area-head b { font: 800 1.05rem var(--font-display); }
+.area-head span { font-size: 0.82rem; }
 .chip.dist { background: #1c7ed6; color: #fff; }
 .chip.arrived { background: var(--ok); color: #fff; }
 .mini.arrived .mini-n { background: var(--ok); }
@@ -923,7 +933,9 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <!-- Mapa -->
     <section class="view" id="v-mapa" hidden>
       <div id="map" aria-label="Mapa com todas as paradas"></div>
+      <div class="modes" role="group" aria-label="Como escolher a próxima parada"><button type="button" data-mode="perto">Perto de mim</button><button type="button" data-mode="rota">Rota</button></div>
       <div class="maptip" id="maptip" hidden></div>
+      <div class="heretip" id="hereTip" hidden></div>
       <div class="fabs">
         <button class="fab" id="btnLocate" type="button" aria-label="Mostrar onde estou"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
         <button class="fab" id="btnBig" type="button" aria-label="Mapa em tela cheia"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H3v6M21 9V3h-6M3 15v6h6M15 21h6v-6"/></svg></button>
@@ -937,6 +949,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
     <section class="view" id="v-lista" hidden>
       <div class="pad">
         <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
+        <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photoMany">Conferir pacotes por foto</label><button type="button" class="line" data-checkview="1">Ver conferência por área</button></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
@@ -978,9 +991,14 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
           <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="showDone" style="width:24px;height:24px"> Mostrar no mapa os endereços já entregues</label>
           <p class="sub">A localização liga sozinha ao abrir o mapa. Para desligar, toque duas vezes no botão de mira.</p>
         </div>
+        <div class="card"><h2>Como escolher a próxima parada</h2>
+          <select id="routeMode" aria-label="Modo"><option value="perto">Perto de mim (recomendado): a mais perto de você, terminando a área</option><option value="rota">Seguir a ordem da rota</option></select>
+          <label for="areaR" class="sub">Tamanho da área (raio em metros)</label><input id="areaR" type="number" min="200" max="2000" step="100">
+          <p class="sub">Endereços a até essa distância uns dos outros formam uma área. No modo Perto de mim, o app termina a área antes de ir para a próxima.</p>
+        </div>
         <div class="card"><h2>Sacos</h2>
           <label for="bagMode" class="sub">Como você separou os pacotes nos sacos (de 10 em 10)</label>
-          <select id="bagMode"><option value="shopee">Pelo número da parada na etiqueta da Shopee (1–10, 11–20…)</option><option value="app">Pelo número da parada no app</option><option value="none">Não separei</option></select>
+          <select id="bagMode"><option value="shopee">Pelo número da parada na etiqueta da Shopee (1–10, 11–20…)</option><option value="app">Pelo número da parada no app</option><option value="area">Por área (700 m)</option><option value="none">Não separei</option></select>
           <p class="sub">O cartão de cada endereço mostra de qual saco pegar. Mercado Livre aparece como saco próprio.</p>
         </div>
         <div class="card"><h2>Ordem das paradas</h2>
@@ -1005,6 +1023,7 @@ table.t th:first-child, table.t td:first-child { text-align: left; }
 <input id="file" type="file" accept=".xlsx">
 <input id="fileOther" type="file" accept=".xlsx,.csv,text/csv">
 <input id="photo" type="file" accept="image/*" capture="environment">
+<input id="photoMany" type="file" accept="image/*" multiple>
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
 
