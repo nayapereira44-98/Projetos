@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=420">
+<title>Convite · Toile &amp; ouro claro</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;1,400&family=Marcellus&family=Cinzel:wght@400&family=Pinyon+Script&family=Great+Vibes&family=Allura&display=swap">
+<style>
+:root{
+  --card-bg:#3E5778;          /* azul toile */
+  --card-text:#EEF2F8;
+  --card-accent-1:#D9BD86;    /* ouro claro */
+  --card-accent-2:#5F7DA6;    /* hortênsia (lacre) */
+  --card-names:#FFF6E6;
+  --font-headline:'Pinyon Script', cursive;
+  --font-body:'Cormorant Garamond', Garamond, serif;
+  --font-caps:'Marcellus', 'Cormorant Garamond', serif;
+  --photo-radius:2px;
+  --photo-aspect:280/247;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+.card{
+  width:420px;height:560px;position:relative;overflow:hidden;
+  background-color:var(--card-bg);color:var(--card-text);font-family:var(--font-body);
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:28px 30px 0;
+}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .14 0 0 0 0 .22 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.frame-out,.frame-in{position:absolute;pointer-events:none;border:1px solid var(--card-accent-1)}
+.frame-out{inset:12px;opacity:.6}
+.frame-in{inset:16px;opacity:.25}
+
+.swallows{position:relative;width:84px;height:28px;color:var(--card-accent-1);opacity:.85;margin-bottom:4px}
+.kicker{position:relative;font-family:var(--font-caps);font-size:8.5px;letter-spacing:.32em;color:var(--card-accent-1)}
+.names{position:relative;font-family:var(--font-headline);font-weight:400;font-size:40px;line-height:1.02;color:var(--card-names);margin-top:8px}
+.names .amp{display:block;font-size:.62em;line-height:.9;color:var(--card-accent-1)}
+.invite{position:relative;font-style:italic;font-size:13.5px;line-height:1.3;margin-top:8px;color:var(--card-text);opacity:.92}
+.rule{position:relative;display:flex;align-items:center;gap:10px;margin-top:9px;font-family:var(--font-caps);font-size:12.5px;letter-spacing:.26em;color:var(--card-text)}
+.rule::before,.rule::after{content:"";width:26px;height:1px;background:var(--card-accent-1);opacity:.8}
+.when{position:relative;font-style:italic;font-size:12px;margin-top:3px;opacity:.85}
+
+.photo-wrap{position:absolute;left:70px;bottom:28px;width:280px;aspect-ratio:var(--photo-aspect);border-radius:var(--photo-radius);overflow:hidden;
+  box-shadow:0 0 0 1px var(--card-accent-1)}
+.photo-wrap img{width:100%;height:100%;object-fit:cover;object-position:center 100%;display:block}
+/* lacre de cera azul hortênsia com o monograma, apoiado no topo da foto */
+.seal{position:absolute;right:70px;bottom:275px;transform:translate(42%,42%);width:58px;height:58px;z-index:2;
+  border-radius:47% 53% 49% 51%/52% 46% 54% 48%;display:grid;place-items:center;
+  background-color:var(--card-accent-2);
+  box-shadow:0 0 0 3px var(--card-bg), inset 0 -3px 5px rgba(20,30,50,.35), inset 0 2px 4px rgba(255,255,255,.22)}
+.seal::before{content:"";position:absolute;inset:14%;border-radius:50%;border:1px solid rgba(201,214,232,.45)}
+.seal span{position:relative;font-family:var(--font-headline);font-size:19px;color:#E4ECF6;padding-top:2px}
+.place{position:absolute;left:70px;right:70px;bottom:36px;z-index:2;font-family:var(--font-caps);font-size:9px;letter-spacing:.3em;color:#FFF6E6;
+  padding:5px 0;background-color:rgba(42,38,32,.42)}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="swallow" viewBox="0 0 60 30"><path fill="currentColor" d="M30 15c-3-1-6-4-9-9-1 4 0 7 3 9-6-1-12 0-18 3 6 0 11 0 15 1-4 2-8 6-11 10 5-3 10-5 15-6 2 0 4-1 5-2 1 1 3 2 5 2 5 1 10 3 15 6-3-4-7-8-11-10 4-1 9-1 15-1-6-3-12-4-18-3 3-2 4-5 3-9-3 5-6 8-9 9z"/></symbol>
+</defs></svg>
+
+<div class="card">
+  <div class="grain"></div>
+  <div class="frame-out"></div><div class="frame-in"></div>
+
+  <svg class="swallows optional" viewBox="0 0 84 28" aria-hidden="true"><use href="#swallow" x="0" y="12" width="26" height="13"/><use href="#swallow" x="30" y="0" width="22" height="11"/><use href="#swallow" x="56" y="10" width="28" height="14"/></svg>
+  <p class="kicker">{{text.kicker_pt}}</p>
+  <h1 class="names">{{names.groom_pt}}<span class="amp">&amp;</span>{{names.bride_pt}}</h1>
+  <p class="invite">{{text.invite_pt}}</p>
+  <p class="rule">{{date.caps_pt}}</p>
+  <p class="when">{{date.weekday_pt}} · {{time.pt}}</p>
+
+  <div class="seal optional"><span>{{names.groom_initial}}&amp;{{names.bride_initial}}</span></div>
+  <div class="photo-wrap">
+    <img id="main-photo" src="{{design.primary_photo_url}}" alt="{{names.groom_pt}} e {{names.bride_pt}} no terraço ao entardecer">
+  </div>
+  <p class="place">{{venue.city_pt}}</p>
+</div>
+</body>
+</html>
