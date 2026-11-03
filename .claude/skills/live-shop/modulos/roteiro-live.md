@@ -32,7 +32,7 @@ nos Stories/WhatsApp 1h antes; título da live com a oferta ("Garrafa térmica R
 planilha e rodar `modulos/meta-e-relatorio.md`.
 
 ## Frequência para novembro
-Constância vence live longa. Comece com **4 lives/semana de 60–120 min (o TikTok leva 15–30 min para estabilizar a distribuição), sempre no mesmo horário**
+Constância e horário fixo vêm primeiro. Comece com **4 lives/semana de 60–120 min (o TikTok leva 15–30 min para estabilizar a distribuição), sempre no mesmo horário**
 (teste 19h–22h em dia útil; 10h–12h no sábado). Alterne a plataforma ou faça a mesma live nas duas
 em horários diferentes. Datas fortes: **11/11** e **Black Friday (27/11)** — prepare oferta especial e
 faça live mais longa nesses dias.
