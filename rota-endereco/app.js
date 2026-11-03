@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
   // se ainda não bater, mostra um aviso para atualizar.
-  const NEED = ["issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  const NEED = ["hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
   if (NEED.some(id => !$(id))) {
     let tried = false;
     try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
@@ -254,8 +254,10 @@
         derive(); plan(null); save(); start();
         toast(`Shopee somada à rota: ${pkgs.length} pacotes`);
       } else {
+        const prev = active ? archiveRoute() : null;
         markSeen(pkgs, Date.now());
         D = { at, file: f.name, pkgs, createdAt: Date.now(), order: null, km: null };
+        if (prev) setTimeout(() => toast(`Rota anterior salva no histórico (${prev.p} pacotes). Nova rota: ${pkgs.length} pacotes`), 2700);
         ok = {}; sess = {}; fin.km = null; store.set("re:fin", fin);
         derive(); plan(null); save(); start();
         location.hash = "#mapa";
@@ -354,7 +356,8 @@
     if (!a) {
       sh.innerHTML = `<div class="grabwrap"><span class="grab"></span></div><div class="addr-big">Rota concluída</div>
         <p class="sub">${all().length} pacotes em ${order.length} endereços${sess.start && !sess.end ? ` em ${dur(Date.now() - sess.start)}` : ""}.</p>
-        ${sess.start && !sess.end ? `<button type="button" class="primary deliver" data-end="1">Finalizar entregas</button>` : `<a class="btn brand" href="#painel">Ver meu painel</a>`}`;
+        <button type="button" class="primary deliver" data-finish="1">Encerrar a rota e começar outra</button>
+        <a class="btn line" href="#painel">Ver o painel desta rota</a>`;
       return;
     }
     sh.classList.toggle("open", sheetOpen);
@@ -622,6 +625,9 @@
     else if (d.fixpin) { pinFix = d.fixpin; $("scanOverlay").hidden = true; location.hash = "#mapa"; $("maptip").hidden = false; $("maptip").textContent = "Toque no mapa onde fica este endereço"; sheetOpen = false; renderSheet(); }
     else if (d.fixundo) { const a = byKey.get(d.fixundo); if (a) { a.pkgs.forEach(p => delete D.fix?.[p.tn]); derive(); plan(nextAddr()?.key); save(); numberOrder(); drawMarkers(false); renderAll(); toast("Posição original de volta"); } }
     else if (d.per) { histPer = +d.per; store.set("re:per", histPer); renderPainel(); }
+    else if (d.hmode) { histMode = d.hmode; store.set("re:hmode", histMode); renderHist(); }
+    else if (d.finish) openFinish();
+    else if (d.finishgo) { $("scanOverlay").hidden = true; finishRoute(); }
     else if (d.histadd) openHistForm(null);
     else if (d.histedit) openHistForm(d.histedit);
     else if (d.histsave) saveHistForm(d.histsave);
@@ -645,6 +651,43 @@
     $("meta").textContent = "Abra a planilha da rota para começar"; $("timer").hidden = true; $("bar").hidden = true;
     location.hash = "#inicio"; route();
     toast("Pronto. Abra a planilha para começar.");
+  }
+  // Guarda a rota atual no histórico (se teve entrega). Sem cronômetro, o início é a hora da primeira entrega.
+  function archiveRoute() {
+    if (!D) return null;
+    const times = all().map(p => ok[p.tn]).filter(Boolean);
+    if (!times.length) return null;
+    if (!sess.start) sess.start = Math.min(...times);
+    if (!sess.end) sess.end = Math.max(Date.now(), ...times);
+    const rec = todayRec();
+    hist = hist.filter(r => r.id !== rec.id).concat(rec);
+    store.set("re:hist", hist); save();
+    return rec;
+  }
+  function openFinish() {
+    const s = stats(), left = all().length - s.doneP;
+    $("scanOverlay").hidden = false;
+    $("scanSheet").innerHTML = `<div class="addr-big">Encerrar a rota?</div>
+      <div class="wf">
+        <div><span>Pacotes entregues</span><b>${s.doneP} de ${all().length}</b></div>
+        <div><span>Tempo</span><b>${sess.start ? dur((sess.end || Date.now()) - sess.start) : "–"}</b></div>
+        <div><span>Km <small>${s.kmSrc}</small></span><b>${n1(s.km)} km</b></div>
+        ${s.gain != null ? `<div class="total ${s.profit >= 0 ? "good" : "bad"}"><span>Líquido <small>bruto ${brl(s.gain)} − combustível ${brl(s.fuel)}${s.other ? " − outros " + brl(s.other) : ""}</small></span><b>${brl(s.profit)}</b></div>` : ""}
+      </div>
+      ${left ? `<p class="offroute">Ainda ${left > 1 ? `faltam ${left} pacotes` : "falta 1 pacote"}. Eles não entram como entregues.</p>` : ""}
+      <p class="sub">A rota vai para o Comparativo de rotas e dias no Painel, e o app volta para abrir a próxima planilha.</p>
+      <button type="button" class="primary" data-finishgo="1">Encerrar e salvar no histórico</button>
+      <button type="button" class="line" data-close="1">Continuar nesta rota</button>`;
+  }
+  // Encerrar a rota toda: salva no histórico, limpa a rota e volta para abrir a próxima planilha.
+  // O valor que a plataforma paga fica; km digitado e outros gastos voltam a zero.
+  function finishRoute() {
+    const rec = archiveRoute();
+    fin.km = null; fin.other = null; store.set("re:fin", fin);
+    $("fKm").value = ""; $("fOther").value = "";
+    issues = new Map();
+    clearDay();
+    toast(rec ? `Rota salva: ${rec.p} pacotes, líquido ${brl(rec.l)}. Abra a próxima planilha.` : "Rota encerrada. Abra a próxima planilha.");
   }
 
   // ---------- lista ----------
@@ -737,8 +780,8 @@
     $("session").innerHTML = !sess.start
       ? `<h2>Pronto para começar?</h2><p>Toque quando sair para a primeira entrega. O app conta o tempo e monta o seu painel.</p><button type="button" data-start="1">Iniciar entregas</button>`
       : !sess.end
-        ? `<div class="eyebrow" style="color:inherit;opacity:.85">Entregando desde ${hhmm(sess.start)}</div><div class="clock">${clock(s.elapsed)}</div><button type="button" class="stop" data-end="1">Finalizar entregas</button>`
-        : `<div class="eyebrow" style="color:inherit;opacity:.85">Entregas de ${hhmm(sess.start)} às ${hhmm(sess.end)}</div><div class="clock">${dur(s.elapsed)}</div><button type="button" data-reopen="1">Retomar cronômetro</button>`;
+        ? `<div class="eyebrow" style="color:inherit;opacity:.85">Entregando desde ${hhmm(sess.start)}</div><div class="clock">${clock(s.elapsed)}</div><button type="button" class="stop" data-end="1">Finalizar entregas</button><button type="button" class="ghost" data-finish="1">Encerrar a rota e começar outra</button>`
+        : `<div class="eyebrow" style="color:inherit;opacity:.85">Entregas de ${hhmm(sess.start)} às ${hhmm(sess.end)}</div><div class="clock">${dur(s.elapsed)}</div><button type="button" class="stop" data-finish="1">Encerrar a rota e começar outra</button><button type="button" class="ghost" data-reopen="1">Retomar cronômetro</button>`;
   }
   let histPer = store.get("re:per", 30);
   const n1 = (v, d = 1) => (v == null || !isFinite(v) ? "–" : v.toLocaleString("pt-BR", { maximumFractionDigits: d, minimumFractionDigits: d }));
@@ -836,35 +879,40 @@
     const cut = histPer ? Date.now() - histPer * 864e5 : 0;
     return hist.filter(r => r.t >= cut).sort((a, b) => b.t - a.t);
   }
+  let histMode = store.get("re:hmode", "rota");
+  // Comparativo: cada rota (ou cada dia) contra a média do período e contra a anterior.
   function renderHist() {
     document.querySelectorAll("[data-per]").forEach(b => b.classList.toggle("on", +b.dataset.per === histPer));
+    document.querySelectorAll("[data-hmode]").forEach(b => b.classList.toggle("on", b.dataset.hmode === histMode));
     const rows = histRows();
     if (!rows.length) {
       $("histSum").innerHTML = ""; $("histChart").innerHTML = "";
-      $("hist").innerHTML = `<p class="hempty">${hist.length ? "Nenhuma rota neste período." : `Quando você tocar em "Finalizar entregas", a rota aparece aqui. Para comparar com rotas que você já fez, use "Registrar rota anterior".`}</p>`;
+      $("hist").innerHTML = `<p class="hempty">${hist.length ? "Nenhuma rota neste período." : `Quando você encerrar uma rota, ela aparece aqui. Para comparar com rotas que você já fez, use "Registrar rota anterior".`}</p>`;
       return;
     }
+    const byDay = histMode === "dia";
+    const items = (byDay ? Core.groupByDay(rows) : rows).slice().sort((a, b) => b.t - a.t);
     const sm = Core.summarize(rows);
+    const nDays = Core.groupByDay(rows).length;
     $("histSum").innerHTML = [
       [sm.n, sm.n > 1 ? "rotas" : "rota"],
-      [sm.p, "pacotes entregues"],
+      [nDays, nDays > 1 ? "dias trabalhados" : "dia trabalhado"],
       [brl(sm.gross), "bruto"],
       [brl(sm.net), "líquido", sm.net >= 0 ? "good" : "bad"],
-      [brl(sm.perRoute.gross), "bruto médio por rota"],
       [brl(sm.perRoute.net), "líquido médio por rota"],
+      [brl(sm.net / nDays), "líquido médio por dia"],
       [brl(sm.grossPerPkg), "valor médio por pacote"],
       [brl(sm.netPerPkg), "líquido médio por pacote"],
       [sm.perRoute.km != null ? n1(sm.perRoute.km) + " km" : "–", "km médio por rota"],
       [brl(sm.perRoute.fuel), "combustível médio por rota"],
     ].map(([b, l, c]) => `<div class="kpi ${c || ""}"><b>${b}</b><span>${l}</span></div>`).join("")
       + Object.entries(sm.plat).map(([k, v]) => `<div class="kpi"><b>${brl(v.perPkg)}</b><span>por pacote · ${esc(k)} (${v.p} pct)</span></div>`).join("");
-    // Gráfico: bruto e líquido das últimas 14 rotas do período, da mais antiga para a mais nova.
-    const last = rows.slice(0, 14).reverse();
-    const ks = last.map(r => ({ r, k: Core.routeKpis(r) }));
+    // Gráfico: bruto e líquido dos últimos 14 itens, do mais antigo para o mais novo.
+    const ks = items.slice(0, 14).reverse().map(r => ({ r, k: Core.routeKpis(r) }));
     const max = Math.max(...ks.map(x => x.k.gross), 1);
     const W = 340, H = 150, bw = W / ks.length;
     $("histChart").innerHTML = `<div class="legend"><span><i class="lg-g"></i>Bruto</span><span><i class="lg-n"></i>Líquido</span></div>
-      <svg viewBox="0 0 ${W} ${H + 18}" role="img" aria-label="Bruto e líquido por rota">
+      <svg viewBox="0 0 ${W} ${H + 18}" role="img" aria-label="Bruto e líquido por ${byDay ? "dia" : "rota"}">
         <line x1="0" x2="${W}" y1="${H}" y2="${H}" class="axis"/>
         ${ks.map((x, i) => {
           const gh = x.k.gross / max * (H - 8), nh = Math.max(0, x.k.net) / max * (H - 8), cx = i * bw;
@@ -874,13 +922,38 @@
             ${ks.length <= 10 || i % 2 === 0 ? `<text x="${(cx + bw / 2).toFixed(1)}" y="${H + 13}" text-anchor="middle">${new Date(x.r.t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</text>` : ""}`;
         }).join("")}
       </svg>`;
-    $("hist").innerHTML = rows.map(r => {
-      const k = Core.routeKpis(r);
+    // Médias dos itens mostrados, para a seta de cada número.
+    const K = items.map(r => ({ r, k: Core.routeKpis(r) }));
+    const mean = f => { const v = K.map(x => x.k[f]).filter(x => x != null && isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const M = { net: mean("net"), netPerPkg: mean("netPerPkg"), pkgPerHour: mean("pkgPerHour"), kmPerPkg: mean("kmPerPkg"), netPerHour: mean("netPerHour"), minPerStop: mean("minPerStop") };
+    const ranked = K.filter(x => x.k.netPerHour != null).sort((a, b) => b.k.netPerHour - a.k.netPerHour);
+    const best = K.length >= 3 && ranked.length >= 3 ? ranked[0].r : null, worst = best ? ranked[ranked.length - 1].r : null;
+    const dl = (v, avg, dir) => {
+      if (v == null || !avg || !isFinite(v)) return "";
+      const ch = v / avg - 1;
+      if (Math.abs(ch) < 0.03) return `<i class="dz">= média</i>`;
+      return `<i class="${ch * dir >= 0 ? "dup" : "ddown"}">${ch > 0 ? "▲" : "▼"}${Math.abs(Math.round(ch * 100))}%</i>`;
+    };
+    const cell = (label, val, v, avg, dir) => `<span class="mc"><small>${label}</small><b>${val}</b>${dl(v, avg, dir)}</span>`;
+    $("hist").innerHTML = K.map(({ r, k }, i) => {
+      const prev = K[i + 1];
       const day = new Date(r.t).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-      return `<div class="hrow"><span class="hd">${esc(day)}<small>${r.p} pct${k.km ? " · " + n1(k.km) + " km" : ""}${r.manual ? " · registrada à mão" : ""}</small></span><span class="hv ${k.net >= 0 ? "" : "neg"}">${brl(k.net)}</span>
-        <span class="hs">Bruto ${brl(k.gross)} · combustível ${brl(k.fuel)}${k.other ? " · outros " + brl(k.other) : ""} · ${brl(k.netPerPkg)} por pacote</span><button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button></div>`;
-    }).join("");
+      const who = byDay ? (r.routes > 1 ? `${r.routes} rotas` : "1 rota") : r.manual ? "registrada à mão" : r.at ? "rota " + esc(String(r.at).slice(-5)) + (sameDayCount(r) > 1 ? ` · ${hhmm(r.t)}` : "") : "";
+      const vsPrev = prev ? (() => { const d = k.net - prev.k.net; return `vs ${byDay ? "dia" : "rota"} anterior: <b class="${d >= 0 ? "pos" : "neg"}">${d >= 0 ? "+" : "−"}${brl(Math.abs(d))}</b>`; })() : "";
+      return `<div class="hcard${r === best ? " best" : ""}${r === worst ? " worst" : ""}">
+        <div class="hhead"><span class="hd">${esc(day)}${r === best ? ` <em class="tag good">Melhor</em>` : ""}${r === worst ? ` <em class="tag bad">Pior</em>` : ""}<small>${[who, r.p + " pct", k.km ? n1(k.km) + " km" : "", k.hours ? dur(r.ms) : ""].filter(Boolean).join(" · ")}</small></span>
+          <span class="hv ${k.net >= 0 ? "" : "neg"}">${brl(k.net)}<small>${dl(k.net, M.net, 1) || "líquido"}</small></span></div>
+        <div class="mgrid">
+          ${cell("Líquido/pacote", brl(k.netPerPkg), k.netPerPkg, M.netPerPkg, 1)}
+          ${cell("Líquido/hora", k.netPerHour != null ? brl(k.netPerHour) : "–", k.netPerHour, M.netPerHour, 1)}
+          ${cell("Pacotes/hora", n1(k.pkgPerHour), k.pkgPerHour, M.pkgPerHour, 1)}
+          ${cell("Km/pacote", k.kmPerPkg != null ? n1(k.kmPerPkg, 2) : "–", k.kmPerPkg, M.kmPerPkg, -1)}
+        </div>
+        <div class="hfoot"><span class="hs">Bruto ${brl(k.gross)} · combustível ${brl(k.fuel)}${k.other ? " · outros " + brl(k.other) : ""}${vsPrev ? "<br>" + vsPrev : ""}</span>${byDay ? "" : `<button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button>`}</div>
+      </div>`;
+    }).join("") + `<p class="sub">Setas: comparação com a média ${byDay ? "dos dias" : "das rotas"} deste período (verde é melhor, vermelho é pior).</p>`;
   }
+  const sameDayCount = r => hist.filter(x => new Date(x.t).toDateString() === new Date(r.t).toDateString()).length;
   // Registrar ou editar uma rota (para trazer rotas antigas e comparar).
   function openHistForm(id) {
     const r = id ? hist.find(x => x.id === id) : null;

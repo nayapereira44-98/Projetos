@@ -70,6 +70,10 @@ Os alertas aparecem no topo de Paradas, no cartão do endereço e em Ajustes →
 ## Visual (03/11)
 Topo claro com progresso fino, cartões com borda leve, chips em tons suaves (a cor indica o tipo sem gritar), barra de abas translúcida com indicador da aba ativa, cabeçalho de área em linha, aviso "Aqui tem entrega" compacto logo acima do cartão (não cobre mais o mapa) e histórico em lista (sem rolar para o lado no celular). Modo claro e escuro.
 
+## Encerrar a rota e comparar rotas e dias (pedido de 03/11)
+- **Encerrar a rota e começar outra** (Painel, fim da rota no mapa e Ajustes): mostra o resumo (pacotes, tempo, km, bruto, combustível e líquido) e avisa se ainda faltam pacotes. Ao confirmar, salva a rota no histórico, zera o km digitado e os outros gastos e volta para abrir a próxima planilha. Abrir a planilha de outra rota também salva a anterior.
+- **Comparativo de rotas e dias**: alterna entre **Por rota** e **Por dia** (as rotas do mesmo dia somadas). Cada cartão mostra o líquido, o líquido por pacote e por hora, os pacotes por hora e os km por pacote, com seta verde ou vermelha contra a média do período, a diferença para a rota ou o dia anterior e as marcas **Melhor** e **Pior** (por líquido por hora).
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
