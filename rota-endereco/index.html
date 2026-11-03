@@ -1072,6 +1072,31 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 .hrow .tiny { justify-self: end; }
 .hempty { color: var(--muted); font-size: 0.9rem; }
 .chart .bar-g, .lg-g { fill: var(--line-strong); background: var(--line-strong); }
+
+/* Comparativo de rotas e dias */
+.seg[aria-label="Comparar"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hcard { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 10px; margin-top: 10px; }
+.hcard.best { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.hcard.worst { border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.hhead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.hhead .hd { font-weight: 700; text-transform: capitalize; }
+.hhead .hd small { display: block; text-transform: none; color: var(--muted); font-weight: 400; font-size: 0.8rem; margin-top: 2px; }
+.hhead .hv { font: 800 1.2rem var(--font-display); font-variant-numeric: tabular-nums; text-align: right; }
+.hhead .hv small { display: block; font: 700 0.75rem var(--font-body); color: var(--muted); }
+.hhead .hv.neg { color: var(--bad); }
+.tag { font: 700 0.7rem var(--font-body); font-style: normal; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; vertical-align: 2px; }
+.tag.good { background: var(--ok-soft); color: var(--ok); }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mc { background: var(--bg); border-radius: 12px; padding: 8px 10px; display: grid; gap: 1px; min-width: 0; }
+.mc small { color: var(--muted); font-size: 0.74rem; }
+.mc b { font: 800 1rem var(--font-display); font-variant-numeric: tabular-nums; }
+.mc i, .hv i { font: 700 0.74rem var(--font-body); font-style: normal; }
+.dup { color: var(--ok); } .ddown { color: var(--bad); } .dz { color: var(--muted); }
+.hfoot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.hfoot .hs { color: var(--muted); font-size: 0.8rem; }
+.hfoot .pos { color: var(--ok); } .hfoot .neg { color: var(--bad); }
+.session button.ghost { background: transparent; color: #f3f6f2; border: 1px solid rgba(243,246,242,0.45); }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -1154,7 +1179,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
         </div>
         <div class="card"><h2>Indicadores</h2><p class="sub">Hoje comparado com a média das suas rotas.</p><div id="ind"></div></div>
         <div class="card"><h2>Oportunidades de melhoria</h2><div id="opps" style="display:grid;gap:10px"></div></div>
-        <div class="card"><h2>Histórico de rotas</h2>
+        <div class="card"><h2>Comparativo de rotas e dias</h2>
+          <div class="seg" id="hmode" role="group" aria-label="Comparar"><button type="button" data-hmode="rota">Por rota</button><button type="button" data-hmode="dia">Por dia</button></div>
           <div class="seg" role="group" aria-label="Período"><button type="button" data-per="7">7 dias</button><button type="button" data-per="30">30 dias</button><button type="button" data-per="0">Tudo</button></div>
           <div class="grid2" id="histSum"></div>
           <div id="histChart" class="chart"></div>
@@ -1199,7 +1225,11 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
           <p class="sub">Só os endereços que faltam mudam de ordem. Endereços com horário no complemento ("entrega até 12:00") entram antes do prazo.</p>
         </div>
         <div class="card"><h2>De-para: parada Shopee → endereço</h2><div class="scroll"><table class="t" id="dp"></table></div></div>
-        <div class="card"><h2>Recomeçar</h2><button id="clear" type="button" class="danger">Começar do zero</button><p class="sub">Apaga a rota deste aparelho. O histórico de dias fica guardado.</p></div>
+        <div class="card"><h2>Encerrar a rota</h2>
+          <button type="button" class="primary" data-finish="1">Encerrar a rota e começar outra</button>
+          <p class="sub">Salva a rota no histórico do Painel, com pacotes, km, combustível, bruto e líquido, e volta para abrir a próxima planilha. Abrir a planilha de outra rota também salva a anterior.</p>
+          <button id="clear" type="button" class="danger">Apagar esta rota sem salvar</button>
+          <p class="sub">Use só se abriu a planilha errada. O histórico fica guardado.</p></div>
       </div>
     </section>
   </main>
@@ -1221,8 +1251,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261103b"></script>
-<script src="app.js?v=20261103b"></script>
+<script src="../rota-certa/core.js?v=20261103c"></script>
+<script src="app.js?v=20261103c"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

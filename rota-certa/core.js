@@ -582,6 +582,24 @@ const Core = (() => {
     };
   }
 
+  // Junta as rotas do mesmo dia (horário local): soma tudo e guarda quantas rotas foram.
+  function groupByDay(rows) {
+    const SUM = ["p", "a", "ms", "km", "fuel", "other", "g", "gS", "gM", "gO", "pS", "pM", "pO", "total", "later", "att2"];
+    const days = new Map();
+    rows.forEach(r => {
+      const d = new Date(r.t), key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      const k = routeKpis(r);
+      if (!days.has(key)) days.set(key, { id: "dia:" + key, day: key, t: r.t, routes: 0 });
+      const x = days.get(key);
+      x.routes++; x.t = Math.min(x.t, r.t);
+      SUM.forEach(f => {
+        const v = f === "fuel" ? k.fuel : r[f];
+        if (v != null && isFinite(v)) x[f] = (x[f] || 0) + v;
+      });
+    });
+    return [...days.values()].map(x => ({ ...x, l: (x.g || 0) - (x.fuel || 0) - (x.other || 0) }));
+  }
+
   // Oportunidades de melhoria: compara a rota mais recente com a média das anteriores.
   function insights(rows) {
     const out = [];
@@ -637,6 +655,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, insights, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, insights, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
