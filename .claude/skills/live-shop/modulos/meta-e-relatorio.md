@@ -8,8 +8,8 @@ Calcular com `scripts/meta.py`. Primeiro pergunte (uma vez) se os R$ 1.000 são 
 Meta definida: _(preencher)_
 
 ## Depois de cada live
-Pedir (ou ler do print/exportação): plataforma, duração, pico de espectadores, espectadores únicos,
-tempo médio assistido, cliques no produto, pedidos, valor vendido. Adicionar a linha no CSV.
+Pedir (ou ler do print/exportação do LIVE Dashboard): plataforma, duração, impressões, visualizações,
+espectadores únicos, tempo médio, comentários, cliques no produto, pedidos, GMV. Calcular ERR, CTR, CTOR e Show GPM (fórmulas em `diretor-tiktok.md`) e adicionar a linha no CSV.
 
 Diagnóstico pelo funil (onde está o furo):
 | Sintoma | Causa provável | Ação |

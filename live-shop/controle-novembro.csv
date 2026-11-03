@@ -1,1 +1,1 @@
-data,plataforma,inicio,duracao_min,produtos,pico_espectadores,espectadores_unicos,tempo_medio_seg,cliques_produto,pedidos,valor_vendido,acumulado_mes,observacoes
+data,plataforma,inicio,duracao_min,produtos,impressoes,visualizacoes,err_pct,espectadores_unicos,tempo_medio_seg,comentarios,novos_seguidores,cliques_produto,ctr_pct,pedidos,ctor_pct,gmv,show_gpm,acumulado_mes,violacoes,observacoes

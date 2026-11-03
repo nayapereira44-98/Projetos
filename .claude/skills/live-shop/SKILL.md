@@ -36,6 +36,7 @@ Brasil e para artes SEM imagem gerada por IA.
 | "posso falar isso?" | `modulos/compliance.md` | o que pode / trocar por |
 | meta / "como foi a live" / planilha | `modulos/meta-e-relatorio.md` | cálculo + diagnóstico + próximo passo |
 | dúvida de regra/taxa/requisito | `modulos/regras-plataformas.md` | resposta + onde confirmar |
+| "por onde começo", estratégia TikTok, métricas oficiais (ERR, CTR, CTOR, GPM) | `modulos/diretor-tiktok.md` | fase atual + próxima ação + métrica a atacar |
 
 ## Ferramentas
 
