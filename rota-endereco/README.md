@@ -88,6 +88,17 @@ Exemplo: rota de R$ 260 com 52 pacotes = R$ 5,00 por pacote; 50 km a 11 km/l e R
 - **App instalável** (manifest + service worker): na tela inicial do celular abre sem a barra do navegador e funciona sem internet depois da primeira visita (mapas, CEP e buscas precisam de internet). Rede primeiro: com sinal, sempre a versão mais nova.
 - **Seus dados** (Ajustes): os dados ficam no aparelho. O app pede ao navegador proteção contra limpeza automática, mostra o status e o último backup, e tem **Baixar backup** (arquivo .json com histórico, valores e rota aberta) e **Restaurar backup** (em outro celular ou depois de limpar o navegador).
 
+## Fase 1 depois da análise do Spoke/Circuit (03/11)
+O que o app de rotas mais usado por entregadores tem, somado ao que o Rota Certa já fazia:
+- **Ordem de carga do veículo** (Paradas): as paradas, na ordem da rota, são divididas pelas zonas do veículo escolhido (carro, utilitário ou moto). A zona A, mais à mão, recebe o começo da rota; carrega-se de baixo para cima. O cartão de cada parada mostra "Carga A · Banco do passageiro". A ordem fica congelada até você pedir para refazer.
+- **Hora prevista em cada parada** ("chega ~14:32") pelo seu ritmo real e pela distância.
+- **Não consegui entregar** com motivo (endereço não encontrado, recusou, sem acesso, avariado, área de risco, outro) ou "ninguém atendeu: voltar depois". O pacote fica resolvido na rota, não conta como entregue, e as ocorrências entram na ficha, no histórico e nas oportunidades de melhoria.
+- **Comprovante opcional**: quem recebeu (cliente, porteiro, vizinho, familiar, caixa de correio) e foto da entrega, guardada reduzida no aparelho.
+- **Onde a rota termina**: livre, perto de casa (salva a localização) ou de volta ao ponto de saída. A otimização já considera o final.
+- **Inverter a ordem** das paradas que faltam.
+- **Navegação automática**: depois de "Entreguei", abre o Waze ou o Google Maps na próxima parada (opcional).
+- **Endereço por voz** ao adicionar pacote, onde o navegador permite.
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".

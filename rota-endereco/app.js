@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
   // se ainda não bater, mostra um aviso para atualizar.
-  const NEED = ["setup", "lastRoute", "dataStat", "vehPick", "restoreFile", "trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  const NEED = ["proofPhoto", "endMode", "reverse", "autoNav", "saveHome", "setup", "lastRoute", "dataStat", "vehPick", "restoreFile", "trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
   if (NEED.some(id => !$(id))) {
     let tried = false;
     try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
@@ -100,7 +100,10 @@
   const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
   const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
   const all = () => D.pkgs.concat(D.extra || []);
-  const pkgDone = p => !!ok[p.tn];
+  // Resolvido = entregue ou com ocorrência (não entregue, com motivo). Só "entregue" conta no faturamento.
+  const pkgOk = p => !!ok[p.tn];
+  const failOf = p => D?.fail?.[p.tn] || null;
+  const pkgDone = p => !!ok[p.tn] || !!failOf(p);
   const addrDone = a => a.pkgs.every(pkgDone);
   const extra = p => p.address.split(",").slice(2).join(",").trim();
   const streetName = a => a.label.split(",")[0].trim();
@@ -211,14 +214,16 @@
     if (!pend.length) { D.order = doneA.map(a => a.key); return; }
     const start = pend.some(a => a.key === startKey) ? startKey : pend.reduce((b, a) => ((a.shopeeStops[0] ?? 1e9) < (b.shopeeStops[0] ?? 1e9) ? a : b)).key;
     const from = here && (fromHere || (!doneA.length && !startKey)) ? { ...here } : null;
+    if (from && !D.startPt) D.startPt = { ...from };
+    const to = fin.endMode === "casa" && fin.home ? fin.home : fin.endMode === "inicio" ? D.startPt || null : null;
     const now = new Date();
     const perStop = sess.start && doneA.length >= 3 ? (Date.now() - sess.start) / 60000 / doneA.length : 3;
-    const r = Core.addressRoute(pend, start, { from, clock: { start: now.getHours() * 60 + now.getMinutes(), stopMin: Math.min(10, Math.max(1.5, perStop)) } });
+    const r = Core.addressRoute(pend, start, { from, clock: { start: now.getHours() * 60 + now.getMinutes(), stopMin: Math.min(10, Math.max(1.5, perStop)) }, to });
     D.order = doneA.concat(r.order).map(a => a.key);
     if (!D.km) D.km = r.km;
     // Comparação com a ordem da Shopee, pelo mesmo critério de distância.
     const shp = pend.slice().sort((a, b) => (a.shopeeStops[0] ?? 1e9) - (b.shopeeStops[0] ?? 1e9));
-    D.cmp = { app: r.km, shopee: Core.seqMeters(shp, from), n: pend.length, from: !!from, at: Date.now() };
+    D.cmp = { app: r.km, shopee: Core.seqMeters(shp, from, to), n: pend.length, from: !!from, to: !!to, at: Date.now() };
   }
   function numberOrder() {
     if (!orderOk()) plan(null);
@@ -274,6 +279,7 @@
     numberOrder();
     fillAjustes();
     if (!location.hash || location.hash === "#inicio") location.hash = "#mapa";
+    ensureLoad();
     route(); renderAll();
     if (map) { drawMarkers(true); }
     renderIssues(); checkAddresses();
@@ -294,6 +300,7 @@
   function renderAll() {
     if (!active) return;
     numberOrder();
+    computeEtas();
     const done = all().filter(pkgDone).length;
     $("meta").textContent = `${order.filter(addrDone).length}/${order.length} paradas · ${done}/${all().length} pacotes`;
     $("bar").hidden = false; $("barFill").style.width = (done / all().length * 100).toFixed(1) + "%";
@@ -327,13 +334,13 @@
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc([a.bairro, ...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8).map(c => "CEP " + c.slice(0, 5) + "-" + c.slice(5)))].filter(Boolean).join(" · "))}</div></div>
       ${issues.has(a.key) ? `<button type="button" class="issue-bar" data-issues="1"><b>Conferir endereço</b><span>${esc([issues.get(a.key).pin, issues.get(a.key).cep].filter(Boolean).join(" "))}</span></button>` : ""}
       ${a.pkgs.some(p => D.fix?.[p.tn]) ? `<button type="button" class="line" data-fixundo="${esc(a.key)}">Posição corrigida por você · voltar à da planilha</button>` : ""}
-      <div class="chips">${navText(a)}${areaChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${zoneChip(a, true)}${etaChip(a)}${navText(a)}${areaChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
       ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
       ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
       <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${!pkgDone(p) ? (isChecked(p) ? ` · <span class="chk on">conferido</span>` : ` · <span class="chk">sem foto</span>`) : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${failOf(p) ? ` · <span class="att">não entregue: ${esc(failOf(p).r)}</span>` : ""}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${!pkgDone(p) ? (isChecked(p) ? ` · <span class="chk on">conferido</span>` : ` · <span class="chk">sem foto</span>`) : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
@@ -342,7 +349,9 @@
       ${a === nx && nextLeg().length > 1 ? `<a class="btn brand" href="${Core.links.gmapsLeg(nextLeg())}" target="_blank" rel="noopener">Próximas ${nextLeg().length} paradas no Google Maps (para o carro)</a>` : ""}
       ${pend.length && !(D.later || []).includes(a.key) ? `<button type="button" class="line" data-later="${esc(a.key)}">Ninguém atendeu: voltar depois</button>` : ""}
       ${(D.later || []).includes(a.key) && pend.length ? `<div class="offroute">Você marcou para voltar depois. Este endereço está no fim da fila.</div>` : ""}
-      ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">Desfazer entrega</button>`}
+      ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>
+        <button type="button" class="line" data-fail="${esc(a.key)}">Não consegui entregar</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">${a.pkgs.some(pkgOk) ? "Desfazer entrega" : "Desfazer ocorrência"}</button>`}
+      ${proofBox(a)}
       ${!sess.start ? `<button type="button" class="brand" data-start="1">Iniciar entregas (contar o tempo)</button>` : ""}
       ${sameStreet.length || near.length ? `<div class="street-more"><div class="eyebrow">Ainda nesta rua e por perto</div>
         ${sameStreet.map(x => `<button type="button" data-sel="${esc(x.key)}"><span><b>nº ${x.nums?.join(" / ") || "?"}</b> · parada ${x.n} · ${x.pkgs.length} pct${shopee(x) ? " · " + shopee(x) : ""}</span></button>`).join("")}
@@ -368,7 +377,7 @@
           <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${a.n}</span>
           <button type="button" class="mini-body" data-grab="1">
             <b>${esc(a.label)}</b>
-            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${navText(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
+            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${zoneChip(a)}${navText(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
             <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
           </button>
         </div>
@@ -559,7 +568,7 @@
   function deliverAddr(a) {
     const done = addrDone(a);
     if (!done && !sess.start) { sess = { start: Date.now() }; toast("Cronômetro iniciado"); }
-    a.pkgs.forEach(p => (done ? delete ok[p.tn] : (ok[p.tn] = ok[p.tn] || Date.now())));
+    a.pkgs.forEach(p => { if (done) { delete ok[p.tn]; if (D.fail) delete D.fail[p.tn]; } else if (!failOf(p)) ok[p.tn] = ok[p.tn] || Date.now(); });
     save();
     if (!done) {
       buzz(60);
@@ -568,6 +577,7 @@
       renderAll();
       if (nx) {
         toast(`Entregue! Próxima: ${nx.label}`);
+        autoNav(nx);
         if (map) { if (here) { follow = true; frame(); } else map.panTo([nx.lat, nx.lng]); }
         updateNav(true);
       }
@@ -591,7 +601,8 @@
     else if (d.p) {
       const tn = d.p;
       if (!ok[tn] && !sess.start) sess = { start: Date.now() };
-      ok[tn] ? delete ok[tn] : (ok[tn] = Date.now());
+      if (D.fail?.[tn]) delete D.fail[tn];
+      else ok[tn] ? delete ok[tn] : (ok[tn] = Date.now());
       save(); renderAll();
       if (ok[tn] && all().every(pkgDone)) setTimeout(() => { if (active && all().every(pkgDone)) openFinish(); }, 900);
       if (t.closest("#scanSheet")) openScan(byTn.get(tn), tn);
@@ -608,6 +619,7 @@
     else if (d.later) {
       D.later = (D.later || []).filter(k => k !== d.later).concat(d.later);
       D.laterEver = [...new Set((D.laterEver || []).concat(d.later))];
+      $("scanOverlay").hidden = true;
       selKey = null; save(); renderAll();
       const nx = nextAddr(); if (nx && map) map.panTo([nx.lat, nx.lng]);
       toast("Endereço movido para o fim. Siga para a próxima.");
@@ -624,6 +636,12 @@
     else if (d.pin) startPin();
     else if (d.rmextra) { D.extra = (D.extra || []).filter(p => p.tn !== d.rmextra); delete ok[d.rmextra]; derive(); plan(nextAddr()?.key); save(); fillAjustes(); drawMarkers(false); renderAll(); toast("Pacote removido"); }
     else if (d.issues) openIssues();
+    else if (d.fail) openFail(d.fail);
+    else if (d.failr) { const i = d.failr.indexOf("::"); failGo(d.failr.slice(0, i), d.failr.slice(i + 2)); }
+    else if (d.who) { const i = d.who.indexOf("::"), k = d.who.slice(0, i), w = d.who.slice(i + 2); D.proof = D.proof || {}; D.proof[k] = { ...(D.proof[k] || {}), who: D.proof[k]?.who === w ? null : w }; save(); renderSheet(); }
+    else if (d.load) openLoad();
+    else if (d.loadredo) { ensureLoad(true); renderAll(); openLoad(); toast("Ordem de carga refeita pela rota atual"); }
+    else if (d.voice) voiceAddr();
     else if (d.fixuse) { const [key, which] = d.fixuse.split("::"); const it = issues.get(key); applyFix(key, it && it[which], t.dataset.lbl); }
     else if (d.fixok) { D.fixOk = { ...(D.fixOk || {}), [d.fixok]: 1 }; issues.delete(d.fixok); save(); renderAll(); renderIssues(); openIssues(); toast("Endereço mantido como está"); }
     else if (d.fixpin) { pinFix = d.fixpin; $("scanOverlay").hidden = true; location.hash = "#mapa"; $("maptip").hidden = false; $("maptip").textContent = "Toque no mapa onde fica este endereço"; sheetOpen = false; renderSheet(); }
@@ -669,7 +687,7 @@
     return rec;
   }
   function openFinish() {
-    const s = stats(), left = all().length - s.doneP;
+    const s = stats(), left = all().filter(p => !pkgDone(p)).length;
     $("scanOverlay").hidden = false;
     const allDone = !left;
     const per = (v, d) => (d ? brl(v / d) : "–");
@@ -677,7 +695,8 @@
       <p class="sub">Ficha da rota: confira e salve no histórico.</p>
       <div class="wf">
         ${s.gain != null ? `<div><span>Bruto da rota${s.gM && s.gS ? ` <small>Shopee ${brl(s.gS)} · Mercado Livre ${brl(s.gM)}</small>` : ""}</span><b>${brl(s.gain)}</b></div>` : ""}
-        <div><span>Pacotes <small>${s.gain != null ? per(s.gain, s.doneP) + " por pacote" : ""}${left ? ` · faltam ${left}` : ""}</small></span><b>${s.doneP} de ${all().length}</b></div>
+        <div><span>Pacotes entregues <small>${s.gain != null ? per(s.gain, s.doneP) + " por pacote" : ""}${left ? ` · faltam ${left}` : ""}</small></span><b>${s.doneP} de ${all().length}</b></div>
+        ${s.fails ? `<div><span>Ocorrências <small>${esc(Object.entries(all().filter(failOf).reduce((m, p) => ((m[failOf(p).r] = (m[failOf(p).r] || 0) + 1), m), {})).map(([r, n]) => `${r} (${n})`).join(" · "))}</small></span><b>${s.fails}</b></div>` : ""}
         <div><span>Km rodados <small>${s.kmSrc}${s.gain != null && s.km ? " · " + per(s.gain, s.km) + " de bruto por km" : ""}</small></span><b>${n1(s.km)} km</b></div>
         <div><span>Tempo <small>${s.hours > 0.25 ? n1(s.doneP / s.hours) + " pacotes por hora" : ""}</small></span><b>${sess.start ? dur((sess.end || Date.now()) - sess.start) : "–"}</b></div>
         <div class="minus"><span>Combustível <small>${n1(s.liters)} L a ${brl(fin.price)}</small></span><b>− ${brl(s.fuel)}</b></div>
@@ -735,7 +754,7 @@
       html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
           <span class="n">${addrDone(a) ? "✓" : a.n}</span>
-          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""}${issues.has(a.key) ? " · <b class=\"att\">conferir endereço</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
+          <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""}${issues.has(a.key) ? " · <b class=\"att\">conferir endereço</b>" : ""}${zoneOf(a) ? " · carga " + zoneOf(a).code : ""}${etaMap.has(a.key) && !addrDone(a) ? " · ~" + hm(etaMap.get(a.key)) : ""}${a.pkgs.some(failOf) ? " · <b class=\"att\">ocorrência</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
           <span class="count">${a.pkgs.length}${bagsOf(a).length ? `<br><small>${bagsOf(a).join("+")}</small>` : ""}${!addrDone(a) ? `<br><small class="${checkedOf(a) === a.pkgs.length ? "chk on" : "chk"}">📷 ${checkedOf(a)}/${a.pkgs.length}</small>` : ""}</span></button>`).join("")}</div>`;
       i = j;
     }
@@ -763,7 +782,7 @@
   function stats() {
     const now = sess.end || Date.now();
     const elapsed = sess.start ? now - sess.start : 0;
-    const doneA = order.filter(addrDone).length, doneP = all().filter(pkgDone).length;
+    const doneA = order.filter(addrDone).length, doneP = all().filter(pkgOk).length, fails = all().filter(failOf).length;
     const leftA = order.length - doneA;
     const perAddr = doneA ? elapsed / doneA : null;
     const pkgsPerAddr = all().length / order.length;
@@ -772,7 +791,7 @@
     const kmGps = sess.trk ? +(sess.trk.m / 1000).toFixed(1) : 0;
     const km = fin.km != null ? fin.km : kmGps >= 1 ? kmGps : kmEst;
     const kmSrc = fin.km != null ? "informado por você" : kmGps >= 1 ? "medido pelo GPS" : "estimado: rota" + (fin.base ? " + ida e volta do CD" : "");
-    const doneBy = k => all().filter(p => pkgDone(p) && srcOf(p) === k).length;
+    const doneBy = k => all().filter(p => pkgOk(p) && srcOf(p) === k).length;
     const pS = doneBy("shopee"), pM = doneBy("ml"), pO = doneBy("outro");
     const gS = fin.pay ? (fin.mode === "pacote" ? fin.pay * pS : fin.pay) : 0;
     const gM = fin.payMl || 0;
@@ -785,7 +804,7 @@
     const cost = fuel + wear + fixed + other;
     const profit = gain != null ? gain - cost : null;
     const hours = elapsed / 3.6e6;
-    return { elapsed, doneA, doneP, leftA, perAddr, pkgsPerAddr, finish, km, kmEst, kmGps, kmSrc, liters, gain, gS, gM, pS, pM, pO, fuel, wear, fixed, other, cost, profit, hours };
+    return { elapsed, doneA, doneP, leftA, perAddr, pkgsPerAddr, finish, km, kmEst, kmGps, kmSrc, liters, gain, gS, gM, pS, pM, pO, fuel, wear, fixed, other, cost, profit, hours, fails };
   }
   // A rota de hoje no formato do histórico.
   function todayRec() {
@@ -794,7 +813,8 @@
       id: D.at + sess.start, t: sess.start, at: D.at, p: s.doneP, a: s.doneA, total: all().length, ms: s.elapsed,
       km: s.km, kmEst: s.kmEst, kmGps: s.kmGps, fuel: +s.fuel.toFixed(2), wear: +s.wear.toFixed(2), fixed: s.fixed, other: s.other, g: s.gain || 0, l: s.profit || 0,
       gS: s.gS, gM: s.gM, pS: s.pS, pM: s.pM, pO: s.pO,
-      later: (D.laterEver || []).length, att2: all().filter(p => pkgDone(p) && attempt(p) > 1).length,
+      later: (D.laterEver || []).length, att2: all().filter(p => pkgOk(p) && attempt(p) > 1).length,
+      fails: s.fails, failBy: all().filter(failOf).reduce((m, p) => ((m[failOf(p).r] = (m[failOf(p).r] || 0) + 1), m), {}),
     };
   }
   function renderSession() {
@@ -1222,6 +1242,26 @@
   $("bagMode").value = bagMode;
   $("bagMode").addEventListener("change", e => { bagMode = e.target.value; store.set("re:bag", bagMode); renderAll(); toast("Sacos atualizados"); });
   $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
+  $("endMode").value = fin.endMode || "livre";
+  $("endMode").addEventListener("change", e => {
+    fin.endMode = e.target.value; store.set("re:fin", fin);
+    if (fin.endMode === "casa" && !fin.home) toast("Toque em \"Salvar minha localização como casa\" para usar esta opção.");
+    if (active) { plan(nextAddr()?.key); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Rota refeita com o novo final"); }
+  });
+  $("saveHome").addEventListener("click", () => {
+    if (!here) { startGps(false); return toast("Ligando a localização. Toque de novo em alguns segundos."); }
+    fin.home = { ...here }; fin.endMode = "casa"; store.set("re:fin", fin); $("endMode").value = "casa";
+    if (active) { plan(nextAddr()?.key); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); }
+    toast("Casa salva. A rota termina perto dela.");
+  });
+  $("reverse").addEventListener("click", () => {
+    const done = order.filter(addrDone), pend = D.order.map(k => byKey.get(k)).filter(a => a && !addrDone(a));
+    D.order = done.concat(pend.reverse()).map(a => a.key); curKey = null;
+    save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
+    toast("Ordem invertida: a última parada virou a primeira");
+  });
+  $("autoNav").value = fin.autoNav || "off";
+  $("autoNav").addEventListener("change", e => { fin.autoNav = e.target.value; store.set("re:fin", fin); toast(fin.autoNav === "off" ? "Navegação automática desligada" : "Depois de Entreguei, a navegação abre sozinha"); });
   $("recalcHere").addEventListener("click", () => {
     if (!here) { startGps(false); return toast("Ligando a localização. Toque de novo em alguns segundos."); }
     curKey = null; plan(null, true); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
@@ -1238,6 +1278,7 @@
       <div class="form">
         <label for="aSrc" class="full">De onde é<select id="aSrc">${Object.entries(PLATFORMS).filter(([k]) => k !== "shopee").map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("")}</select></label>
         <label for="aAddr" class="full">Endereço (rua e número)<input id="aAddr" type="search" autocomplete="off" placeholder="ex. Rua Tatuapé, 130" value="${esc(addDraft.address)}"></label>
+        ${SR ? `<button type="button" class="line full" data-voice="1">Falar o endereço</button>` : ""}
       </div>
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" id="aFind">Buscar endereço</button><button type="button" class="line" data-pin="1">Marcar no mapa</button></div>
       <div id="aGeo" class="street-more">${addDraft.lat != null ? `<div class="chip ok">Local marcado: ${addDraft.lat.toFixed(5)}, ${addDraft.lng.toFixed(5)}</div>` : ""}</div>
@@ -1538,6 +1579,133 @@
   }
 
   document.addEventListener("change", e => { if (e.target.id === "onlyMissing") { onlyMissing = e.target.checked; showChecked([], [], []); } });
+
+  // ---------- Fase 1: carga, hora prevista, ocorrência, comprovante, fim da rota, navegação automática ----------
+  // Ordem de carga: congelada quando a rota é aberta (refaz só se você pedir), para os pacotes não mudarem de lugar.
+  const vehKey = () => ({ util: "utilitario", moto: "moto" }[fin.vehicle] || "carro");
+  function ensureLoad(force) {
+    if (!D || !order.length) return;
+    if (!force && D.load && D.load.veh === vehKey()) return;
+    D.load = { veh: vehKey(), map: Core.loadPlan(order.map(a => a.key), vehKey()).map, at: Date.now() };
+    save();
+  }
+  const zoneOf = a => { const z = a && D?.load?.map?.[a.key]; return z == null ? null : Core.VEHICLES[D.load.veh].zones[z]; };
+  const zoneChip = (a, long) => { const z = zoneOf(a); return z ? `<span class="chip zone">Carga ${z.code}${long ? " · " + esc(z.name) : ""}</span>` : ""; };
+  function openLoad() {
+    ensureLoad();
+    const veh = Core.VEHICLES[D.load.veh], zs = veh.zones;
+    const groups = zs.map((z, i) => ({ z, list: order.filter(a => D.load.map[a.key] === i) })).filter(g => g.list.length);
+    $("scanOverlay").hidden = false;
+    $("scanSheet").innerHTML = `<div class="addr-big">Ordem de carga</div>
+      <p class="sub">${esc(veh.name)}. Carregue <b>de baixo para cima</b>: comece pela zona ${esc(groups[groups.length - 1]?.z.code || "")} e termine pela A, que é a primeira parte da rota e fica mais à mão. O cartão de cada parada mostra a zona.</p>
+      ${groups.slice().reverse().map((g, i) => {
+        const pk = g.list.flatMap(a => a.pkgs.filter(p => !pkgDone(p)));
+        return `<div class="loadz"><span class="lz-code">${g.z.code}</span><span><b>${i + 1}º a carregar · ${esc(g.z.name)}</b><br><span class="sub">${esc(g.z.hint || "")}${g.z.hint ? " · " : ""}paradas ${g.list[0].n} a ${g.list[g.list.length - 1].n} · ${pk.length} pacote${pk.length === 1 ? "" : "s"}</span><br><span class="mono sub">${pk.slice(0, 40).map(p => esc(tail(p.tn))).join(" ")}${pk.length > 40 ? " …" : ""}</span></span></div>`;
+      }).join("")}
+      <button type="button" class="line" data-loadredo="1">Refazer a ordem de carga pela rota atual</button>
+      <button type="button" class="line" data-close="1">Fechar</button>`;
+  }
+
+  // Hora prevista em cada parada: seu ritmo real (depois de 3 paradas) ou 3 min por parada, a 18 km/h na rua.
+  let etaMap = new Map();
+  function computeEtas() {
+    etaMap = new Map();
+    if (!D) return;
+    const pend = pendingList();
+    if (!pend.length) return;
+    const doneN = order.filter(addrDone).length;
+    const stopMin = sess.start && doneN >= 3 ? Math.min(12, Math.max(1.5, (Date.now() - sess.start) / 60000 / doneN)) : 3;
+    const list = mode === "perto" && here ? nextLeg(pend.length) : pend;
+    const now = new Date();
+    const mins = Core.etas(list, { start: now.getHours() * 60 + now.getMinutes(), from: here || null, stopMin });
+    list.forEach((a, i) => etaMap.set(a.key, mins[i]));
+  }
+  const hm = m => { const x = Math.round(m) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
+  const etaChip = a => (etaMap.has(a.key) && !addrDone(a) ? `<span class="chip eta">chega ~${hm(etaMap.get(a.key))}</span>` : "");
+
+  // Não consegui entregar: motivo registrado por pacote. Conta como resolvido na rota, não como entregue.
+  const REASONS = ["Endereço não encontrado", "Destinatário recusou", "Local fechado ou sem acesso", "Pacote avariado", "Área de risco", "Outro motivo"];
+  function openFail(key) {
+    const a = byKey.get(key); if (!a) return;
+    $("scanOverlay").hidden = false;
+    $("scanSheet").innerHTML = `<div class="addr-big">Não consegui entregar</div><p class="sub">${esc(a.label)} · ${a.pkgs.filter(p => !pkgDone(p)).length} pacote(s)</p>
+      <button type="button" class="brand" data-later="${esc(key)}">Ninguém atendeu: voltar depois</button>
+      <div class="reasons">${REASONS.map(r => `<button type="button" class="line" data-failr="${esc(key)}::${esc(r)}">${esc(r)}</button>`).join("")}</div>
+      <p class="sub">O motivo fica registrado no pacote e entra nos indicadores da rota. Para desfazer, toque no pacote ou em "Desfazer ocorrência".</p>
+      <button type="button" class="line" data-close="1">Cancelar</button>`;
+  }
+  function failGo(key, r) {
+    const a = byKey.get(key); if (!a) return;
+    D.fail = D.fail || {};
+    a.pkgs.filter(p => !pkgDone(p)).forEach(p => (D.fail[p.tn] = { r, t: Date.now() }));
+    if (!sess.start) sess = { start: Date.now() };
+    D.later = (D.later || []).filter(k => k !== key);
+    save(); $("scanOverlay").hidden = true;
+    selKey = null; sheetOpen = false; curKey = null;
+    renderAll(); updateNav(true);
+    toast(`Ocorrência registrada: ${r}`);
+    const nx = nextAddr(); if (nx) autoNav(nx);
+    if (all().every(pkgDone)) setTimeout(() => { if (active && all().every(pkgDone)) openFinish(); }, 900);
+  }
+
+  // Comprovante (opcional): quem recebeu e foto. A foto fica no aparelho (IndexedDB), reduzida, fora do backup.
+  const WHO = ["Cliente", "Porteiro", "Vizinho", "Familiar", "Caixa de correio"];
+  const idb = (() => {
+    let dbp;
+    const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open("rota-certa", 1); r.onupgradeneeded = () => r.result.createObjectStore("fotos"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+    const run = (mode, fn) => open().then(db => new Promise((res, rej) => { const t = db.transaction("fotos", mode); const q = fn(t.objectStore("fotos")); t.oncomplete = () => res(q.result); t.onerror = () => rej(t.error); }));
+    return { put: (k, v) => run("readwrite", st => st.put(v, k)), get: k => run("readonly", st => st.get(k)) };
+  })();
+  function proofBox(a) {
+    if (!a.pkgs.some(p => !failOf(p))) return "";
+    const pr = D.proof?.[a.key] || {};
+    queueMicrotask(hydrateProof);
+    return `<div class="proof"><div class="eyebrow">Comprovante (opcional)</div>
+      <div class="chips">${WHO.map(w => `<button type="button" class="chip pick${pr.who === w ? " on" : ""}" data-who="${esc(a.key)}::${esc(w)}">${esc(w)}</button>`).join("")}</div>
+      <div class="proof-row"><label class="btn line" for="proofPhoto" data-proofkey="${esc(a.key)}">${pr.photo ? "Trocar a foto" : "Foto da entrega"}</label>${pr.photo ? `<img class="proof-img" data-proofimg="${esc(a.key)}" alt="Foto da entrega em ${esc(a.label)}">` : ""}</div></div>`;
+  }
+  const proofUrls = {};
+  function hydrateProof() {
+    document.querySelectorAll("[data-proofimg]").forEach(img => {
+      const k = img.dataset.proofimg;
+      if (proofUrls[k]) { img.src = proofUrls[k]; return; }
+      idb.get(D.at + "|" + k).then(b => { if (b) { proofUrls[k] = URL.createObjectURL(b); img.src = proofUrls[k]; } }).catch(() => {});
+    });
+  }
+  let proofKey = null;
+  document.addEventListener("click", e => { const l = e.target.closest("[data-proofkey]"); if (l) proofKey = l.dataset.proofkey; }, true);
+  $("proofPhoto").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = "";
+    const key = proofKey; if (!f || !key || !D) return;
+    try {
+      const bmp = await createImageBitmap(f);
+      const sc = Math.min(1, 900 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas"); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.6));
+      await idb.put(D.at + "|" + key, blob);
+      delete proofUrls[key];
+      D.proof = D.proof || {}; D.proof[key] = { ...(D.proof[key] || {}), photo: true, t: Date.now() };
+      save(); renderAll(); toast("Foto da entrega guardada");
+    } catch { toast("Não consegui guardar a foto."); }
+  });
+
+  // Depois de "Entreguei": abre a navegação para a próxima parada (opcional, em Ajustes).
+  function autoNav(nx) {
+    if (!nx || !fin.autoNav || fin.autoNav === "off") return;
+    window.open(fin.autoNav === "google" ? Core.links.gmaps(nx) : Core.links.waze(nx), "_blank", "noopener");
+  }
+
+  // Endereço por voz (Mercado Livre e outros), onde o navegador permite.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function voiceAddr() {
+    if (!SR) return toast("Este navegador não tem reconhecimento de voz.");
+    const r = new SR(); r.lang = "pt-BR"; r.interimResults = false; r.maxAlternatives = 1;
+    toast("Pode falar o endereço…");
+    r.onresult = ev => { const t = ev.results[0][0].transcript; $("aAddr").value = t; syncDraft(); findAddr(); };
+    r.onerror = () => toast("Não entendi. Tente de novo ou digite.");
+    r.start();
+  }
 
   // ---------- veículo, dados e tela inicial ----------
   // Veículo em um toque: preenche consumo e desgaste por km (dá para ajustar em Valores do dia).
