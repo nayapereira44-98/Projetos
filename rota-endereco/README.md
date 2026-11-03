@@ -46,6 +46,27 @@ Endereço publicado: `https://nayapereira44-98.github.io/Projetos/` (redireciona
   - histórico dos dias.
 - **Ajustes**: abrir ou atualizar a planilha (a mesma rota mantém as entregas), refazer a ordem a partir de um endereço, tabela de-para Shopee → parada e começar do zero.
 
+## Endereço x CEP x posição (pedido de 03/11)
+A Shopee às vezes manda o pino no lugar errado ou um CEP de outra rua, e a rota passa a ir e voltar. Ao abrir a planilha, o app confere cada endereço de três jeitos:
+- **Pino x casas vizinhas** (sem internet): na numeração brasileira o número da casa é mais ou menos a distância em metros desde o começo da rua. Um endereço longe de todas as outras casas da mesma rua (com folga pela diferença de número), ou de todos os endereços do mesmo CEP, está com a posição errada.
+- **Rua x CEP** (ViaCEP, Correios): a rua da etiqueta é comparada com a rua do CEP. CEP geral da cidade não conta.
+- **Posição sugerida**: pela numeração das casas vizinhas (interpolação), pela busca da rua da etiqueta e pela busca da rua do CEP (OpenStreetMap, 1 por segundo).
+
+Os alertas aparecem no topo de Paradas, no cartão do endereço e em Ajustes → Conferência de endereços. Para cada um: **usar uma posição sugerida**, **marcar no mapa** ou **está certo**. A rota é refeita na hora, e "voltar à posição da planilha" desfaz. As respostas do ViaCEP e das buscas ficam guardadas no aparelho.
+
+## Rota mais inteligente
+- Com o GPS ligado, a primeira ordem do dia **sai de onde você está** (normalmente o CD), e não da parada 1 da Shopee. Em Ajustes há **"Refazer a rota a partir de onde estou"**.
+- Endereços com horário no complemento (**"entrega até 12:00"**, **"após 14h"**) entram pelo relógio: a rota simula a hora de chegada e puxa os prazos para antes.
+- Ajustes mostra a distância da ordem do app e da ordem da Shopee, pelo mesmo critério.
+
+## Painel: bruto, líquido, indicadores e histórico
+- **Bruto e líquido de hoje**: bruto (Shopee + Mercado Livre) − combustível − outros gastos = líquido, com margem, valor por pacote, líquido por hora e por km.
+- **Km do dia**: o que você digitar > o **medido pelo GPS** enquanto o app está aberto durante as entregas > a rota estimada + ida e volta do CD. Novos campos: ida e volta do CD (km) e outros gastos (R$).
+- **Indicadores** de hoje x a sua média: pacotes por hora, minutos por parada, km por pacote, bruto e líquido por pacote, líquido por hora e margem. Hoje entra na comparação depois de 30 minutos e 10 pacotes.
+- **Oportunidades de melhoria**: avisos automáticos comparando a última rota com a média (km por pacote, tempo por parada, líquido por hora, peso do combustível, endereços "voltar depois", valor por pacote de cada plataforma, melhor rota).
+- **Histórico de rotas** (7 dias, 30 dias ou tudo): totais, médias por rota (bruto, líquido, km, combustível, pacotes), valor médio por pacote por plataforma, gráfico bruto x líquido e tabela por rota.
+- **Registrar rota anterior** para trazer rotas antigas, **editar** ou apagar uma rota, e **baixar a planilha** do histórico (CSV, abre no Excel).
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
