@@ -1201,6 +1201,23 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 .datastat .ok { color: var(--ok); font-weight: 700; } .datastat .no { color: var(--bad); font-weight: 700; }
 .lastroute { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; text-align: left; width: 100%; }
 .lastroute b.v { font: 800 1.3rem var(--font-display); }
+
+/* Fase 1: carga, hora prevista, ocorrência e comprovante */
+.chip.zone { background: var(--brand); color: var(--brand-ink); border-color: transparent; }
+.chip.eta { background: var(--bg); color: var(--ink); }
+.loadbtn { display: grid; gap: 2px; justify-items: start; text-align: left; width: 100%; }
+.loadbtn span { font: 400 0.84rem var(--font-body); color: var(--muted); }
+.reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.reasons button { min-height: 56px; font-size: 0.92rem; }
+.proof { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.chip.pick { cursor: pointer; min-height: 36px; padding: 6px 12px; }
+.chip.pick.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.proof-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.proof-img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+.loadz { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.lz-code { width: 52px; height: 52px; border-radius: 14px; background: var(--brand); color: var(--accent); display: grid; place-items: center; font: 800 1.5rem var(--font-display); }
+.together { background: var(--accent-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 400; }
+.together b { color: var(--accent-text); }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -1254,6 +1271,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     <section class="view" id="v-lista" hidden>
       <div class="pad">
         <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
+        <button type="button" class="line loadbtn" data-load="1"><b>Ordem de carga do veículo</b><span>Onde colocar cada pacote no carro, na ordem da rota</span></button>
         <div id="issueBox"></div>
         <div class="card" id="checkBox" style="gap:10px"></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
@@ -1322,6 +1340,9 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
           <label for="areaR" class="sub">Tamanho da área (raio em metros)</label><input id="areaR" type="number" min="200" max="2000" step="100">
           <p class="sub">Endereços a até essa distância uns dos outros formam uma área. No modo Perto de mim, o app termina a área antes de ir para a próxima.</p>
         </div>
+        <div class="card"><h2>Ao tocar em Entreguei</h2>
+          <select id="autoNav" aria-label="Navegação automática"><option value="off">Só mostrar a próxima parada</option><option value="waze">Abrir o Waze na próxima parada</option><option value="google">Abrir o Google Maps na próxima parada</option></select>
+          <p class="sub">Com a navegação automática, cada entrega custa um toque a menos.</p></div>
         <div class="card"><h2>Sacos</h2>
           <label for="bagMode" class="sub">Como você separou os pacotes nos sacos (de 10 em 10)</label>
           <select id="bagMode"><option value="shopee">Pelo número da parada na etiqueta da Shopee (1–10, 11–20…)</option><option value="app">Pelo número da parada no app</option><option value="area">Por área (700 m)</option><option value="none">Não separei</option></select>
@@ -1331,6 +1352,9 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
           <label for="start" class="sub">Começar pelo endereço</label><select id="start"></select>
           <button id="recalc" type="button" class="brand">Refazer a ordem a partir daqui</button>
           <button id="recalcHere" type="button" class="line">Refazer a rota a partir de onde estou</button>
+          <label for="endMode" class="sub">Onde a rota termina</label>
+          <select id="endMode"><option value="livre">Onde terminar (sem ponto final)</option><option value="casa">Perto de casa</option><option value="inicio">De volta ao ponto de saída (CD)</option></select>
+          <div class="nav3" style="grid-template-columns:1fr 1fr"><button id="saveHome" type="button" class="line">Salvar minha localização como casa</button><button id="reverse" type="button" class="line">Inverter a ordem</button></div>
           <p class="sub" id="routeCmp"></p>
           <p class="sub">Só os endereços que faltam mudam de ordem. Endereços com horário no complemento ("entrega até 12:00") entram antes do prazo.</p>
         </div>
@@ -1360,13 +1384,14 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <input id="photo" type="file" accept="image/*" capture="environment">
 <input id="photoMany" type="file" accept="image/*" multiple>
 <input id="restoreFile" type="file" accept=".json,application/json">
+<input id="proofPhoto" type="file" accept="image/*" capture="environment">
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261103e"></script>
-<script src="app.js?v=20261103e"></script>
+<script src="../rota-certa/core.js?v=20261103f"></script>
+<script src="app.js?v=20261103f"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

@@ -397,6 +397,8 @@ const Core = (() => {
     const segs = streetSegments(addrs);
     const ends = (s, dir) => (dir ? [s.addrs[s.addrs.length - 1], s.addrs[0]] : [s.addrs[0], s.addrs[s.addrs.length - 1]]);
     const from = opts.from && Number.isFinite(opts.from.lat) ? opts.from : null;
+    // opts.to: onde a rota termina (casa ou CD); o último trecho já fica perto dele.
+    const to = opts.to && Number.isFinite(opts.to.lat) ? opts.to : null;
     const clk = opts.clock && addrs.some(a => a.until || a.after) ? { speed: 18, stopMin: 3, latePenalty: 400, ...opts.clock } : null;
     const timePenalty = path => {
       let t = clk.start, pos = from, pen = 0;
@@ -416,7 +418,8 @@ const Core = (() => {
       if (!i) return t + (from ? hav(from, ends(segs[si], d)[0]) * STREET_FACTOR : 0);
       const [pi, pd] = path[i - 1];
       return t + hav(ends(segs[pi], pd)[1], ends(segs[si], d)[0]) * STREET_FACTOR;
-    }, 0) + (clk ? timePenalty(path) : 0);
+    }, 0) + (clk ? timePenalty(path) : 0)
+      + (to && path.length ? hav(ends(segs[path[path.length - 1][0]], path[path.length - 1][1])[1], to) * STREET_FACTOR : 0);
     let first, firstDir;
     if (from) {
       let bd = Infinity;
@@ -460,14 +463,39 @@ const Core = (() => {
       }
     }
     const order = path.flatMap(([si, d]) => (d ? segs[si].addrs.slice().reverse() : segs[si].addrs));
-    return { order, km: seqMeters(order, from), segs: path.length };
+    return { order, km: seqMeters(order, from, to), segs: path.length };
   }
 
   // Metros de uma sequência de endereços (fator de rua sobre a reta), opcionalmente saindo de `from`.
-  function seqMeters(list, from) {
+  function seqMeters(list, from, to) {
     let m = from && list.length ? hav(from, list[0]) * STREET_FACTOR : 0;
     for (let i = 1; i < list.length; i++) m += hav(list[i - 1], list[i]) * STREET_FACTOR;
+    if (to && list.length) m += hav(list[list.length - 1], to) * STREET_FACTOR;
     return m;
+  }
+
+  // Ordem de carga: as paradas, na ordem da rota, são divididas em blocos iguais, um por zona do veículo.
+  // A primeira parte da rota vai para a zona mais à mão (A); carregue de trás para frente (a última zona primeiro).
+  function loadPlan(keys, vehicle) {
+    const zones = (VEHICLES[vehicle] || VEHICLES.carro).zones;
+    const per = Math.max(1, Math.ceil(keys.length / zones.length));
+    const map = {};
+    keys.forEach((k, i) => (map[k] = Math.min(zones.length - 1, Math.floor(i / per))));
+    return { map, zones, per };
+  }
+
+  // Hora prevista em cada endereço: deslocamento pela rua (velocidade média) + tempo por parada.
+  function etas(list, opts) {
+    const o = { speed: 18, stopMin: 3, ...opts };
+    const mPerMin = o.speed * 1000 / 60;
+    let t = o.start, pos = o.from || null;
+    return list.map(a => {
+      if (pos) t += hav(pos, a) * STREET_FACTOR / mPerMin;
+      const arrive = t;
+      t += o.stopMin * (1 + 0.3 * Math.max(0, (a.pkgs?.length || 1) - 1));
+      pos = a;
+      return arrive;
+    });
   }
 
   // ---------- endereço x CEP ----------
@@ -559,6 +587,7 @@ const Core = (() => {
       grossPerKm: km ? div(gross, km) : null, netPerKm: km ? div(net, km) : null, netPerHour: div(net, hr),
       margin: div(net, gross), success: r.total ? p / r.total : null,
       laterRate: r.later != null && a ? r.later / a : null,
+      fails: r.fails || 0, failRate: r.fails != null && p + r.fails ? r.fails / (p + r.fails) : null,
     };
   }
 
@@ -587,7 +616,7 @@ const Core = (() => {
 
   // Junta as rotas do mesmo dia (horário local): soma tudo e guarda quantas rotas foram.
   function groupByDay(rows) {
-    const SUM = ["p", "a", "ms", "km", "fuel", "wear", "fixed", "other", "g", "gS", "gM", "gO", "pS", "pM", "pO", "total", "later", "att2"];
+    const SUM = ["p", "a", "ms", "km", "fuel", "wear", "fixed", "other", "fails", "g", "gS", "gM", "gO", "pS", "pM", "pO", "total", "later", "att2"];
     const days = new Map();
     rows.forEach(r => {
       const d = new Date(r.t), key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -682,6 +711,10 @@ const Core = (() => {
     const all = summarize(sorted);
     if (all.margin != null && all.gross > 0 && all.margin < 0.75)
       out.push({ tone: "warn", text: `O custo operacional (combustível, desgaste, fixos e outros) leva ${Math.round((1 - all.margin) * 100)}% do que você recebe. Reduzir km por pacote é o que mais aumenta o líquido.` });
+    if (last.failRate != null && last.failRate > 0.05) {
+      const by = Object.entries(sorted[sorted.length - 1].failBy || {}).sort((a, b) => b[1] - a[1])[0];
+      out.push({ tone: "warn", text: `${Math.round(last.failRate * 100)}% dos pacotes da última rota tiveram ocorrência${by ? `, a maior parte por "${by[0].toLowerCase()}"` : ""}. Cada pacote que volta é tempo e km sem receber.` });
+    }
     if (last.laterRate != null && last.laterRate > 0.1)
       out.push({ tone: "warn", text: `${Math.round(last.laterRate * 100)}% dos endereços da última rota ficaram para "voltar depois". Ligar antes para quem avisa horário evita a segunda passada.` });
     const pl = Object.entries(all.plat);
@@ -713,6 +746,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, trend, monthProjection, breakEven, insights, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, loadPlan, etas, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, trend, monthProjection, breakEven, insights, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
