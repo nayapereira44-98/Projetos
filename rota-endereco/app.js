@@ -830,7 +830,7 @@
     const rows = histRows();
     if (!rows.length) {
       $("histSum").innerHTML = ""; $("histChart").innerHTML = "";
-      $("hist").innerHTML = `<tbody><tr><td class="sub" style="white-space:normal">${hist.length ? "Nenhuma rota neste período." : `Quando você tocar em "Finalizar entregas", a rota aparece aqui. Para comparar com rotas que você já fez, use "Registrar rota anterior".`}</td></tr></tbody>`;
+      $("hist").innerHTML = `<p class="hempty">${hist.length ? "Nenhuma rota neste período." : `Quando você tocar em "Finalizar entregas", a rota aparece aqui. Para comparar com rotas que você já fez, use "Registrar rota anterior".`}</p>`;
       return;
     }
     const sm = Core.summarize(rows);
@@ -863,12 +863,12 @@
             ${ks.length <= 10 || i % 2 === 0 ? `<text x="${(cx + bw / 2).toFixed(1)}" y="${H + 13}" text-anchor="middle">${new Date(x.r.t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</text>` : ""}`;
         }).join("")}
       </svg>`;
-    const r2 = v => n1(v, 2);
-    $("hist").innerHTML = `<thead><tr><th>Dia</th><th>Pct</th><th>Km</th><th>Bruto R$</th><th>Comb. R$</th><th>Líquido R$</th><th>R$/pct</th><th></th></tr></thead><tbody>${rows.map(r => {
+    $("hist").innerHTML = rows.map(r => {
       const k = Core.routeKpis(r);
-      return `<tr><td>${new Date(r.t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}${r.manual ? " ✎" : ""}</td><td>${r.p}</td><td>${k.km ? n1(k.km) : "–"}</td><td>${r2(k.gross)}</td><td>${r2(k.fuel)}</td><td class="${k.net >= 0 ? "" : "neg"}">${r2(k.net)}</td><td>${r2(k.netPerPkg)}</td><td><button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button></td></tr>`;
-    }).join("")}</tbody>
-      <tfoot><tr><td><b>Total</b></td><td><b>${sm.p}</b></td><td><b>${sm.km ? n1(sm.km) : "–"}</b></td><td><b>${r2(sm.gross)}</b></td><td><b>${r2(sm.fuel)}</b></td><td><b>${r2(sm.net)}</b></td><td><b>${r2(sm.netPerPkg)}</b></td><td></td></tr></tfoot>`;
+      const day = new Date(r.t).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+      return `<div class="hrow"><span class="hd">${esc(day)}<small>${r.p} pct${k.km ? " · " + n1(k.km) + " km" : ""}${r.manual ? " · registrada à mão" : ""}</small></span><span class="hv ${k.net >= 0 ? "" : "neg"}">${brl(k.net)}</span>
+        <span class="hs">Bruto ${brl(k.gross)} · combustível ${brl(k.fuel)}${k.other ? " · outros " + brl(k.other) : ""} · ${brl(k.netPerPkg)} por pacote</span><button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button></div>`;
+    }).join("");
   }
   // Registrar ou editar uma rota (para trazer rotas antigas e comparar).
   function openHistForm(id) {

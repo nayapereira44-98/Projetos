@@ -67,6 +67,9 @@ Os alertas aparecem no topo de Paradas, no cartão do endereço e em Ajustes →
 - **Histórico de rotas** (7 dias, 30 dias ou tudo): totais, médias por rota (bruto, líquido, km, combustível, pacotes), valor médio por pacote por plataforma, gráfico bruto x líquido e tabela por rota.
 - **Registrar rota anterior** para trazer rotas antigas, **editar** ou apagar uma rota, e **baixar a planilha** do histórico (CSV, abre no Excel).
 
+## Visual (03/11)
+Topo claro com progresso fino, cartões com borda leve, chips em tons suaves (a cor indica o tipo sem gritar), barra de abas translúcida com indicador da aba ativa, cabeçalho de área em linha, aviso "Aqui tem entrega" compacto logo acima do cartão (não cobre mais o mapa) e histórico em lista (sem rolar para o lado no celular). Modo claro e escuro.
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
