@@ -3,7 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f5f3a">
+<meta name="theme-color" content="#16181d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Rota Certa">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <!-- ARTIFACT-START -->
 <title>Rota Certa</title>
@@ -1117,6 +1121,86 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 .tpill.up { background: var(--ok-soft); color: var(--ok); }
 .tpill.down { background: var(--bad-soft); color: var(--bad); }
 .tpill.flat { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+
+/* ===== Identidade premium (03/11): grafite + âmbar. Neutros quentes, um só acento, ações principais em grafite ===== */
+:root {
+  --bg: #f6f5f2; --surface: #ffffff; --ink: #16181d; --muted: #6b6f76; --line: #e8e6e1; --line-strong: #d7d4cd;
+  --brand: #16181d; --brand-ink: #ffffff; --brand-soft: #eeece7;
+  --accent: #f2a01b; --accent-ink: #16181d; --accent-soft: #fdf1d9; --accent-text: #8a5300;
+  --ok: #1f8a4c; --ok-soft: #e4f4ea; --bad: #c8372d; --bad-soft: #fcebe9;
+  --violet: #5b46c9; --violet-soft: #efecfb; --blue: #1f62b8; --blue-soft: #e8f0fb; --warn: #9a5b00; --warn-soft: #fdf3e1;
+  --pin: #16181d; --pin-done: #b5b2ab; --next: #f2a01b; --next-ink: #16181d;
+  --shadow: 0 12px 32px rgba(22,24,29,0.14); --shadow-sm: 0 1px 2px rgba(22,24,29,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0f11; --surface: #17181b; --ink: #f2f1ee; --muted: #9b9ea4; --line: #25272b; --line-strong: #33363b;
+    --brand: #f2f1ee; --brand-ink: #16181d; --brand-soft: #24262a;
+    --accent: #f7b23b; --accent-ink: #16181d; --accent-soft: #2e2413; --accent-text: #f7c46b;
+    --ok: #5fd08a; --ok-soft: #142a1d; --bad: #ff7b70; --bad-soft: #321b19;
+    --violet: #b6a8ff; --violet-soft: #23203a; --blue: #84b8f5; --blue-soft: #16243a; --warn: #f2bb5c; --warn-soft: #2c2312;
+    --pin: #f2f1ee; --pin-done: #4a4d52; --next: #f7b23b; --next-ink: #16181d;
+    --shadow: 0 12px 32px rgba(0,0,0,0.55); --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0f11; --surface: #17181b; --ink: #f2f1ee; --muted: #9b9ea4; --line: #25272b; --line-strong: #33363b;
+  --brand: #f2f1ee; --brand-ink: #16181d; --brand-soft: #24262a;
+  --accent: #f7b23b; --accent-ink: #16181d; --accent-soft: #2e2413; --accent-text: #f7c46b;
+  --ok: #5fd08a; --ok-soft: #142a1d; --bad: #ff7b70; --bad-soft: #321b19;
+  --violet: #b6a8ff; --violet-soft: #23203a; --blue: #84b8f5; --blue-soft: #16243a; --warn: #f2bb5c; --warn-soft: #2c2312;
+  --pin: #f2f1ee; --pin-done: #4a4d52; --next: #f7b23b; --next-ink: #16181d;
+  --shadow: 0 12px 32px rgba(0,0,0,0.55); --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+}
+.appbar h1::before { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.appbar h1 { letter-spacing: -0.02em; }
+.timer { background: var(--brand-soft); color: var(--ink); }
+.timer.run { background: var(--accent); color: var(--accent-ink); }
+.bar i { background: var(--accent); }
+/* Ação principal: âmbar com texto grafite. Secundária: grafite. */
+.btn.primary, button.primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 30%, transparent); }
+.btn.brand, button.brand, .nav3 .btn.brand, .nav3 button.brand { background: var(--brand); color: var(--brand-ink); }
+.nav3 .btn.primary, .nav3 button.primary { background: var(--accent); color: var(--accent-ink); }
+.tabbar a[aria-current="page"] { color: var(--ink); }
+.tabbar a[aria-current="page"]::before { background: var(--accent); }
+.tabbar .scan, .tabbar .scan span.circle { color: var(--accent-ink); }
+.tabbar .scan { color: var(--ink); }
+.tabbar .scan span.circle { background: var(--accent); box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 40%, transparent); }
+.session { background: linear-gradient(160deg, #22252c, #101114); color: #f6f5f2; }
+.session .eyebrow { color: #f7c46b !important; opacity: 1 !important; }
+.session button { background: #f6f5f2; color: #16181d; }
+.session button.stop { background: var(--accent); color: #16181d; }
+.session button.ghost { color: #f6f5f2; border-color: rgba(246,245,242,0.35); }
+.hero .logo { background: var(--brand); color: var(--accent); }
+/* Mapa: pinos grafite, a próxima em âmbar */
+.pin { background: var(--pin); color: var(--surface); }
+.pin.multi { outline: 3px solid color-mix(in srgb, var(--pin) 25%, transparent); }
+.pin.next { background: var(--next); color: var(--next-ink); outline: 4px solid color-mix(in srgb, var(--next) 35%, transparent); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--next) 60%, transparent); } 100% { box-shadow: 0 0 0 18px transparent; } }
+.pin .cnt { background: var(--accent); color: var(--accent-ink); }
+.row .n { background: var(--pin); color: var(--surface); }
+.row.next .n { background: var(--next); color: var(--next-ink); }
+.mini-n { background: var(--brand); color: var(--brand-ink); box-shadow: 0 0 0 4px var(--brand-soft); }
+.mini-n.multi { outline-color: var(--accent); }
+.mini.arrived .mini-n { background: var(--ok); color: #fff; }
+.modes button.on { background: var(--brand); color: var(--brand-ink); }
+.fab.on { background: var(--brand); color: var(--accent); }
+.wf .total { background: var(--brand-soft); }
+.chart .bar-n, .lg-n { fill: var(--accent); background: var(--accent); }
+.spark .sp-ma { stroke: var(--accent); }
+.seg button.on { color: var(--ink); }
+.bigno { color: var(--ink); }
+.bagbig { background: var(--brand); color: var(--brand-ink); }
+/* Primeiro uso e dados */
+.setup { display: grid; gap: 10px; text-align: left; }
+.vehicles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vehicles button { display: grid; gap: 2px; justify-items: center; min-height: 72px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 0.95rem; }
+.vehicles button small { font: 400 0.72rem var(--font-body); color: var(--muted); }
+.vehicles button.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.datastat { display: grid; gap: 4px; font-size: 0.9rem; }
+.datastat .ok { color: var(--ok); font-weight: 700; } .datastat .no { color: var(--bad); font-weight: 700; }
+.lastroute { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; text-align: left; width: 100%; }
+.lastroute b.v { font: 800 1.3rem var(--font-display); }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -1136,9 +1220,11 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
         <div class="card hero">
           <div class="logo"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
           <h2>Entregue por endereço, sem voltar na mesma rua</h2>
+          <div id="setup" style="width:100%"></div>
           <div id="resume" hidden></div>
           <label class="btn primary" for="file" style="width:100%">Abrir planilha da Shopee</label>
           <label class="btn brand" for="fileOther" style="width:100%">Abrir planilha do Mercado Livre</label>
+          <div id="lastRoute" style="width:100%"></div>
           <ol class="steps sub">
             <li>No app da Shopee, toque em baixar (↓) para exportar a rota em Excel.</li>
             <li>Abra aqui. Cada parada vira um <b>endereço</b>, com todos os pacotes dele juntos.</li>
@@ -1183,6 +1269,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
         <div class="card"><h2>Ritmo de hoje</h2><div class="grid2" id="kpis"></div><p class="sub" id="forecast"></p></div>
         <div class="card"><h2>Bruto e líquido de hoje</h2><div id="money" style="display:grid;gap:12px"></div>
           <details id="finBox" class="fin"><summary>Valores do dia: pagamento, combustível e km</summary>
+          <div id="vehPick" class="vehicles" style="margin-bottom:10px"></div>
           <div class="form">
             <label for="fPay">Shopee paga (R$)<input id="fPay" type="number" inputmode="decimal" step="0.01" placeholder="ex. 180"></label>
             <label for="fPayMl">Mercado Livre paga (R$)<input id="fPayMl" type="number" inputmode="decimal" step="0.01" placeholder="ex. 90"></label>
@@ -1248,6 +1335,9 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
           <p class="sub">Só os endereços que faltam mudam de ordem. Endereços com horário no complemento ("entrega até 12:00") entram antes do prazo.</p>
         </div>
         <div class="card"><h2>De-para: parada Shopee → endereço</h2><div class="scroll"><table class="t" id="dp"></table></div></div>
+        <div class="card"><h2>Seus dados</h2><div class="datastat" id="dataStat"></div>
+          <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" data-backup="1">Baixar backup</button><label class="btn line" for="restoreFile">Restaurar backup</label></div>
+          <p class="sub">Tudo fica guardado neste celular. Faça um backup por semana e guarde no Google Drive ou no WhatsApp: ele leva o histórico, os valores e a rota aberta para outro aparelho.</p></div>
         <div class="card"><h2>Encerrar a rota</h2>
           <button type="button" class="primary" data-finish="1">Encerrar a rota e começar outra</button>
           <p class="sub">Salva a rota no histórico do Painel, com pacotes, km, combustível, bruto e líquido, e volta para abrir a próxima planilha. Abrir a planilha de outra rota também salva a anterior.</p>
@@ -1269,13 +1359,14 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <input id="fileOther" type="file" accept=".xlsx,.csv,text/csv">
 <input id="photo" type="file" accept="image/*" capture="environment">
 <input id="photoMany" type="file" accept="image/*" multiple>
+<input id="restoreFile" type="file" accept=".json,application/json">
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261103d"></script>
-<script src="app.js?v=20261103d"></script>
+<script src="../rota-certa/core.js?v=20261103e"></script>
+<script src="app.js?v=20261103e"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

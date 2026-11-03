@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
   // se ainda não bater, mostra um aviso para atualizar.
-  const NEED = ["trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  const NEED = ["setup", "lastRoute", "dataStat", "vehPick", "restoreFile", "trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
   if (NEED.some(id => !$(id))) {
     let tried = false;
     try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
@@ -582,6 +582,9 @@
     if (d.resume === "go") { derive(); ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); start(); return; }
     if (d.resume === "clear" || t.id === "clear") return twoTap(t, clearDay);
     if (d.importGo) return void runImport();
+    if (d.veh) return setVehicle(d.veh);
+    if (d.backup) return backupData();
+    if (d.restorego) return restoreGo();
     if (d.close) { $("scanOverlay").hidden = true; return; }
     if (!active) return;
     if (d.a) { deliverAddr(byKey.get(d.a)); if (t.closest("#scanSheet")) $("scanOverlay").hidden = true; }
@@ -702,7 +705,7 @@
     fin.km = null; fin.other = null; store.set("re:fin", fin);
     $("fKm").value = ""; $("fOther").value = "";
     issues = new Map();
-    clearDay();
+    clearDay(); renderHome(); renderData();
     toast(rec ? `Rota salva: ${rec.p} pacotes, líquido ${brl(rec.l)}. Abra a próxima planilha.` : "Rota encerrada. Abra a próxima planilha.");
   }
 
@@ -1536,6 +1539,82 @@
 
   document.addEventListener("change", e => { if (e.target.id === "onlyMissing") { onlyMissing = e.target.checked; showChecked([], [], []); } });
 
+  // ---------- veículo, dados e tela inicial ----------
+  // Veículo em um toque: preenche consumo e desgaste por km (dá para ajustar em Valores do dia).
+  const VEH = { carro: { name: "Carro", kml: 11, wear: 0.25 }, moto: { name: "Moto", kml: 35, wear: 0.12 }, util: { name: "Utilitário", kml: 9, wear: 0.35 } };
+  const vehButtons = () => Object.entries(VEH).map(([k, v]) => `<button type="button" data-veh="${k}" class="${fin.vehicle === k ? "on" : ""}">${v.name}<small>${v.kml} km/l · ${brl(v.wear)}/km</small></button>`).join("");
+  function setVehicle(k) {
+    const v = VEH[k]; if (!v) return;
+    Object.assign(fin, { vehicle: k, kml: v.kml, wear: v.wear }); store.set("re:fin", fin);
+    $("fKml").value = fin.kml; $("fWear").value = fin.wear;
+    renderHome(); $("vehPick").innerHTML = vehButtons();
+    if (active) renderPainel();
+    toast(`${v.name}: ${v.kml} km por litro e ${brl(v.wear)} de desgaste por km`);
+  }
+
+  // Os dados ficam no aparelho (localStorage). Backup em arquivo para não perder o histórico financeiro
+  // e para levar para outro celular. Pedimos ao navegador para não apagar os dados sozinho.
+  let persisted = null;
+  try { navigator.storage?.persist?.().then(v => { persisted = v; renderData(); }).catch(() => {}); } catch {}
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  const backupAge = () => { const t = store.get("re:lastBackup", 0); return t ? Date.now() - t : Infinity; };
+  function backupData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("re:") && k !== "re:geoq" && k !== "re:cep") data[k] = localStorage.getItem(k);
+    }
+    const blob = new Blob([JSON.stringify({ app: "rota-certa", v: 1, at: Date.now(), routes: hist.length, data })], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `rota-certa-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    store.set("re:lastBackup", Date.now()); renderData(); renderHome();
+    toast("Backup baixado. Guarde no Google Drive ou mande para o seu WhatsApp.");
+  }
+  let pendingRestore = null;
+  $("restoreFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const b = JSON.parse(await f.text());
+      if (b.app !== "rota-certa" || !b.data) throw new Error();
+      pendingRestore = b;
+      const h = (() => { try { return JSON.parse(b.data["re:hist"] || "[]").length; } catch { return 0; } })();
+      $("scanOverlay").hidden = false;
+      $("scanSheet").innerHTML = `<div class="addr-big">Restaurar backup?</div>
+        <p>Backup de ${new Date(b.at).toLocaleString("pt-BR")}, com <b>${h} rota${h === 1 ? "" : "s"}</b> no histórico.</p>
+        <p class="offroute">Os dados deste aparelho (histórico, valores e a rota aberta) serão trocados pelos do backup.</p>
+        <button type="button" class="primary" data-restorego="1">Restaurar</button>
+        <button type="button" class="line" data-close="1">Cancelar</button>`;
+    } catch { toast("Esse arquivo não é um backup do Rota Certa."); }
+  });
+  function restoreGo() {
+    const b = pendingRestore; if (!b) return;
+    Object.keys(localStorage).filter(k => k.startsWith("re:") && k !== "re:geoq" && k !== "re:cep").forEach(k => localStorage.removeItem(k));
+    Object.entries(b.data).forEach(([k, v]) => { try { localStorage.setItem(k, v); } catch {} });
+    store.set("re:lastBackup", Date.now());
+    location.replace(location.pathname + "?v=" + Date.now());
+  }
+  function renderData() {
+    const age = backupAge();
+    $("dataStat").innerHTML = `<span>${hist.length} rota${hist.length === 1 ? "" : "s"} no histórico, guardadas neste aparelho.</span>
+      <span>Proteção contra limpeza automática: ${persisted === true ? `<b class="ok">ativa</b>` : persisted === false ? `<b class="no">não concedida</b> (instale o app na tela inicial)` : "verificando…"}</span>
+      <span>Último backup: ${isFinite(age) ? `<b class="${age > 7 * 864e5 ? "no" : "ok"}">${new Date(Date.now() - age).toLocaleDateString("pt-BR")}</b>` : `<b class="no">nunca</b>`}</span>`;
+  }
+  // Tela inicial: escolher o veículo (primeiro uso), última rota fechada e lembrete de backup.
+  function renderHome() {
+    $("setup").innerHTML = fin.vehicle ? "" : `<div class="setup"><b>Primeiro, o seu veículo</b><span class="sub">Define o consumo e o desgaste usados no custo de cada rota.</span><div class="vehicles">${vehButtons()}</div></div>`;
+    const last = hist.slice().sort((a, b) => b.t - a.t)[0];
+    if (!last) { $("lastRoute").innerHTML = ""; return; }
+    const k = Core.routeKpis(last);
+    $("lastRoute").innerHTML = `<div class="card" style="background:var(--bg);gap:8px">
+      <div class="lastroute"><span><span class="eyebrow">Última rota · ${new Date(last.t).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}</span><br><span class="sub">${last.p} pacotes${k.km ? " · " + n1(k.km) + " km" : ""} · ${brl(k.grossPerPkg)} por pacote</span></span><b class="v" style="color:${k.net >= 0 ? "var(--ok)" : "var(--bad)"}">${brl(k.net)}</b></div>
+      ${backupAge() > 7 * 864e5 ? `<button type="button" class="line" data-backup="1">Fazer backup do histórico (${hist.length} rota${hist.length === 1 ? "" : "s"})</button>` : ""}
+    </div>`;
+  }
+  $("vehPick").innerHTML = vehButtons();
+
   // ---------- início: o dia salvo só volta se você pedir ----------
   if (D) {
     const okSaved = store.get("re:ok:" + D.at, {});
@@ -1544,5 +1623,6 @@
     $("resume").innerHTML = `<div class="card" style="background:var(--bg)"><b>Rota salva: ${esc(D.at)}</b><span class="sub">${D.pkgs.length} pacotes · ${pend} pendentes</span>
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" data-resume="go">Continuar</button><button type="button" class="line" data-resume="clear">Começar do zero</button></div></div>`;
   }
+  renderHome(); renderData();
   route();
 })();

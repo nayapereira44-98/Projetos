@@ -81,6 +81,13 @@ Topo claro com progresso fino, cartões com borda leve, chips em tons suaves (a 
 
 Exemplo: rota de R$ 260 com 52 pacotes = R$ 5,00 por pacote; 50 km a 11 km/l e R$ 6,29 = R$ 28,59 de combustível; desgaste 50 × R$ 0,25 = R$ 12,50; custo operacional R$ 41,09 (R$ 0,82/km); líquido R$ 218,91 (84%).
 
+## Identidade premium, app instalável e dados protegidos (03/11)
+- **Visual**: grafite + âmbar sobre neutros quentes. Ação principal em âmbar, secundária em grafite; pinos grafite e a próxima parada em âmbar. Modo claro e escuro.
+- **Veículo em um toque** (primeiro uso e em Valores do dia): Carro (11 km/l, R$ 0,25/km), Moto (35 km/l, R$ 0,12/km) ou Utilitário (9 km/l, R$ 0,35/km).
+- **Tela inicial** mostra a última rota fechada (líquido, pacotes, km, R$ por pacote) e lembra do backup depois de 7 dias.
+- **App instalável** (manifest + service worker): na tela inicial do celular abre sem a barra do navegador e funciona sem internet depois da primeira visita (mapas, CEP e buscas precisam de internet). Rede primeiro: com sinal, sempre a versão mais nova.
+- **Seus dados** (Ajustes): os dados ficam no aparelho. O app pede ao navegador proteção contra limpeza automática, mostra o status e o último backup, e tem **Baixar backup** (arquivo .json com histórico, valores e rota aberta) e **Restaurar backup** (em outro celular ou depois de limpar o navegador).
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
