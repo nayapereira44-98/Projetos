@@ -2,6 +2,17 @@
 // Depende de ../rota-certa/core.js (global Core), Leaflet (global L, mapa) e ZXing (código de barras).
 (() => {
   const $ = id => document.getElementById(id);
+  // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
+  // se ainda não bater, mostra um aviso para atualizar.
+  const NEED = ["issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  if (NEED.some(id => !$(id))) {
+    let tried = false;
+    try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
+    if (!tried) { location.replace(location.pathname + "?v=" + Date.now() + location.hash); return; }
+    document.body.insertAdjacentHTML("afterbegin", `<button type="button" onclick="location.replace(location.pathname + '?v=' + Date.now())" style="position:fixed;inset:auto 12px 96px 12px;z-index:2000;background:#e8590c;color:#fff;border:0;border-radius:14px;padding:14px;font:700 1rem system-ui">O app foi atualizado. Toque aqui para carregar a versão nova.</button>`);
+    return;
+  }
+  try { sessionStorage.removeItem("re:reload"); } catch {}
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const tail = tn => tn.slice(-5);
   const hhmm = t => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
