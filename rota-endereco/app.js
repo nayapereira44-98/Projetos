@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
   // se ainda não bater, mostra um aviso para atualizar.
-  const NEED = ["hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  const NEED = ["trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
   if (NEED.some(id => !$(id))) {
     let tried = false;
     try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
@@ -83,7 +83,7 @@
   // ---------- estado ----------
   // D: rota do dia. ok: hora de cada entrega, por código SPX. sess: início e fim das entregas.
   let D = store.get("re:day", null), ok = {}, sess = {}, A = [], byKey = new Map(), byTn = new Map(), order = [];
-  let fin = { pay: null, mode: "rota", price: 6.29, kml: 11, km: null, endTime: "18:00", ...store.get("re:fin", {}) };
+  let fin = { pay: null, mode: "rota", price: 6.29, kml: 11, km: null, endTime: "18:00", wear: 0.25, fixed: 0, ...store.get("re:fin", {}) };
   let hist = store.get("re:hist", []);
   let selKey = null, active = false;
   // Dias em que cada código apareceu numa planilha: o mesmo pacote em outro dia é nova tentativa.
@@ -571,7 +571,7 @@
         if (map) { if (here) { follow = true; frame(); } else map.panTo([nx.lat, nx.lng]); }
         updateNav(true);
       }
-      else toast("Todos os pacotes entregues!");
+      else { toast("Todos os pacotes entregues!"); setTimeout(() => { if (active && all().every(pkgDone)) openFinish(); }, 900); }
     } else renderAll();
   }
   document.addEventListener("click", e => {
@@ -590,6 +590,7 @@
       if (!ok[tn] && !sess.start) sess = { start: Date.now() };
       ok[tn] ? delete ok[tn] : (ok[tn] = Date.now());
       save(); renderAll();
+      if (ok[tn] && all().every(pkgDone)) setTimeout(() => { if (active && all().every(pkgDone)) openFinish(); }, 900);
       if (t.closest("#scanSheet")) openScan(byTn.get(tn), tn);
     }
     else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
@@ -667,17 +668,32 @@
   function openFinish() {
     const s = stats(), left = all().length - s.doneP;
     $("scanOverlay").hidden = false;
-    $("scanSheet").innerHTML = `<div class="addr-big">Encerrar a rota?</div>
+    const allDone = !left;
+    const per = (v, d) => (d ? brl(v / d) : "–");
+    $("scanSheet").innerHTML = `<div class="addr-big" id="finishView">${allDone ? "Rota concluída! Feche a rota" : "Encerrar a rota?"}</div>
+      <p class="sub">Ficha da rota: confira e salve no histórico.</p>
       <div class="wf">
-        <div><span>Pacotes entregues</span><b>${s.doneP} de ${all().length}</b></div>
-        <div><span>Tempo</span><b>${sess.start ? dur((sess.end || Date.now()) - sess.start) : "–"}</b></div>
-        <div><span>Km <small>${s.kmSrc}</small></span><b>${n1(s.km)} km</b></div>
-        ${s.gain != null ? `<div class="total ${s.profit >= 0 ? "good" : "bad"}"><span>Líquido <small>bruto ${brl(s.gain)} − combustível ${brl(s.fuel)}${s.other ? " − outros " + brl(s.other) : ""}</small></span><b>${brl(s.profit)}</b></div>` : ""}
+        ${s.gain != null ? `<div><span>Bruto da rota${s.gM && s.gS ? ` <small>Shopee ${brl(s.gS)} · Mercado Livre ${brl(s.gM)}</small>` : ""}</span><b>${brl(s.gain)}</b></div>` : ""}
+        <div><span>Pacotes <small>${s.gain != null ? per(s.gain, s.doneP) + " por pacote" : ""}${left ? ` · faltam ${left}` : ""}</small></span><b>${s.doneP} de ${all().length}</b></div>
+        <div><span>Km rodados <small>${s.kmSrc}${s.gain != null && s.km ? " · " + per(s.gain, s.km) + " de bruto por km" : ""}</small></span><b>${n1(s.km)} km</b></div>
+        <div><span>Tempo <small>${s.hours > 0.25 ? n1(s.doneP / s.hours) + " pacotes por hora" : ""}</small></span><b>${sess.start ? dur((sess.end || Date.now()) - sess.start) : "–"}</b></div>
+        <div class="minus"><span>Combustível <small>${n1(s.liters)} L a ${brl(fin.price)}</small></span><b>− ${brl(s.fuel)}</b></div>
+        ${s.wear ? `<div class="minus"><span>Desgaste do veículo <small>${brl(fin.wear)} por km</small></span><b>− ${brl(s.wear)}</b></div>` : ""}
+        ${s.fixed ? `<div class="minus"><span>Custos fixos do dia</span><b>− ${brl(s.fixed)}</b></div>` : ""}
+        ${s.other ? `<div class="minus"><span>Outros gastos</span><b>− ${brl(s.other)}</b></div>` : ""}
+        <div class="sum"><span>Custo operacional <small>${s.km ? per(s.cost, s.km) + " por km" : ""}</small></span><b>${brl(s.cost)}</b></div>
+        ${s.gain != null ? `<div class="total ${s.profit >= 0 ? "good" : "bad"}"><span>Líquido <small>margem ${pctTxt(s.gain ? s.profit / s.gain : null)} · ${per(s.profit, s.doneP)} por pacote</small></span><b>${brl(s.profit)}</b></div>` : `<div><span>Informe quanto a rota paga em Painel → Valores do dia para ver bruto e líquido.</span></div>`}
       </div>
+      <div class="form"><label for="finKm" class="full">Km do painel do carro (opcional, mais preciso que a estimativa)<input id="finKm" type="number" inputmode="decimal" step="0.1" placeholder="${n1(s.km)}"></label></div>
       ${left ? `<p class="offroute">Ainda ${left > 1 ? `faltam ${left} pacotes` : "falta 1 pacote"}. Eles não entram como entregues.</p>` : ""}
       <p class="sub">A rota vai para o Comparativo de rotas e dias no Painel, e o app volta para abrir a próxima planilha.</p>
-      <button type="button" class="primary" data-finishgo="1">Encerrar e salvar no histórico</button>
-      <button type="button" class="line" data-close="1">Continuar nesta rota</button>`;
+      <button type="button" class="primary" data-finishgo="1">Fechar a rota e salvar no histórico</button>
+      <button type="button" class="line" data-close="1">${allDone ? "Agora não" : "Continuar nesta rota"}</button>`;
+    $("finKm").addEventListener("input", e => {
+      const v = parseFloat(String(e.target.value).replace(",", "."));
+      fin.km = isFinite(v) && v > 0 ? v : null; store.set("re:fin", fin); $("fKm").value = fin.km ?? "";
+      const keep = e.target.value; openFinish(); $("finKm").value = keep; $("finKm").focus();
+    });
   }
   // Encerrar a rota toda: salva no histórico, limpa a rota e volta para abrir a próxima planilha.
   // O valor que a plataforma paga fica; km digitado e outros gastos voltam a zero.
@@ -761,16 +777,19 @@
     const liters = fin.kml > 0 ? km / fin.kml : 0;
     const fuel = fin.price ? liters * fin.price : 0;
     const other = fin.other || 0;
-    const profit = gain != null ? gain - fuel - other : null;
+    // Custo operacional: combustível + desgaste do veículo por km + custos fixos do dia + outros gastos.
+    const wear = (fin.wear || 0) * km, fixed = fin.fixed || 0;
+    const cost = fuel + wear + fixed + other;
+    const profit = gain != null ? gain - cost : null;
     const hours = elapsed / 3.6e6;
-    return { elapsed, doneA, doneP, leftA, perAddr, pkgsPerAddr, finish, km, kmEst, kmGps, kmSrc, liters, gain, gS, gM, pS, pM, pO, fuel, other, profit, hours };
+    return { elapsed, doneA, doneP, leftA, perAddr, pkgsPerAddr, finish, km, kmEst, kmGps, kmSrc, liters, gain, gS, gM, pS, pM, pO, fuel, wear, fixed, other, cost, profit, hours };
   }
   // A rota de hoje no formato do histórico.
   function todayRec() {
     const s = stats();
     return {
       id: D.at + sess.start, t: sess.start, at: D.at, p: s.doneP, a: s.doneA, total: all().length, ms: s.elapsed,
-      km: s.km, kmEst: s.kmEst, kmGps: s.kmGps, fuel: +s.fuel.toFixed(2), other: s.other, g: s.gain || 0, l: s.profit || 0,
+      km: s.km, kmEst: s.kmEst, kmGps: s.kmGps, fuel: +s.fuel.toFixed(2), wear: +s.wear.toFixed(2), fixed: s.fixed, other: s.other, g: s.gain || 0, l: s.profit || 0,
       gS: s.gS, gM: s.gM, pS: s.pS, pM: s.pM, pO: s.pO,
       later: (D.laterEver || []).length, att2: all().filter(p => pkgDone(p) && attempt(p) > 1).length,
     };
@@ -822,7 +841,10 @@
       : `<div class="wf">
           <div><span>Bruto${s.gM && s.gS ? ` <small>Shopee ${brl(s.gS)} · Mercado Livre ${brl(s.gM)}</small>` : ""}</span><b>${brl(s.gain)}</b></div>
           <div class="minus"><span>Combustível <small>${n1(s.km)} km ${s.kmSrc} · ${n1(s.liters)} L</small></span><b>− ${brl(s.fuel)}</b></div>
+          ${s.wear ? `<div class="minus"><span>Desgaste do veículo <small>${brl(fin.wear)} por km</small></span><b>− ${brl(s.wear)}</b></div>` : ""}
+          ${s.fixed ? `<div class="minus"><span>Custos fixos do dia</span><b>− ${brl(s.fixed)}</b></div>` : ""}
           ${s.other ? `<div class="minus"><span>Outros gastos</span><b>− ${brl(s.other)}</b></div>` : ""}
+          <div class="sum"><span>Custo operacional <small>${s.km ? brl(s.cost / s.km) + " por km" : ""}</small></span><b>${brl(s.cost)}</b></div>
           <div class="total ${s.profit >= 0 ? "good" : "bad"}"><span>Líquido <small>margem ${pctTxt(s.gain ? s.profit / s.gain : null)}</small></span><b>${brl(s.profit)}</b></div>
         </div>
         <div class="grid2">${[
@@ -871,7 +893,40 @@
       ? opps.map(o => `<div class="opp ${o.tone}"><p>${esc(o.text)}</p>${o.act || ""}</div>`).join("")
       : `<p class="sub">Depois de duas ou três rotas finalizadas, o app compara cada dia com a sua média e mostra onde dá para ganhar tempo e dinheiro.</p>`;
 
+    renderTrend();
     renderHist();
+  }
+
+  // ---------- tendência e projeção ----------
+  function spark(pts, ma) {
+    if (pts.length < 2) return "";
+    const v = pts.slice(-20).map(p => p.v), m = ma.slice(-20);
+    const lo = Math.min(...v, ...m), hi = Math.max(...v, ...m), W = 120, H = 34, span = hi - lo || 1;
+    const xy = (arr) => arr.map((y, i) => `${(i / (arr.length - 1) * W).toFixed(1)},${(H - 3 - (y - lo) / span * (H - 6)).toFixed(1)}`).join(" ");
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline class="sp-raw" points="${xy(v)}"/><polyline class="sp-ma" points="${xy(m)}"/></svg>`;
+  }
+  function renderTrend() {
+    if (!hist.length) { $("trend").innerHTML = `<p class="sub">A tendência aparece com as rotas fechadas. Para começar já com dados, registre rotas anteriores no Comparativo.</p>`; return; }
+    const mp = Core.monthProjection(hist), be = Core.breakEven(hist, { fixed: fin.fixed || 0 }), sm = Core.summarize(hist);
+    const tiles = [
+      [brl(mp.net), `líquido de ${mp.month} até agora · ${mp.days} dia${mp.days === 1 ? "" : "s"}, ${mp.routes} rota${mp.routes === 1 ? "" : "s"}`, mp.net >= 0 ? "good" : "bad"],
+      [mp.projected != null ? brl(mp.projected) : "–", `projeção de ${mp.month} no ritmo atual`],
+      [mp.perDay != null ? brl(mp.perDay) : "–", "líquido médio por dia trabalhado"],
+      [sm.costPerKm != null ? brl(sm.costPerKm) : "–", "custo operacional por km rodado"],
+    ];
+    const FMT = { kmPerPkg: v => n1(v, 2) + " km" };
+    const fmt = (k, v) => (v == null ? "–" : (FMT[k] || brl)(v));
+    const ST = { melhorando: ["up", "▲ Melhorando"], piorando: ["down", "▼ Piorando"], estavel: ["flat", "= Estável"], poucos: ["flat", "Poucas rotas"] };
+    const tr = Core.trend(hist);
+    $("trend").innerHTML = `<div class="grid2">${tiles.map(([b, l, c]) => `<div class="kpi ${c || ""}"><b>${b}</b><span>${l}</span></div>`).join("")}</div>
+      ${be ? `<p class="be"><b>Ponto de equilíbrio:</b> uma rota média de ${n1(be.km)} km custa ${brl(be.perRoute)} para rodar (${be.perPkg != null ? brl(be.perPkg) + " por pacote" : ""}). Abaixo disso, a rota dá prejuízo. Cada km a mais custa ${brl(be.varCost)} de combustível e desgaste.</p>` : ""}
+      <div class="trows">${tr.map(m => `<div class="trow">
+          <span class="tn">${m.name}</span>
+          <small class="tsub">agora <b>${fmt(m.k, m.recent ?? m.last)}</b>${m.before != null ? " · antes " + fmt(m.k, m.before) : ""}</small>
+          ${spark(m.pts, m.ma)}
+          <span class="tpill ${ST[m.status][0]}">${ST[m.status][1]}${m.change != null && m.status !== "estavel" ? " " + Math.abs(Math.round(m.change * 100)) + "%" : ""}</span>
+        </div>`).join("")}</div>
+      <p class="sub">"Agora" é a média das rotas mais recentes e "antes" a das anteriores (até 7 de cada lado). A linha escura é a média móvel de 5 rotas. A tendência aparece a partir de 5 rotas fechadas.</p>`;
   }
 
   // ---------- histórico ----------
@@ -949,7 +1004,7 @@
           ${cell("Pacotes/hora", n1(k.pkgPerHour), k.pkgPerHour, M.pkgPerHour, 1)}
           ${cell("Km/pacote", k.kmPerPkg != null ? n1(k.kmPerPkg, 2) : "–", k.kmPerPkg, M.kmPerPkg, -1)}
         </div>
-        <div class="hfoot"><span class="hs">Bruto ${brl(k.gross)} · combustível ${brl(k.fuel)}${k.other ? " · outros " + brl(k.other) : ""}${vsPrev ? "<br>" + vsPrev : ""}</span>${byDay ? "" : `<button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button>`}</div>
+        <div class="hfoot"><span class="hs">Bruto ${brl(k.gross)} · custo operacional ${brl(k.cost)}${k.costPerKm != null ? ` (${brl(k.costPerKm)}/km)` : ""}${vsPrev ? "<br>" + vsPrev : ""}</span>${byDay ? "" : `<button type="button" class="tiny" data-histedit="${esc(r.id)}" aria-label="Editar rota de ${new Date(r.t).toLocaleDateString("pt-BR")}">Editar</button>`}</div>
       </div>`;
     }).join("") + `<p class="sub">Setas: comparação com a média ${byDay ? "dos dias" : "das rotas"} deste período (verde é melhor, vermelho é pior).</p>`;
   }
@@ -963,7 +1018,7 @@
     const k = r ? Core.routeKpis(r) : null;
     $("scanOverlay").hidden = false;
     $("scanSheet").innerHTML = `<div class="addr-big">${r ? "Editar rota" : "Registrar rota anterior"}</div>
-      <p class="sub">Preencha o que souber. Se o combustível ficar em branco, o app calcula pelo km, pelo preço do litro e pelo consumo dos Valores do dia.</p>
+      <p class="sub">Preencha o que souber. Combustível e desgaste em branco são calculados pelo km, com o preço do litro, o consumo e o desgaste por km dos Valores do dia.</p>
       <div class="form">
         <label for="hDay" class="full">Dia<input id="hDay" type="date" value="${iso}"></label>
         <label for="hPS">Pacotes Shopee<input id="hPS" type="number" inputmode="numeric" value="${v(r?.pS ?? (r && !r.pM ? r.p : ""))}"></label>
@@ -974,7 +1029,9 @@
         <label for="hH">Horas trabalhadas<input id="hH" type="number" inputmode="decimal" step="0.25" value="${r ? +(r.ms / 3.6e6).toFixed(2) : ""}"></label>
         <label for="hKm">Km rodados<input id="hKm" type="number" inputmode="decimal" step="0.1" value="${v(r?.km)}"></label>
         <label for="hFuel">Combustível (R$)<input id="hFuel" type="number" inputmode="decimal" step="0.01" value="${r ? +k.fuel.toFixed(2) : ""}"></label>
-        <label for="hOther" class="full">Outros gastos (R$): pedágio, estacionamento, alimentação<input id="hOther" type="number" inputmode="decimal" step="0.01" value="${v(r?.other)}"></label>
+        <label for="hWear">Desgaste (R$)<input id="hWear" type="number" inputmode="decimal" step="0.01" placeholder="km × ${brl(fin.wear || 0)}" value="${v(r?.wear)}"></label>
+        <label for="hFixed">Custos fixos do dia (R$)<input id="hFixed" type="number" inputmode="decimal" step="0.01" value="${v(r?.fixed ?? (r ? "" : fin.fixed || ""))}"></label>
+        <label for="hOther" class="full">Outros gastos (R$): pedágio, estacionamento<input id="hOther" type="number" inputmode="decimal" step="0.01" value="${v(r?.other)}"></label>
       </div>
       <button type="button" class="primary" data-histsave="${esc(id || "")}">${r ? "Salvar alterações" : "Registrar rota"}</button>
       ${r ? `<button type="button" class="danger" data-histdel="${esc(id)}">Apagar esta rota</button>` : ""}
@@ -993,8 +1050,9 @@
       ...(old || {}), id: id || "man" + Date.now(), t: day.getTime(), manual: old ? old.manual : true,
       p: pS + pM, pS, pM, pO: 0, gS, gM, g: gS + gM, a: num("hA") || 0, ms: (num("hH") || 0) * 3.6e6,
       km: km || 0, fuel: fuel || 0, other: num("hOther") || 0,
+      wear: num("hWear") ?? (km ? +(km * (fin.wear || 0)).toFixed(2) : 0), fixed: num("hFixed") || 0,
     };
-    rec.l = rec.g - rec.fuel - rec.other;
+    rec.l = rec.g - rec.fuel - rec.wear - rec.fixed - rec.other;
     hist = hist.filter(r => r.id !== rec.id).concat(rec);
     store.set("re:hist", hist);
     $("scanOverlay").hidden = true; renderPainel();
@@ -1003,11 +1061,11 @@
   function exportCsv() {
     const rows = hist.slice().sort((a, b) => a.t - b.t);
     if (!rows.length) return toast("O histórico ainda está vazio.");
-    const head = ["Dia", "Pacotes", "Pacotes Shopee", "Pacotes Mercado Livre", "Paradas", "Horas", "Km", "Combustível (R$)", "Outros gastos (R$)", "Bruto (R$)", "Shopee (R$)", "Mercado Livre (R$)", "Líquido (R$)", "Bruto por pacote", "Líquido por pacote", "Km por pacote", "Pacotes por hora", "Líquido por hora", "Margem", "Voltar depois", "Nova tentativa"];
+    const head = ["Dia", "Pacotes", "Pacotes Shopee", "Pacotes Mercado Livre", "Paradas", "Horas", "Km", "Combustível (R$)", "Desgaste (R$)", "Custos fixos (R$)", "Outros gastos (R$)", "Custo operacional (R$)", "Custo por km", "Bruto (R$)", "Shopee (R$)", "Mercado Livre (R$)", "Líquido (R$)", "Bruto por pacote", "Líquido por pacote", "Km por pacote", "Pacotes por hora", "Líquido por hora", "Margem", "Voltar depois", "Nova tentativa"];
     const f = v => (v == null || !isFinite(v) ? "" : String(+v.toFixed(2)).replace(".", ","));
     const lines = rows.map(r => {
       const k = Core.routeKpis(r);
-      return [new Date(r.t).toLocaleDateString("pt-BR"), r.p, r.pS ?? "", r.pM ?? "", r.a || "", f(k.hours), f(k.km || null), f(k.fuel), f(k.other), f(k.gross), f(r.gS), f(r.gM), f(k.net), f(k.grossPerPkg), f(k.netPerPkg), f(k.kmPerPkg), f(k.pkgPerHour), f(k.netPerHour), k.margin != null ? Math.round(k.margin * 100) + "%" : "", r.later ?? "", r.att2 ?? ""].join(";");
+      return [new Date(r.t).toLocaleDateString("pt-BR"), r.p, r.pS ?? "", r.pM ?? "", r.a || "", f(k.hours), f(k.km || null), f(k.fuel), f(k.wear), f(k.fixed), f(k.other), f(k.cost), f(k.costPerKm), f(k.gross), f(r.gS), f(r.gM), f(k.net), f(k.grossPerPkg), f(k.netPerPkg), f(k.kmPerPkg), f(k.pkgPerHour), f(k.netPerHour), k.margin != null ? Math.round(k.margin * 100) + "%" : "", r.later ?? "", r.att2 ?? ""].join(";");
     });
     const blob = new Blob(["﻿" + head.join(";") + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
@@ -1025,7 +1083,7 @@
     location.hash = "#painel";
     toast(`Dia encerrado: ${rec.p} pacotes em ${dur(rec.ms)}`);
   }
-  [["fPay", "pay"], ["fPayMl", "payMl"], ["fPrice", "price"], ["fKml", "kml"], ["fKm", "km"], ["fBase", "base"], ["fOther", "other"]].forEach(([id, k]) => {
+  [["fPay", "pay"], ["fPayMl", "payMl"], ["fPrice", "price"], ["fKml", "kml"], ["fKm", "km"], ["fBase", "base"], ["fOther", "other"], ["fWear", "wear"], ["fFixed", "fixed"]].forEach(([id, k]) => {
     $(id).value = fin[k] ?? "";
     $(id).addEventListener("input", e => { const v = parseFloat(String(e.target.value).replace(",", ".")); fin[k] = isFinite(v) ? v : null; store.set("re:fin", fin); if (active) renderPainel(); });
   });

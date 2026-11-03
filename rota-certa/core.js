@@ -545,15 +545,17 @@ const Core = (() => {
     const h = (r.ms || 0) / 3.6e6, km = r.km || 0, p = r.p || 0, a = r.a || 0;
     const gross = r.g || 0;
     const fuel = r.fuel != null ? r.fuel : r.l != null ? Math.max(0, gross - r.l) : 0;
-    const other = r.other || 0;
-    const net = gross - fuel - other;
+    const other = r.other || 0, wear = r.wear || 0, fixed = r.fixed || 0;
+    // Custo operacional = combustível + desgaste do veículo (R$ por km) + custos fixos do dia + outros gastos.
+    const cost = fuel + wear + fixed + other;
+    const net = gross - cost;
     const div = (x, y) => (y > 0 ? x / y : null);
     // Rota de menos de 15 minutos (teste ou registro incompleto) não gera taxa por hora nem tempo por parada.
     const hr = h >= 0.25 ? h : 0;
     return {
-      hours: h, km, gross, fuel, other, net, p, a,
+      hours: h, km, gross, fuel, wear, fixed, other, cost, net, p, a,
       pkgPerHour: div(p, hr), stopPerHour: div(a, hr), minPerStop: hr ? div((r.ms || 0) / 60000, a) : null,
-      kmPerPkg: km ? div(km, p) : null, grossPerPkg: div(gross, p), netPerPkg: div(net, p), costPerPkg: div(fuel + other, p),
+      kmPerPkg: km ? div(km, p) : null, grossPerPkg: div(gross, p), netPerPkg: div(net, p), costPerPkg: div(cost, p), costPerKm: km ? div(cost, km) : null,
       grossPerKm: km ? div(gross, km) : null, netPerKm: km ? div(net, km) : null, netPerHour: div(net, hr),
       margin: div(net, gross), success: r.total ? p / r.total : null,
       laterRate: r.later != null && a ? r.later / a : null,
@@ -573,7 +575,8 @@ const Core = (() => {
     });
     const avg = (k, list = ks) => { const v = list.map(x => x[k]).filter(x => x != null && isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
     return {
-      n, p: sum("p"), a: sum("a"), hours: sum("hours"), km: sum("km"), gross: sum("gross"), fuel: sum("fuel"), other: sum("other"), net: sum("net"),
+      n, p: sum("p"), a: sum("a"), hours: sum("hours"), km: sum("km"), gross: sum("gross"), fuel: sum("fuel"), wear: sum("wear"), fixed: sum("fixed"), other: sum("other"), cost: sum("cost"), net: sum("net"),
+      costPerKm: withKm.length ? withKm.reduce((t, x) => t + x.cost, 0) / withKm.reduce((t, x) => t + x.km, 0) : null,
       perRoute: n ? { gross: sum("gross") / n, net: sum("net") / n, p: sum("p") / n, fuel: sum("fuel") / n, km: withKm.length ? withKm.reduce((t, x) => t + x.km, 0) / withKm.length : null, hours: sum("hours") / n } : null,
       grossPerPkg: sum("p") ? sum("gross") / sum("p") : null, netPerPkg: sum("p") ? sum("net") / sum("p") : null,
       kmPerPkg: withKm.length ? withKm.reduce((t, x) => t + x.km, 0) / withKm.reduce((t, x) => t + x.p, 0) : null,
@@ -584,7 +587,7 @@ const Core = (() => {
 
   // Junta as rotas do mesmo dia (horário local): soma tudo e guarda quantas rotas foram.
   function groupByDay(rows) {
-    const SUM = ["p", "a", "ms", "km", "fuel", "other", "g", "gS", "gM", "gO", "pS", "pM", "pO", "total", "later", "att2"];
+    const SUM = ["p", "a", "ms", "km", "fuel", "wear", "fixed", "other", "g", "gS", "gM", "gO", "pS", "pM", "pO", "total", "later", "att2"];
     const days = new Map();
     rows.forEach(r => {
       const d = new Date(r.t), key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -597,7 +600,62 @@ const Core = (() => {
         if (v != null && isFinite(v)) x[f] = (x[f] || 0) + v;
       });
     });
-    return [...days.values()].map(x => ({ ...x, l: (x.g || 0) - (x.fuel || 0) - (x.other || 0) }));
+    return [...days.values()].map(x => ({ ...x, l: (x.g || 0) - (x.fuel || 0) - (x.wear || 0) - (x.fixed || 0) - (x.other || 0) }));
+  }
+
+  // Tendência: média das rotas mais recentes x média das anteriores (até 7 de cada lado), e a série de cada
+  // indicador com média móvel de 5 rotas. Só diz "subindo" ou "caindo" com 5 rotas ou mais.
+  const TREND = [
+    { k: "grossPerPkg", name: "Valor por pacote", dir: 1 },
+    { k: "netPerPkg", name: "Líquido por pacote", dir: 1 },
+    { k: "kmPerPkg", name: "Km por pacote", dir: -1 },
+    { k: "costPerKm", name: "Custo operacional por km", dir: -1 },
+    { k: "netPerHour", name: "Líquido por hora", dir: 1 },
+    { k: "net", name: "Líquido por rota", dir: 1 },
+  ];
+  function trend(rows, win = 5) {
+    const sorted = rows.slice().sort((a, b) => a.t - b.t).map(r => ({ r, k: routeKpis(r) }));
+    const mean = l => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : null);
+    return TREND.map(m => {
+      const pts = sorted.filter(x => x.k[m.k] != null && isFinite(x.k[m.k])).map(x => ({ t: x.r.t, v: x.k[m.k] }));
+      const ma = pts.map((_, i) => mean(pts.slice(Math.max(0, i - win + 1), i + 1).map(p => p.v)));
+      const out = { ...m, pts, ma, last: pts.length ? pts[pts.length - 1].v : null, avg: mean(pts.map(p => p.v)), change: null, status: "poucos" };
+      if (pts.length >= 5) {
+        const n = Math.min(7, Math.floor(pts.length / 2));
+        const rec = mean(pts.slice(-n).map(p => p.v)), old = mean(pts.slice(-2 * n, -n).map(p => p.v));
+        out.recent = rec; out.before = old;
+        if (old) {
+          out.change = rec / old - 1;
+          out.status = Math.abs(out.change) < 0.03 ? "estavel" : out.change * m.dir > 0 ? "melhorando" : "piorando";
+        }
+      }
+      return out;
+    });
+  }
+
+  // Projeção do mês: líquido até agora + média por dia trabalhado x dias de trabalho que ainda devem vir
+  // (na mesma proporção de dias trabalhados até hoje).
+  function monthProjection(rows, now = Date.now()) {
+    const d = new Date(now), y = d.getFullYear(), m = d.getMonth();
+    const inMonth = rows.filter(r => { const x = new Date(r.t); return x.getFullYear() === y && x.getMonth() === m; });
+    const net = inMonth.reduce((t, r) => t + routeKpis(r).net, 0), gross = inMonth.reduce((t, r) => t + (r.g || 0), 0);
+    const days = groupByDay(inMonth).length;
+    const today = d.getDate(), last = new Date(y, m + 1, 0).getDate();
+    const perDay = days ? net / days : null;
+    const workRate = days / today;
+    const projected = days ? net + perDay * workRate * (last - today) : null;
+    return { routes: inMonth.length, days, net, gross, perDay, projected, daysLeft: last - today, month: d.toLocaleDateString("pt-BR", { month: "long" }) };
+  }
+
+  // Ponto de equilíbrio: quanto uma rota média custa para rodar (km médio x custo por km + fixos do dia).
+  function breakEven(rows, opts = {}) {
+    const ks = rows.map(routeKpis).filter(k => k.km > 0);
+    if (!ks.length) return null;
+    const km = ks.reduce((t, k) => t + k.km, 0) / ks.length;
+    const varCost = ks.reduce((t, k) => t + k.fuel + k.wear, 0) / ks.reduce((t, k) => t + k.km, 0);
+    const perRoute = km * varCost + (opts.fixed || 0);
+    const pkgs = ks.reduce((t, k) => t + k.p, 0) / ks.length;
+    return { km, varCost, perRoute, perPkg: pkgs ? perRoute / pkgs : null };
   }
 
   // Oportunidades de melhoria: compara a rota mais recente com a média das anteriores.
@@ -623,7 +681,7 @@ const Core = (() => {
     }
     const all = summarize(sorted);
     if (all.margin != null && all.gross > 0 && all.margin < 0.75)
-      out.push({ tone: "warn", text: `Combustível e outros gastos levam ${Math.round((1 - all.margin) * 100)}% do que você recebe. Reduzir km por pacote é o que mais aumenta o líquido.` });
+      out.push({ tone: "warn", text: `O custo operacional (combustível, desgaste, fixos e outros) leva ${Math.round((1 - all.margin) * 100)}% do que você recebe. Reduzir km por pacote é o que mais aumenta o líquido.` });
     if (last.laterRate != null && last.laterRate > 0.1)
       out.push({ tone: "warn", text: `${Math.round(last.laterRate * 100)}% dos endereços da última rota ficaram para "voltar depois". Ligar antes para quem avisa horário evita a segunda passada.` });
     const pl = Object.entries(all.plat);
@@ -655,6 +713,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, insights, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, trend, monthProjection, breakEven, insights, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;
