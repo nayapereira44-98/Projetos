@@ -74,6 +74,13 @@ Topo claro com progresso fino, cartões com borda leve, chips em tons suaves (a 
 - **Encerrar a rota e começar outra** (Painel, fim da rota no mapa e Ajustes): mostra o resumo (pacotes, tempo, km, bruto, combustível e líquido) e avisa se ainda faltam pacotes. Ao confirmar, salva a rota no histórico, zera o km digitado e os outros gastos e volta para abrir a próxima planilha. Abrir a planilha de outra rota também salva a anterior.
 - **Comparativo de rotas e dias**: alterna entre **Por rota** e **Por dia** (as rotas do mesmo dia somadas). Cada cartão mostra o líquido, o líquido por pacote e por hora, os pacotes por hora e os km por pacote, com seta verde ou vermelha contra a média do período, a diferença para a rota ou o dia anterior e as marcas **Melhor** e **Pior** (por líquido por hora).
 
+## Fechamento, custo operacional e tendência (pedido de 03/11)
+- **Fechamento automático**: quando o último pacote é entregue, abre a **ficha da rota**: bruto, pacotes e R$ por pacote, km e R$ de bruto por km, tempo e pacotes por hora, combustível, desgaste, custos fixos, outros gastos, **custo operacional** (e por km) e **líquido** (margem e por pacote). Dá para digitar o km do painel do carro antes de salvar. O fechamento manual continua para quando sobram pacotes.
+- **Custo operacional** = combustível + **desgaste do veículo por km** (padrão R$ 0,25/km; moto cerca de R$ 0,12; utilitário cerca de R$ 0,35) + **custos fixos do dia** + outros gastos. Ajuste em Painel → Valores do dia.
+- **Tendência e projeção** (Painel): líquido do mês até agora, **projeção do mês** no ritmo atual, líquido médio por dia trabalhado, custo por km, **ponto de equilíbrio** (quanto uma rota média custa para rodar e quanto custa cada km a mais) e a tendência de valor por pacote, líquido por pacote, km por pacote, custo por km, líquido por hora e líquido por rota (melhorando, estável ou piorando, com mini gráfico e média móvel de 5 rotas). A tendência aparece a partir de 5 rotas.
+
+Exemplo: rota de R$ 260 com 52 pacotes = R$ 5,00 por pacote; 50 km a 11 km/l e R$ 6,29 = R$ 28,59 de combustível; desgaste 50 × R$ 0,25 = R$ 12,50; custo operacional R$ 41,09 (R$ 0,82/km); líquido R$ 218,91 (84%).
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".

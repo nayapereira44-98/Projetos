@@ -1097,6 +1097,26 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 .hfoot .hs { color: var(--muted); font-size: 0.8rem; }
 .hfoot .pos { color: var(--ok); } .hfoot .neg { color: var(--bad); }
 .session button.ghost { background: transparent; color: #f3f6f2; border: 1px solid rgba(243,246,242,0.45); }
+
+/* Custo operacional, ficha da rota e tendência */
+.wf .sum { background: var(--bg); }
+.wf .sum b { color: var(--bad); }
+.be { font-size: 0.9rem; background: var(--bg); border-radius: 12px; padding: 10px 12px; }
+.trows { display: grid; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n p" "s k"; gap: 4px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.trow .tn { grid-area: n; } .trow .tpill { grid-area: p; justify-self: end; } .trow .spark { grid-area: k; justify-self: end; }
+.tsub { grid-area: s; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.tsub b { color: var(--ink); }
+.trow:first-child { border-top: 0; }
+.tn { font-weight: 700; font-size: 0.92rem; min-width: 0; }
+.tn small { display: block; font-weight: 400; color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.spark { width: 96px; height: 30px; display: block; }
+.spark .sp-raw { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.spark .sp-ma { fill: none; stroke: var(--brand); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.tpill { font: 700 0.74rem var(--font-body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.tpill.up { background: var(--ok-soft); color: var(--ok); }
+.tpill.down { background: var(--bad-soft); color: var(--bad); }
+.tpill.flat { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -1171,13 +1191,16 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
             <label for="fKml">Consumo (km/litro)<input id="fKml" type="number" inputmode="decimal" step="0.1"></label>
             <label for="fBase">Ida e volta do CD (km)<input id="fBase" type="number" inputmode="decimal" step="0.1" placeholder="ex. 12"></label>
             <label for="fOther">Outros gastos (R$)<input id="fOther" type="number" inputmode="decimal" step="0.01" placeholder="pedágio, estacionamento"></label>
+            <label for="fWear">Desgaste do veículo (R$ por km)<input id="fWear" type="number" inputmode="decimal" step="0.01" placeholder="carro 0,25 · moto 0,12"></label>
+            <label for="fFixed">Custos fixos do dia (R$)<input id="fFixed" type="number" inputmode="decimal" step="0.01" placeholder="celular, internet, alimentação"></label>
             <label for="fKm" class="full">Km do dia, se quiser digitar (em branco: GPS ou estimativa)<input id="fKm" type="number" inputmode="decimal" step="0.1"></label>
             <label for="fEnd" class="full">Até que horas você quer trabalhar hoje<input id="fEnd" type="time"></label>
           </div>
-          <p class="sub">Com o app aberto durante as entregas, o GPS mede os km rodados. Sem GPS, o app usa a distância estimada da rota mais a ida e volta do CD.</p>
+          <p class="sub">Custo operacional = combustível + desgaste do veículo (pneu, óleo, manutenção, por km) + custos fixos do dia + outros gastos. Sugestão de desgaste: carro R$ 0,25/km, moto R$ 0,12/km, utilitário R$ 0,35/km. Com o app aberto durante as entregas, o GPS mede os km rodados. Sem GPS, o app usa a distância estimada da rota mais a ida e volta do CD.</p>
           </details>
         </div>
         <div class="card"><h2>Indicadores</h2><p class="sub">Hoje comparado com a média das suas rotas.</p><div id="ind"></div></div>
+        <div class="card"><h2>Tendência e projeção</h2><div id="trend" style="display:grid;gap:14px"></div></div>
         <div class="card"><h2>Oportunidades de melhoria</h2><div id="opps" style="display:grid;gap:10px"></div></div>
         <div class="card"><h2>Comparativo de rotas e dias</h2>
           <div class="seg" id="hmode" role="group" aria-label="Comparar"><button type="button" data-hmode="rota">Por rota</button><button type="button" data-hmode="dia">Por dia</button></div>
@@ -1251,8 +1274,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261103c"></script>
-<script src="app.js?v=20261103c"></script>
+<script src="../rota-certa/core.js?v=20261103d"></script>
+<script src="app.js?v=20261103d"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>
