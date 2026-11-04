@@ -316,6 +316,22 @@ const Core = (() => {
         if (canon) list.forEach(p => { if (p.street === n) p.street = canon; });
       });
     });
+    // Rua longa tem vários CEPs, e cada trecho pode vir escrito de um jeito ("R Dr Joaquim A. P. Neves" num CEP,
+    // "Rua Doutor Joaquim Affonso de Paula Neves" no outro). Nome parecido + a até 1,5 km = a mesma rua,
+    // para a rota não sair da rua e voltar depois.
+    const byName = new Map();
+    pkgs.forEach(p => { if (p.street) { if (!byName.has(p.street)) byName.set(p.street, []); byName.get(p.street).push(p); } });
+    const names = [...byName.keys()].sort((a, b) => b.length - a.length || byName.get(b).length - byName.get(a).length);
+    const canonOf = new Map();
+    names.forEach((n, i) => {
+      for (let j = 0; j < i; j++) {
+        const m = canonOf.get(names[j]) || names[j];
+        if (m === n || !similarStreet(n, names[j])) continue;
+        const close = byName.get(n).some(p => byName.get(names[j]).some(q => hav(p, q) <= 1500));
+        if (close) { canonOf.set(n, m); break; }
+      }
+    });
+    canonOf.forEach((canon, n) => byName.get(n).forEach(p => (p.street = canon)));
     return pkgs;
   }
 
@@ -371,7 +387,7 @@ const Core = (() => {
   }
 
   // Trechos de rua: endereços da mesma rua em ordem de número; trecho quebra se o próximo número fica a mais de `gapM`.
-  function streetSegments(addrs, gapM = 250) {
+  function streetSegments(addrs, gapM = 600) {
     const byStreet = new Map();
     addrs.forEach(a => { const k = a.key.startsWith("geo|") ? a.key : a.street; if (!byStreet.has(k)) byStreet.set(k, []); byStreet.get(k).push(a); });
     const segs = [];
@@ -729,6 +745,25 @@ const Core = (() => {
     return out;
   }
 
+  // Próxima parada "rua primeiro": enquanto a rua em que você está tiver entrega (a até 1 km), fica nela,
+  // na ordem dos números a partir de onde você está; só depois vai para o endereço pendente mais perto
+  // (dentro da área, se houver). Evita sair da rua com pacote e voltar depois.
+  function streetFirst(pend, opts) {
+    const { here, street, area, areaOf } = opts;
+    if (!pend.length) return null;
+    const pt = here || opts.last || null;
+    const near = (list) => (pt ? list.slice().sort((a, b) => hav(pt, a) - hav(pt, b))[0] : list[0]);
+    if (street) {
+      const same = pend.filter(a => a.street === street && (!pt || hav(pt, a) <= 1000));
+      if (same.length) return near(same);
+    }
+    if (area != null && areaOf) {
+      const inA = pend.filter(a => areaOf(a) === area);
+      if (inA.length) return near(inA);
+    }
+    return near(pend);
+  }
+
   // Outros locais a até `maxM` metros, do mais perto ao mais longe.
   function nearby(stop, stops, maxM) {
     return stops.filter(s => s !== stop).map(s => ({ s, d: hav(stop, s) })).filter(x => x.d <= maxM).sort((a, b) => a.d - b.d);
@@ -746,6 +781,6 @@ const Core = (() => {
     },
   };
 
-  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, addressRoute, seqMeters, loadPlan, etas, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, trend, monthProjection, breakEven, insights, links };
+  return { hav, STREET_FACTOR, parseAddress, parseWindow, parseRows, groupStops, buildCost, solve, pathCost, legDist, distOf, VEHICLES, zoneFor, splitZones, estimateMinutes, finance, matchTN, nearby, buildAddresses, unifyStreets, streetSegments, streetFirst, addressRoute, seqMeters, loadPlan, etas, toMin, cepCheck, pinOutliers, interpolate, trackStep, routeKpis, summarize, groupByDay, trend, monthProjection, breakEven, insights, links };
 })();
 if (typeof module !== "undefined") module.exports = Core;

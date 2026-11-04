@@ -1,6 +1,6 @@
 // Rota Certa: funciona sem internet depois da primeira visita.
 // Rede primeiro para o app (sempre a versão mais nova quando há sinal); cópia guardada quando não há.
-const CACHE = "rota-certa-v2";
+const CACHE = "rota-certa-v3";
 const SHELL = ["./", "./index.html", "./app.js", "../rota-certa/core.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

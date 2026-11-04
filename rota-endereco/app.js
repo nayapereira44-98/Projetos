@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   // Página antiga guardada no cache do celular com o código novo: os botões travariam. Recarrega uma vez sem cache;
   // se ainda não bater, mostra um aviso para atualizar.
-  const NEED = ["proofPhoto", "endMode", "reverse", "autoNav", "saveHome", "setup", "lastRoute", "dataStat", "vehPick", "restoreFile", "trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
+  const NEED = ["nextBar", "proofPhoto", "endMode", "reverse", "autoNav", "saveHome", "setup", "lastRoute", "dataStat", "vehPick", "restoreFile", "trend", "fWear", "hmode", "issueBox", "issueAj", "ind", "opps", "histSum", "histChart", "hist", "fBase", "fOther", "recalcHere", "routeCmp", "finBox"];
   if (NEED.some(id => !$(id))) {
     let tried = false;
     try { tried = sessionStorage.getItem("re:reload") === "1"; sessionStorage.setItem("re:reload", "1"); } catch {}
@@ -131,14 +131,38 @@
   function nextLeg(n = 10) {
     if (mode !== "perto" || typeof here === "undefined" || !here) return order.filter(a => !addrDone(a)).slice(0, n);
     const left = pendingList().slice(), out = [];
-    let pt = here, area = lastArea();
+    let pt = here, area = lastArea(), street = curStreet();
     while (out.length < n && left.length) {
-      const inA = left.filter(a => areaOf(a) === area);
-      const b = nearestFrom(pt, inA.length ? inA : left);
-      out.push(b); left.splice(left.indexOf(b), 1); pt = b; area = areaOf(b);
+      const b = Core.streetFirst(left, { here: pt, street, area, areaOf });
+      out.push(b); left.splice(left.indexOf(b), 1); pt = b; area = areaOf(b); street = b.street;
     }
     return out;
   }
+  // Rua em que você está: a do último endereço resolvido (entregue ou com ocorrência) ou a de um endereço a até 80 m.
+  function lastDoneAddr() {
+    let best = null, t = 0;
+    all().forEach(p => { const v = ok[p.tn] || D?.fail?.[p.tn]?.t; if (v > t) { t = v; best = p; } });
+    return best ? byTn.get(best.tn) : null;
+  }
+  function curStreet() {
+    const last = lastDoneAddr();
+    const h = typeof here !== "undefined" && here ? here : null;
+    // A rua do último endereço resolvido vale enquanto você está perto dele (num cruzamento, a casa da transversal
+    // pode estar mais perto, mas você está na rua que vinha fazendo).
+    if (last && (!h || Core.hav(h, last) <= 300)) return last.street;
+    if (h) {
+      const at = order.filter(a => Core.hav(h, a) <= 80).sort((x, y) => Core.hav(h, x) - Core.hav(h, y))[0];
+      if (at) return at.street;
+    }
+    return last?.street || null;
+  }
+  // Pendentes da mesma rua (fora este endereço), em ordem de número.
+  const streetLeft = a => order.filter(x => x !== a && x.street && x.street === a.street && !addrDone(x)).sort((x, y) => x.num - y.num);
+  const streetLine = a => {
+    const l = streetLeft(a); if (!l.length) return "";
+    const pk = l.reduce((t, x) => t + x.pkgs.filter(p => !pkgDone(p)).length, 0);
+    return `+${pk} pacote${pk > 1 ? "s" : ""} nesta rua (nº ${l.slice(0, 5).map(x => x.nums?.join("/") || x.num).join(", ")}${l.length > 5 ? "…" : ""})`;
+  };
   const shopee = a => (a.shopeeStops.length ? "Shopee " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
   // Modo "Perto de mim" (padrão): a parada da vez é a pendente mais perto de você, terminando a área atual antes de ir
   // para outra. Modo "Rota": segue a ordem calculada. Sem GPS, os dois seguem a ordem.
@@ -157,9 +181,7 @@
     const pend = pendingList();
     if (!pend.length) return undefined;
     if (mode !== "perto" || typeof here === "undefined" || !here) return pend[0];
-    const la = lastArea();
-    const inArea = la != null ? pend.filter(a => areaOf(a) === la) : [];
-    const best = nearestFrom(here, inArea.length ? inArea : pend);
+    const best = Core.streetFirst(pend, { here, street: curStreet(), area: lastArea(), areaOf });
     const cur = curKey && byKey.get(curKey);
     if (cur && pend.includes(cur) && (Core.hav(here, cur) <= 80 || Core.hav(here, cur) - Core.hav(here, best) < 50)) return cur;
     curKey = best.key;
@@ -287,6 +309,20 @@
 
   // ---------- abas ----------
   const TABS = ["mapa", "lista", "painel", "ajustes"];
+  let listDone = false;
+  // Barra "Próxima parada" nas abas Paradas, Painel e Ajustes: entregar ou navegar sem voltar para o mapa.
+  function renderNextBar() {
+    const bar = $("nextBar");
+    const tab = location.hash.slice(1);
+    const a = active ? nextAddr() : null;
+    if (!a || tab === "mapa" || !TABS.includes(tab)) { bar.hidden = true; return; }
+    const pend = a.pkgs.filter(p => !pkgDone(p)).length;
+    const app = navAppNow() || "waze";
+    bar.hidden = false;
+    bar.innerHTML = `<button type="button" class="nb-info" data-sel="${esc(a.key)}"><span class="nb-n">${a.n}</span><span class="nb-t"><b>${esc(a.label)}</b><small>${pend} pacote${pend > 1 ? "s" : ""}${zoneOf(a) ? " · carga " + zoneOf(a).code : ""}${streetLine(a) ? " · " + esc(streetLine(a)) : ""}</small></span></button>
+      <a class="btn line nb-go" href="${NAVS[app](a)}" target="_blank" rel="noopener">Ir</a>
+      <button type="button" class="primary nb-ok" data-a="${esc(a.key)}">Entreguei</button>`;
+  }
   function route() {
     let tab = location.hash.slice(1);
     if (!active) tab = "inicio";
@@ -294,6 +330,7 @@
     ["inicio", ...TABS].forEach(t => ($("v-" + t).hidden = t !== tab));
     document.querySelectorAll(".tabbar a").forEach(a => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (tab === "mapa") { ensureMap(); setTimeout(() => map?.invalidateSize(), 50); }
+    renderNextBar();
   }
   window.addEventListener("hashchange", route);
 
@@ -308,6 +345,7 @@
     renderSheet();
     renderList();
     renderPainel();
+    renderNextBar();
     if (map) updateMarkers();
   }
 
@@ -334,6 +372,7 @@
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc([a.bairro, ...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8).map(c => "CEP " + c.slice(0, 5) + "-" + c.slice(5)))].filter(Boolean).join(" · "))}</div></div>
       ${issues.has(a.key) ? `<button type="button" class="issue-bar" data-issues="1"><b>Conferir endereço</b><span>${esc([issues.get(a.key).pin, issues.get(a.key).cep].filter(Boolean).join(" "))}</span></button>` : ""}
       ${a.pkgs.some(p => D.fix?.[p.tn]) ? `<button type="button" class="line" data-fixundo="${esc(a.key)}">Posição corrigida por você · voltar à da planilha</button>` : ""}
+      ${streetLine(a) ? `<div class="streetline big">${esc(streetLine(a))}. Faça a rua inteira antes de sair.</div>` : ""}
       <div class="chips">${zoneChip(a, true)}${etaChip(a)}${navText(a)}${areaChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
       ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
@@ -379,6 +418,7 @@
             <b>${esc(a.label)}</b>
             <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${zoneChip(a)}${navText(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
             <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
+            ${streetLine(a) ? `<span class="streetline">${esc(streetLine(a))}</span>` : ""}
           </button>
         </div>
         <div class="mini-act">
@@ -567,16 +607,21 @@
   // ---------- ações ----------
   function deliverAddr(a) {
     const done = addrDone(a);
+    const planned = mode === "rota" ? pendingList()[0] : null;
     if (!done && !sess.start) { sess = { start: Date.now() }; toast("Cronômetro iniciado"); }
     a.pkgs.forEach(p => { if (done) { delete ok[p.tn]; if (D.fail) delete D.fail[p.tn]; } else if (!failOf(p)) ok[p.tn] = ok[p.tn] || Date.now(); });
     save();
     if (!done) {
       buzz(60);
       selKey = null; sheetOpen = false; curKey = null;
+      // Na ordem da rota: entregou fora da ordem (passou por outro endereço antes)? A rota é refeita dali,
+      // sem voltar. Não refaz quando os sacos seguem o número da parada do app, para não trocar os sacos.
+      if (planned && planned !== a && bagMode !== "app") { plan(null, !!here); numberOrder(); if (map) drawMarkers(false); }
       const nx = nextAddr();
       renderAll();
       if (nx) {
-        toast(`Entregue! Próxima: ${nx.label}`);
+        const sl = streetLeft(a).length && nx.street === a.street;
+        toast(sl ? `Entregue! Ainda nesta rua: ${nx.label}` : `Entregue! Próxima: ${nx.label}`);
         autoNav(nx);
         if (map) { if (here) { follow = true; frame(); } else map.panTo([nx.lat, nx.lng]); }
         updateNav(true);
@@ -640,6 +685,7 @@
     else if (d.failr) { const i = d.failr.indexOf("::"); failGo(d.failr.slice(0, i), d.failr.slice(i + 2)); }
     else if (d.who) { const i = d.who.indexOf("::"), k = d.who.slice(0, i), w = d.who.slice(i + 2); D.proof = D.proof || {}; D.proof[k] = { ...(D.proof[k] || {}), who: D.proof[k]?.who === w ? null : w }; save(); renderSheet(); }
     else if (d.load) openLoad();
+    else if (d.listdone) { listDone = !listDone; renderList(); }
     else if (d.loadredo) { ensureLoad(true); renderAll(); openLoad(); toast("Ordem de carga refeita pela rota atual"); }
     else if (d.voice) voiceAddr();
     else if (d.fixuse) { const [key, which] = d.fixuse.split("::"); const it = issues.get(key); applyFix(key, it && it[which], t.dataset.lbl); }
@@ -731,7 +777,8 @@
   // ---------- lista ----------
   function renderList() {
     const q = $("q").value.trim();
-    let rows = order;
+    // Entregues saem da lista (ficam guardados no fim, num botão), para a tela mostrar só o que falta.
+    let rows = q || listDone ? order : order.filter(a => !addrDone(a));
     if (q) {
       const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
       if (/^\d{1,3}$/.test(q)) rows = order.filter(a => a.shopeeStops.includes(+q));
@@ -765,7 +812,9 @@
     $("checkBox").innerHTML = pend.length ? `<div class="top" style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>Conferência na separação</b><span class="sub">${got} de ${pend.length} conferidos${got < pend.length ? ` · faltam ${pend.length - got}` : " · tudo conferido ✓"}</span></div>
       <div class="bar" style="background:var(--line)"><i style="width:${(got / pend.length * 100).toFixed(0)}%;background:${got === pend.length ? "var(--ok)" : "var(--brand)"}"></i></div>
       <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photoMany">Fotografar pacotes</label><button type="button" class="line" data-checkview="1">Ver o que falta</button></div>` : "";
-    $("list").innerHTML = html || `<p class="empty-list">Nada encontrado para "${esc(q)}".</p>`;
+    const doneN = order.filter(addrDone).length;
+    $("list").innerHTML = (html || (q ? `<p class="empty-list">Nada encontrado para "${esc(q)}".</p>` : `<p class="empty-list">Tudo entregue nesta rota.</p>`))
+      + (doneN && !q ? `<button type="button" class="line" data-listdone="1">${listDone ? "Esconder" : "Mostrar"} os entregues (${doneN})</button>` : "");
   }
   $("q").addEventListener("input", renderList);
 
@@ -1260,8 +1309,8 @@
     save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
     toast("Ordem invertida: a última parada virou a primeira");
   });
-  $("autoNav").value = fin.autoNav || "off";
-  $("autoNav").addEventListener("change", e => { fin.autoNav = e.target.value; store.set("re:fin", fin); toast(fin.autoNav === "off" ? "Navegação automática desligada" : "Depois de Entreguei, a navegação abre sozinha"); });
+  $("autoNav").value = fin.autoNav || "auto";
+  $("autoNav").addEventListener("change", e => { fin.autoNav = e.target.value; store.set("re:fin", fin); toast(fin.autoNav === "off" ? "Navegação automática desligada" : "Depois de Entreguei, a navegação abre sozinha na próxima parada"); });
   $("recalcHere").addEventListener("click", () => {
     if (!here) { startGps(false); return toast("Ligando a localização. Toque de novo em alguns segundos."); }
     curKey = null; plan(null, true); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
@@ -1691,9 +1740,21 @@
   });
 
   // Depois de "Entreguei": abre a navegação para a próxima parada (opcional, em Ajustes).
+  // Navegação: o app lembra qual você usou por último (Waze, Google Maps ou Apple Mapas) e, depois de cada
+  // "Entreguei", já abre esse mesmo app na próxima parada. Assim o GPS acompanha sem você trocar o destino.
+  const NAVS = { waze: p => Core.links.waze(p), google: p => Core.links.gmaps(p), apple: p => Core.links.apple(p) };
+  document.addEventListener("click", e => {
+    const l = e.target.closest("a[href]"); if (!l) return;
+    const h = l.getAttribute("href");
+    const app = /waze\.com/.test(h) ? "waze" : /google\.com\/maps/.test(h) && !/waypoints/.test(h) ? "google" : /maps\.apple\.com/.test(h) ? "apple" : null;
+    if (app && fin.navApp !== app) { fin.navApp = app; store.set("re:fin", fin); }
+  }, true);
+  const navMode = () => fin.autoNav || "auto";
+  const navAppNow = () => (navMode() === "auto" ? fin.navApp : navMode() === "off" ? null : navMode());
   function autoNav(nx) {
-    if (!nx || !fin.autoNav || fin.autoNav === "off") return;
-    window.open(fin.autoNav === "google" ? Core.links.gmaps(nx) : Core.links.waze(nx), "_blank", "noopener");
+    const app = navAppNow();
+    if (!nx || !app || !NAVS[app]) return;
+    window.open(NAVS[app](nx), "_blank", "noopener");
   }
 
   // Endereço por voz (Mercado Livre e outros), onde o navegador permite.
