@@ -118,6 +118,13 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Duas rotas (duas ATs) no mesmo dia (04/11)
+- A planilha pode trazer mais de uma AT (ex.: `AT20261103C474W` e `AT20261104C5Y84`). O app separa por AT e mostra cada rota com o final da AT e uma cor: **Rota 4W**, **Rota 84**.
+- O card, o anel do pino no mapa, a conferência e a busca mostram a rota de cada pacote. Os sacos e as faixas da Shopee recebem o prefixo da rota ("4W 11–20", "84 Shopee 5"), porque as duas ATs começam na parada 1.
+- A lista de Paradas é agrupada por rota, com "faltam N de M" em cada uma.
+- Subir uma planilha de outra AT com o dia em andamento: o app pergunta se é para **Somar as rotas no mesmo dia** ou **Começar dia novo só com esta**. Subir de novo a planilha de uma AT que já está no dia atualiza só aquela rota.
+- O percurso continua um só, por endereço, juntando as duas rotas.
+
 ## Regras de rota
 - **CEP + número da casa** também identifica o mesmo endereço, mesmo com a rua escrita de outro jeito ou a coordenada imprecisa (até 300 m). Um CEP usado em mais de duas ruas (CEP geral da cidade) é ignorado. O cartão mostra o CEP.
 - Uma parada por endereço. Números diferentes no **mesmo ponto** (até 25 m na mesma rua, ou 10 m em qualquer rua) viram uma parada só, por exemplo "José Pioli, 212 / 225 / 245" (Shopee 30 + 31).
