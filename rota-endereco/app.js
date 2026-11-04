@@ -1304,7 +1304,7 @@
     save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
     toast("Ordem invertida: a última parada virou a primeira");
   });
-  $("autoNav").value = navMode();
+  $("autoNav").value = fin.autoNav || "auto";
   $("autoNav").addEventListener("change", e => { fin.autoNav = e.target.value; store.set("re:fin", fin); toast(fin.autoNav === "off" ? "Navegação automática desligada" : "Depois de Entreguei, a navegação abre sozinha na próxima parada"); });
   $("recalcHere").addEventListener("click", () => {
     if (!here) { startGps(false); return toast("Ligando a localização. Toque de novo em alguns segundos."); }
