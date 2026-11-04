@@ -99,6 +99,17 @@ O que o app de rotas mais usado por entregadores tem, somado ao que o Rota Certa
 - **Navegação automática**: depois de "Entreguei", abre o Waze ou o Google Maps na próxima parada (opcional).
 - **Endereço por voz** ao adicionar pacote, onde o navegador permite.
 
+## Rua primeiro e fluxo integrado (teste de rua de 03/11, ajustes de 04/11)
+- **Rua primeiro**: no modo Perto de mim, enquanto a rua em que você está (a do último endereço entregue) tiver entrega a até 1 km, o app fica nela; só depois vai para o mais perto, dentro da área. Num cruzamento, vale a rua que você vinha fazendo.
+- **Mesma rua com grafias diferentes em CEPs diferentes** vira uma rua só (nome parecido a até 1,5 km). Trechos da mesma rua só se separam com mais de 600 m entre casas.
+- **Rota refeita sozinha**: no modo Rota, entregou fora da ordem, a ordem é refeita a partir dali (exceto quando os sacos seguem o número da parada do app).
+- **Quantos pacotes ainda há na rua**: o cartão mostra "+3 pacotes nesta rua (nº 120, 180)".
+- **Entregues saem da lista** (botão "Mostrar os entregues" no fim) e do mapa.
+- **Barra da próxima parada em todas as abas**, com "Ir" e "Entreguei": não precisa voltar ao mapa.
+- **O GPS acompanha**: depois de "Entreguei", abre na próxima parada o mesmo app de navegação que você usou por último (Waze, Google Maps ou Apple Mapas). Ajustável em Ajustes.
+
+Simulação com GPS andando de parada em parada (rota de teste com uma rua longa escrita de dois jeitos e 5 transversais): a versão anterior, no modo Perto de mim, voltou 19 vezes a ruas já visitadas; esta versão voltou 0.
+
 ## Várias plataformas, uma rota só
 Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem) entram na mesma ordem por endereço.**
 - Cada pacote mostra de onde veio. O endereço que tem pacotes de mais de uma plataforma avisa: "Neste endereço tem entrega de Shopee e Mercado Livre: 1 Shopee, 1 Mercado Livre".
