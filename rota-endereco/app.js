@@ -145,11 +145,16 @@
     return best ? byTn.get(best.tn) : null;
   }
   function curStreet() {
-    if (typeof here !== "undefined" && here) {
-      const at = order.find(a => Core.hav(here, a) <= 80);
+    const last = lastDoneAddr();
+    const h = typeof here !== "undefined" && here ? here : null;
+    // A rua do último endereço resolvido vale enquanto você está perto dele (num cruzamento, a casa da transversal
+    // pode estar mais perto, mas você está na rua que vinha fazendo).
+    if (last && (!h || Core.hav(h, last) <= 300)) return last.street;
+    if (h) {
+      const at = order.filter(a => Core.hav(h, a) <= 80).sort((x, y) => Core.hav(h, x) - Core.hav(h, y))[0];
       if (at) return at.street;
     }
-    return lastDoneAddr()?.street || null;
+    return last?.street || null;
   }
   // Pendentes da mesma rua (fora este endereço), em ordem de número.
   const streetLeft = a => order.filter(x => x !== a && x.street && x.street === a.street && !addrDone(x)).sort((x, y) => x.num - y.num);
