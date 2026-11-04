@@ -1218,6 +1218,17 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 .lz-code { width: 52px; height: 52px; border-radius: 14px; background: var(--brand); color: var(--accent); display: grid; place-items: center; font: 800 1.5rem var(--font-display); }
 .together { background: var(--accent-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); font-weight: 400; }
 .together b { color: var(--accent-text); }
+
+/* Fluxo integrado (04/11): próxima parada em todas as abas, rua em destaque */
+.nextbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; background: var(--surface); border-top: 1px solid var(--line); padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); box-shadow: 0 -6px 18px rgba(22,24,29,0.06); }
+.nb-info { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; background: none; padding: 0; min-height: 48px; text-align: left; font-weight: 400; }
+.nb-n { width: 40px; height: 40px; border-radius: 50%; background: var(--next); color: var(--next-ink); display: grid; place-items: center; font: 800 1rem var(--font-display); }
+.nb-t { min-width: 0; display: grid; }
+.nb-t b { font: 800 0.98rem var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-t small { color: var(--muted); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-go, .nb-ok { min-height: 48px; padding: 8px 14px; }
+.streetline { display: block; font: 700 0.84rem var(--font-body); color: var(--accent-text); }
+.streetline.big { background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; font-size: 0.95rem; color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -1341,8 +1352,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
           <p class="sub">Endereços a até essa distância uns dos outros formam uma área. No modo Perto de mim, o app termina a área antes de ir para a próxima.</p>
         </div>
         <div class="card"><h2>Ao tocar em Entreguei</h2>
-          <select id="autoNav" aria-label="Navegação automática"><option value="off">Só mostrar a próxima parada</option><option value="waze">Abrir o Waze na próxima parada</option><option value="google">Abrir o Google Maps na próxima parada</option></select>
-          <p class="sub">Com a navegação automática, cada entrega custa um toque a menos.</p></div>
+          <select id="autoNav" aria-label="Navegação automática"><option value="auto">Abrir na próxima parada o mesmo app de navegação que usei por último (recomendado)</option><option value="waze">Abrir sempre o Waze</option><option value="google">Abrir sempre o Google Maps</option><option value="apple">Abrir sempre o Apple Mapas</option><option value="off">Não abrir: só mostrar a próxima parada</option></select>
+          <p class="sub">Assim o Waze ou o Google Maps já seguem para a próxima entrega depois de cada "Entreguei", sem você trocar o destino à mão.</p></div>
         <div class="card"><h2>Sacos</h2>
           <label for="bagMode" class="sub">Como você separou os pacotes nos sacos (de 10 em 10)</label>
           <select id="bagMode"><option value="shopee">Pelo número da parada na etiqueta da Shopee (1–10, 11–20…)</option><option value="app">Pelo número da parada no app</option><option value="area">Por área (700 m)</option><option value="none">Não separei</option></select>
@@ -1371,6 +1382,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     </section>
   </main>
 
+  <div class="nextbar" id="nextBar" hidden></div>
   <nav class="tabbar" aria-label="Menu">
     <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
     <a href="#lista" data-tab="lista"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Paradas</a>
@@ -1390,8 +1402,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261103f"></script>
-<script src="app.js?v=20261103f"></script>
+<script src="../rota-certa/core.js?v=20261104a"></script>
+<script src="app.js?v=20261104a"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>
