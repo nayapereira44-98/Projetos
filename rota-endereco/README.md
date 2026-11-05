@@ -118,6 +118,15 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Bipar: câmera aberta, etiqueta atrás de etiqueta (06/11)
+- O botão do meio da barra virou **Bipar**. Também está em Organizar e em Voltar. Ele abre a câmera ao vivo: basta apontar para a etiqueta (código de barras ou QR) e o app lê sozinho, **apita** e mostra **Parada** e **Grupo** em letra grande. Não precisa tirar foto.
+  - Pacote da rota: bip agudo e fica marcado como separado.
+  - Pacote que saiu da planilha, mas está guardado: bip duplo e **volta para a rota**.
+  - Pacote marcado como entregue: bip grave e botão para voltar para a rota.
+  - Código desconhecido: bip de erro e botão para digitar o endereço.
+- A mesma etiqueta parada na frente da câmera não apita de novo. No topo aparece o total bipado e quantos foram separados. Embaixo ficam os últimos códigos.
+- Botão de lanterna onde o celular permite. "Não lê? Tirar foto" volta para a foto. A câmera fecha sozinha quando o app vai para o fundo.
+
 ## Aba Voltar: pacote fora da planilha volta para a rota (06/11)
 - O app guarda no celular todos os pacotes das planilhas abertas nos últimos 10 dias, com endereço, CEP, parada e AT.
 - Pacote que já foi baixado no app da Shopee e sumiu da planilha nova, mas ainda está com você: na aba **Voltar**, tire foto da etiqueta (uma ou várias, pela câmera ou pela galeria) ou digite o código BR ou o final dele. O pacote volta para a rota com o endereço e a parada de antes e aparece no Grupo certo.
