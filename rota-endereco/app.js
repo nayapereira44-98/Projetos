@@ -120,11 +120,11 @@
   const atColor = at => RT_COLORS[Math.max(0, atList().indexOf(at)) % RT_COLORS.length];
   const atsOf = a => [...new Set(a.pkgs.filter(p => !p.src).map(p => p.at).filter(Boolean))];
   const rtChip = at => `<span class="chip rt" style="background:${atColor(at)}">Rota ${esc(atShort(at))}</span>`;
-  const rtChips = a => (multiAt() ? atsOf(a).map(rtChip).join("") : "");
-  const rtPrefix = p => (multiAt() && !p.src && p.at ? atShort(p.at) + " " : "");
+  const rtChips = a => ""; // a rota (AT) aparece só pela cor; o número que vale na etiqueta é a parada
+  const rtPrefix = p => "";
   const srcOf = p => p.src || "shopee";
   const platformsOf = a => [...new Set(a.pkgs.map(srcOf))];
-  const pkgLabel = p => (p.src ? PLATFORMS[p.src]?.name || p.src : rtPrefix(p) + (p.shopeeStop != null ? "Shopee " + p.shopeeStop : "Shopee, fora da rota"));
+  const pkgLabel = p => (p.src ? PLATFORMS[p.src]?.name || p.src : rtPrefix(p) + (p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº de parada"));
   // Próximas paradas pendentes, na ordem do app, a partir da próxima (máximo que o Google Maps aceita num link).
   // Sacos: a entregadora separa os pacotes de 10 em 10 (1–10, 11–20…), pelo número da etiqueta da Shopee ou pelo número da parada no app.
   let bagMode = store.get("re:bag", "shopee");
@@ -173,10 +173,7 @@
     const pk = l.reduce((t, x) => t + x.pkgs.filter(p => !pkgDone(p)).length, 0);
     return `+${pk} pacote${pk > 1 ? "s" : ""} nesta rua (nº ${l.slice(0, 5).map(x => x.nums?.join("/") || x.num).join(", ")}${l.length > 5 ? "…" : ""})`;
   };
-  const shopee = a => (multiAt() ? atsOf(a).map(at => {
-    const l = a.pkgs.filter(p => p.at === at && !p.src), st = [...new Set(l.map(p => p.shopeeStop).filter(v => v != null))].sort((x, y) => x - y);
-    return `${atShort(at)} Shopee ${st.join(" · ")}${l.some(p => p.shopeeStop == null) ? (st.length ? " · " : "") + "sem nº" : ""}`;
-  }).join(" | ") : null) ?? (a.shopeeStops.length ? "Shopee " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
+  const shopee = a => (a.shopeeStops.length ? "Parada " + a.shopeeStops.join(" · ") : "") + (a.unseq ? (a.shopeeStops.length ? " · " : "") + "sem nº" : "");
   // Modo "Perto de mim" (padrão): a parada da vez é a pendente mais perto de você, terminando a área atual antes de ir
   // para outra. Modo "Rota": segue a ordem calculada. Sem GPS, os dois seguem a ordem.
   let mode = store.get("re:mode", "perto");
@@ -475,9 +472,9 @@
     const q = ($("sepQ").value || "").trim().toUpperCase();
     const hit = p => !q || (/^\d{1,3}$/.test(q) ? p.shopeeStop === +q : p.tn.toUpperCase().includes(q));
     const tnHtml = tn => `${esc(tn.slice(0, -5))}<b>${esc(tn.slice(-5))}</b>`;
-    const line = (p, a, extraTxt) => `<button type="button" class="sp${isChecked(p) ? " on" : ""}${pkgDone(p) ? " gone" : ""}" data-sepchk="${esc(p.tn)}">
+    const line = (p, a, extraTxt) => `<button type="button" class="sp${isChecked(p) ? " on" : ""}${pkgDone(p) ? " gone" : ""}"${multiAt() && p.at && !p.src ? ` style="border-left:6px solid ${atColor(p.at)}"` : ""} data-sepchk="${esc(p.tn)}">
       <span class="box">${isChecked(p) ? ICON_CHECK : ""}</span>
-      <span class="spc"><span class="spp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? `Parada <b>${p.shopeeStop}</b>` : "<b>sem nº</b>"}${multiAt() && p.at && !p.src ? rtChip(p.at) : ""}</span>
+      <span class="spc"><span class="spp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? `Parada <b>${p.shopeeStop}</b>` : "<b>sem nº</b>"}</span>
       <span class="sptn mono">${tnHtml(p.tn)}${pkgDone(p) ? " · entregue" : ""}${extraTxt ? `<br><small>${extraTxt}</small>` : ""}</span></span></button>`;
     let html = "";
     if (sepBy === "end") {
@@ -916,7 +913,7 @@
       const g = rows.slice(i, j), pk = g.reduce((t, a) => t + a.pkgs.length, 0), left = g.filter(a => !addrDone(a)).length;
       if (multiAt() && (i === 0 || rtIdx(g[0]) !== rtIdx(rows[i - 1]))) {
         const at = atsOf(g[0])[0], pk = all().filter(p => p.at === at && !p.src);
-        if (at) html += `<div class="rt-head" style="background:${atColor(at)}"><b>Rota ${esc(atShort(at))}</b><span>${esc(at)} · faltam ${pk.filter(p => !pkgDone(p)).length} de ${pk.length} pacotes</span></div>`;
+        if (at) html += `<div class="rt-head" style="background:${atColor(at)}"><b>${esc(at)}</b><span>faltam ${pk.filter(p => !pkgDone(p)).length} de ${pk.length} pacotes</span></div>`;
       }
       if (areaOf(g[0]) !== areaOf(rows[i - 1]) || (multiAt() && rtIdx(g[0]) !== rtIdx(rows[i - 1]))) {
         const inA = order.filter(a => areaOf(a) === areaOf(g[0]));
