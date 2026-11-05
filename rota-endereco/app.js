@@ -860,6 +860,9 @@
     if (e.target.id === "scanOverlay") { $("scanOverlay").hidden = true; return; }
     if (!t) return;
     const d = t.dataset;
+    if (d.bip) return void openBip();
+    if (d.bipclose) return void closeBip();
+    if (d.biptorch) return void bipTorch();
     if (d.resume === "go") { derive(); ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); start(); return; }
     if (d.resume === "clear" || t.id === "clear") return twoTap(t, clearDay);
     if (d.importGo) return void runImport();
@@ -905,7 +908,7 @@
       toast("Endereço movido para o fim. Siga para a próxima.");
     }
     else if (d.add) openAdd();
-    else if (d.backadd != null) { openAdd(); addDraft.src = "shopee"; addDraft.code = d.backadd; openAdd(true); }
+    else if (d.backadd != null) { if (bip) closeBip(); openAdd(); addDraft.src = "shopee"; addDraft.code = d.backadd; openAdd(true); }
     else if (d.place != null) {
       const p = (D.unplaced || [])[+d.place]; if (!p) return;
       D.unplaced.splice(+d.place, 1); save();
@@ -1824,6 +1827,123 @@
         <label class="btn primary" for="photo">Tentar de novo</label><button type="button" class="line" data-close="1">Fechar</button>`);
     } catch { openScan(null, null, `<div class="miss"><b>Não consegui ler o código</b></div><button type="button" class="line" data-close="1">Fechar</button>`); }
   });
+
+  // ---------- Bipar: câmera aberta lendo etiqueta atrás de etiqueta, com bip ----------
+  // Aponte para a etiqueta: o app lê sozinho, apita e mostra a parada e o grupo. Pacote da rota fica marcado como
+  // separado; pacote que saiu da planilha (mas está guardado) volta para a rota; código desconhecido dá bip de erro.
+  let bip = null;
+  function tone(kind) {
+    try {
+      const ac = bip?.ac; if (!ac) return;
+      const seq = kind === "ok" ? [[1046, 0.09]] : kind === "back" ? [[880, 0.08], [1318, 0.1]] : kind === "done" ? [[523, 0.15]] : [[220, 0.18], [180, 0.22]];
+      let t = ac.currentTime;
+      seq.forEach(([f, d]) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = kind === "err" ? "square" : "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02); t += d + 0.04;
+      });
+    } catch {}
+  }
+  async function openBip() {
+    if (!active) return toast("Abra a planilha da rota antes.");
+    if (!window.ZXing) return toast("O leitor de código não carregou. Confira a internet.");
+    let ac = null;
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume?.(); } catch {}
+    bip = { ac, last: {}, done: new Set(), n: 0, log: [], stream: null, stop: false, rot: 0 };
+    $("bip").hidden = false;
+    $("bipRes").innerHTML = `<div class="bip-hint">Aponte a câmera para a etiqueta</div>`;
+    $("bipCount").textContent = "";
+    if (!navigator.mediaDevices?.getUserMedia) return bipNoCam("Este navegador não abre a câmera ao vivo.");
+    try {
+      bip.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (err) { return bipNoCam(err && err.name === "NotAllowedError" ? "Sem permissão para a câmera. Libere a câmera para este site nos ajustes do celular." : "Não consegui abrir a câmera."); }
+    if (!bip || bip.stop) { bip?.stream?.getTracks().forEach(t => t.stop()); return; }
+    const v = $("bipVideo");
+    v.srcObject = bip.stream; v.setAttribute("playsinline", ""); v.muted = true;
+    try { await v.play(); } catch {}
+    const tr = bip.stream.getVideoTracks()[0];
+    $("bipTorchBtn").hidden = !(tr?.getCapabilities?.().torch);
+    bipLoop();
+  }
+  function bipNoCam(msg) {
+    $("bipRes").innerHTML = `<div class="bip-card err"><b>${esc(msg)}</b><span>Use a foto da etiqueta.</span><label class="btn primary" for="photo">Tirar foto da etiqueta</label></div>`;
+  }
+  function closeBip() {
+    if (bip) { bip.stop = true; bip.stream?.getTracks().forEach(t => t.stop()); try { bip.ac?.close(); } catch {} }
+    bip = null; $("bipVideo").srcObject = null; $("bip").hidden = true;
+    renderAll();
+  }
+  async function bipTorch() {
+    const tr = bip?.stream?.getVideoTracks()[0]; if (!tr) return;
+    bip.torch = !bip.torch;
+    try { await tr.applyConstraints({ advanced: [{ torch: bip.torch }] }); } catch {}
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden && bip) closeBip(); });
+  // "Tirar foto" de dentro do Bipar: fecha a câmera ao vivo (o seletor de foto abre normalmente).
+  document.addEventListener("click", e => { if (bip && e.target.closest('#bip label[for="photo"]')) setTimeout(closeBip, 0); }, true);
+  function bipLoop() {
+    if (!bip || bip.stop) return;
+    const v = $("bipVideo");
+    if (v.readyState >= 2 && v.videoWidth) {
+      const vw = v.videoWidth, vh = v.videoHeight;
+      // Faixa central (onde fica o quadro guia), reduzida para ler rápido. Alterna em pé e deitada.
+      // Alterna: imagem inteira e o miolo ampliado (etiqueta longe ou perto).
+      const full = (bip.f = !bip.f);
+      const sx = full ? 0 : vw * 0.15, sy = full ? 0 : vh * 0.2, sw = full ? vw : vw * 0.7, sh = full ? vh : vh * 0.6;
+      const sc = Math.min(1, 1000 / Math.max(sw, sh)), dw = Math.round(sw * sc), dh = Math.round(sh * sc);
+      const cv = bip.cv || (bip.cv = document.createElement("canvas")), ctx = cv.getContext("2d", { willReadFrequently: true });
+      const rot = (bip.rot = (bip.rot + (full ? 1 : 0)) % 2);
+      cv.width = rot ? dh : dw; cv.height = rot ? dw : dh;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (rot) { ctx.translate(dh, 0); ctx.rotate(Math.PI / 2); }
+      ctx.drawImage(v, sx, sy, sw, sh, 0, 0, dw, dh);
+      try {
+        const r = (bip.reader || (bip.reader = new ZXing.MultiFormatReader())).decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv))), bip.hints || (bip.hints = zxHints()));
+        bipHandle(r.getText());
+      } catch {}
+    }
+    setTimeout(() => requestAnimationFrame(bipLoop), 60);
+  }
+  function bipHandle(text) {
+    const now = Date.now();
+    // Mesma etiqueta parada na frente da câmera: não apita de novo. Só repete se você afastar e voltar depois de 4 s.
+    const seenAt = bip.last[text];
+    bip.last[text] = now;
+    if (seenAt && now - seenAt < 4000) return;
+    const again = bip.done.has(text);
+    bip.done.add(text);
+    let p = findPkgByCode(text), kind, html;
+    if (p && !pkgDone(p)) {
+      D.checked = D.checked || {}; D.checked[p.tn] = D.checked[p.tn] || now; save();
+      const a = byTn.get(p.tn);
+      kind = "ok";
+      html = `<div class="bip-card ok"><span class="bip-big">Parada ${esc(p.shopeeStop ?? "s/n")}</span><span class="bip-grp">Grupo ${carOfAddr(a).i + 1}</span><span>${esc(a.label)}</span><span class="mono">${esc(p.tn)}</span></div>`;
+    } else if (p) {
+      kind = "done";
+      html = `<div class="bip-card done"><span class="bip-big">Parada ${esc(p.shopeeStop ?? "s/n")}</span><b>Este pacote está como entregue</b><span class="mono">${esc(p.tn)}</span><button type="button" class="line" data-p="${esc(p.tn)}">Não foi entregue: voltar para a rota</button></div>`;
+    } else {
+      const c = catFind(text);
+      if (c) {
+        const res = putBack(c);
+        D.checked = D.checked || {}; D.checked[c.tn] = now; save();
+        kind = "back";
+        html = `<div class="bip-card back"><b>Voltou para a rota</b><span class="bip-big">Parada ${esc(num(res.a, true))}</span><span class="bip-grp">Grupo ${carOfAddr(res.a).i + 1}</span><span>${esc(res.a.label)}</span></div>`;
+      } else {
+        kind = "err";
+        html = `<div class="bip-card err"><b>Não está na rota</b><span class="mono">${esc(text)}</span><button type="button" class="line" data-backadd="${esc(text)}">Colocar na rota (digitar endereço)</button></div>`;
+      }
+    }
+    tone(kind); buzz(kind === "err" ? [200, 80, 200] : 60);
+    if (kind !== "err" && !again) bip.n++;
+    if (!again) bip.log.unshift(kind === "err" ? "✕ " + tail(text) : (p ? (p.shopeeStop ?? "s/n") : "↩") + " · " + tail(p ? p.tn : text));
+    $("bipRes").innerHTML = html;
+    const pk = all().filter(x => !pkgDone(x)), got = pk.filter(isChecked).length;
+    $("bipCount").textContent = `${bip.n} bipado${bip.n === 1 ? "" : "s"} · ${got} de ${pk.length} separados`;
+    $("bipLog").textContent = bip.log.slice(0, 6).join("   ");
+    $("bip").classList.remove("flash-ok", "flash-err"); void $("bip").offsetWidth;
+    $("bip").classList.add(kind === "err" ? "flash-err" : "flash-ok");
+  }
 
   // ---------- conferir pacotes por foto (várias de uma vez) ----------
   // Lê o código de cada etiqueta, marca como conferido e mostra a área de cada pacote, para separar por área de uma vez.
