@@ -122,6 +122,8 @@
   const rtChip = at => `<span class="chip rt" style="background:${atColor(at)}">Rota ${esc(atShort(at))}</span>`;
   const rtChips = a => ""; // a rota (AT) aparece só pela cor; o número que vale na etiqueta é a parada
   const rtPrefix = p => "";
+  // Um número só em todo o app: a parada da Shopee, a mesma da etiqueta. Endereço com 2 paradas: "39+".
+  const num = (a, full) => (a.shopeeStops?.length ? (full ? a.shopeeStops.join(" · ") : a.shopeeStops[0] + (a.shopeeStops.length > 1 ? "+" : "")) : a.pkgs.every(p => p.src) ? (PLATFORMS[a.pkgs[0].src]?.short || "ML") : "s/n");
   const srcOf = p => p.src || "shopee";
   const platformsOf = a => [...new Set(a.pkgs.map(srcOf))];
   const pkgLabel = p => (p.src ? PLATFORMS[p.src]?.name || p.src : rtPrefix(p) + (p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº de parada"));
@@ -366,7 +368,7 @@
     const pend = a.pkgs.filter(p => !pkgDone(p)).length;
     const app = navAppNow() || "waze";
     bar.hidden = false;
-    bar.innerHTML = `<button type="button" class="nb-info" data-sel="${esc(a.key)}"><span class="nb-n">${a.n}</span><span class="nb-t"><b>${esc(a.label)}</b><small>${pend} pacote${pend > 1 ? "s" : ""}${zoneOf(a) ? " · carga " + zoneOf(a).code : ""}${streetLine(a) ? " · " + esc(streetLine(a)) : ""}</small></span></button>
+    bar.innerHTML = `<button type="button" class="nb-info" data-sel="${esc(a.key)}"><span class="nb-n">${num(a)}</span><span class="nb-t"><b>${esc(a.label)}</b><small>${pend} pacote${pend > 1 ? "s" : ""}${zoneOf(a) ? " · carga " + zoneOf(a).code : ""}${streetLine(a) ? " · " + esc(streetLine(a)) : ""}</small></span></button>
       <a class="btn line nb-go" href="${NAVS[app](a)}" target="_blank" rel="noopener">Ir</a>
       <button type="button" class="primary nb-ok" data-a="${esc(a.key)}">Entreguei</button>`;
   }
@@ -410,24 +412,49 @@
   setInterval(() => { if (active && sess.start && !sess.end) { renderTimer(); if (!$("v-painel").hidden) renderSession(); } }, 1000);
 
   // ---------- cartão do endereço ----------
+  // Pacote: a parada da Shopee em destaque e o final do código BR, como na etiqueta.
+  const pkgBtn = (p, a, tn) => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
+        <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
+        <span class="t"><b class="stp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº"}</b> · <b>${esc(tail(p.tn))}</b>${failOf(p) ? ` · <span class="att">não entregue: ${esc(failOf(p).r)}</span>` : ""}${!pkgDone(p) && !isChecked(p) ? ` · <span class="chk">não separado</span>` : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`;
+  // Visão única: o endereço da vez e todos os outros a até 500 m a pé (o mesmo "Carro" da separação), com todos os pacotes.
+  function carOfAddr(a) { const cs = carStops(), i = cs.findIndex(g => g.list.includes(a)); return { g: cs[i], i }; }
+  const leftOf = x => x.pkgs.filter(p => !pkgDone(p)).length;
+  function carroBox(a, tn, part) {
+    const { g, i } = carOfAddr(a);
+    const list = g ? g.list : [a];
+    const others = list.filter(x => x !== a && !addrDone(x)), doneA = list.filter(x => x !== a && addrDone(x));
+    const left = list.reduce((t, x) => t + leftOf(x), 0);
+    const blk = x => `<div class="cx${x === a ? " here" : ""}"><div class="cx-top">${x === a ? `<span class="cx-tag">AQUI</span>` : `<span class="cx-tag far">${fmtDist(walkM(a, x))} a pé</span>`}<b>${esc(x.label)}</b></div>
+      <div class="pkgs">${x.pkgs.map(p => pkgBtn(p, x, tn)).join("")}</div>
+      ${x !== a ? `<button type="button" class="line" data-sel="${esc(x.key)}">Ir para este endereço</button>` : ""}</div>`;
+    if (part === "rest") return others.length || doneA.length ? `<div class="carro"><div class="eyebrow">Também a pé daqui (Carro ${i + 1})</div>${others.map(blk).join("")}
+      ${doneA.length ? `<div class="sub">Já entregues neste carro: ${doneA.map(x => esc(x.label)).join(" · ")}</div>` : ""}</div>` : "";
+    return `<div class="carro"><div class="carro-head"><b>${g ? "Carro " + (i + 1) : "Este endereço"}</b><span>${others.length ? `${others.length + (addrDone(a) ? 0 : 1)} endereços a pé · ` : ""}faltam ${left} pacote${left === 1 ? "" : "s"}</span></div>
+      ${others.length ? `<div class="together">Além deste, mais <b>${others.length} endereço${others.length > 1 ? "s" : ""}</b> a pé com <b>${others.reduce((t, x) => t + leftOf(x), 0)} pacote${others.reduce((t, x) => t + leftOf(x), 0) > 1 ? "s" : ""}</b>. Leve todos do Carro ${i + 1}.</div>` : ""}
+      ${blk(a)}</div>`;
+  }
+  // Para o cartão fechado: quantos endereços e pacotes ainda tem a pé a partir daqui.
+  function carroChip(a) {
+    const { g, i } = carOfAddr(a);
+    if (!g) return "";
+    const others = g.list.filter(x => x !== a && !addrDone(x));
+    const n = others.reduce((t, x) => t + leftOf(x), 0);
+    return `<span class="chip car">Carro ${i + 1}${others.length ? ` · +${others.length} end. a pé (${n} pct)` : ""}</span>`;
+  }
   function addrCard(a, tn) {
     const nx = nextAddr();
     const pend = a.pkgs.filter(p => !pkgDone(p));
-    const sameStreet = order.filter(x => x !== a && x.street === a.street && !addrDone(x)).sort((x, y) => x.num - y.num);
-    const near = order.filter(x => x !== a && x.street !== a.street && !addrDone(x)).map(x => ({ x, d: Core.hav(a, x) })).filter(o => o.d <= 100).sort((p, q) => p.d - q.d).slice(0, 3);
     return `
-      <div class="eyebrow">${a === nx ? (mode === "perto" && here ? "Mais perto de você" : "Próxima parada") : "Parada"} ${a.n} de ${order.length}${addrDone(a) ? " · entregue" : ""}</div>
+      <div class="eyebrow">${a === nx ? (mode === "perto" && here ? "Mais perto de você" : "Próxima parada") : "Endereço"} · ${order.filter(x => !addrDone(x)).length} endereços faltando${addrDone(a) ? " · entregue" : ""}</div>
+      <div class="bigstop">Parada ${esc(num(a, true))}</div>
       <div><div class="addr-big">${esc(a.label)}</div><div class="sub">${esc([a.bairro, ...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8).map(c => "CEP " + c.slice(0, 5) + "-" + c.slice(5)))].filter(Boolean).join(" · "))}</div></div>
       ${issues.has(a.key) ? `<button type="button" class="issue-bar" data-issues="1"><b>Conferir endereço</b><span>${esc([issues.get(a.key).pin, issues.get(a.key).cep].filter(Boolean).join(" "))}</span></button>` : ""}
       ${a.pkgs.some(p => D.fix?.[p.tn]) ? `<button type="button" class="line" data-fixundo="${esc(a.key)}">Posição corrigida por você · voltar à da planilha</button>` : ""}
       ${streetLine(a) ? `<div class="streetline big">${esc(streetLine(a))}. Faça a rua inteira antes de sair.</div>` : ""}
-      <div class="chips">${walkChip(a)}${zoneChip(a, true)}${etaChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${walkChip(a)}${zoneChip(a, true)}${etaChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
-      ${a.unseq ? `<div class="offroute">${a.unseq === a.pkgs.length ? "Este endereço está" : `${a.unseq} pacote${a.unseq > 1 ? "s" : ""} deste endereço ${a.unseq > 1 ? "estão" : "está"}`} <b>fora da rota da Shopee</b> (sem número de parada). No app da Shopee ${a.unseq > 1 ? "eles aparecem" : "ele aparece"} no topo da lista, longe da parada${a.shopeeStops.length ? " " + a.shopeeStops.join(" e ") : ""}.</div>` : ""}
-      ${a.pkgs.length > 1 && pend.length ? `<div class="together">Este endereço tem ${a.pkgs.length} pacotes${a.shopeeStops.length > 1 ? ` de paradas diferentes da Shopee (${a.shopeeStops.join(" e ")})` : ""}. Entregue todos agora.</div>` : ""}
-      <div class="pkgs">${a.pkgs.map(p => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
-        <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b>${esc(tail(p.tn))}</b> · ${esc(pkgLabel(p))}${failOf(p) ? ` · <span class="att">não entregue: ${esc(failOf(p).r)}</span>` : ""}${bagOf(p, a) && bagMode !== "none" && !p.src ? ` · <span class="bagt">saco ${bagOf(p, a)}</span>` : ""}${!pkgDone(p) ? (isChecked(p) ? ` · <span class="chk on">conferido</span>` : ` · <span class="chk">sem foto</span>`) : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`).join("")}</div>
+      ${a.unseq ? `<div class="offroute">${a.unseq} pacote${a.unseq > 1 ? "s" : ""} <b>sem nº de parada</b>: no app da Shopee fica no topo da lista.</div>` : ""}
+      ${carroBox(a, tn)}
       <div class="nav3">
         <a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a>
         <a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a>
@@ -438,11 +465,9 @@
       ${(D.later || []).includes(a.key) && pend.length ? `<div class="offroute">Você marcou para voltar depois. Este endereço está no fim da fila.</div>` : ""}
       ${pend.length ? `<button type="button" class="primary deliver" data-a="${esc(a.key)}">Entreguei ${pend.length > 1 ? `os ${pend.length} pacotes` : "aqui"}</button>
         <button type="button" class="line" data-fail="${esc(a.key)}">Não consegui entregar</button>` : `<button type="button" class="line" data-a="${esc(a.key)}">${a.pkgs.some(pkgOk) ? "Desfazer entrega" : "Desfazer ocorrência"}</button>`}
+      ${carroBox(a, tn, "rest")}
       ${proofBox(a)}
-      ${!sess.start ? `<button type="button" class="brand" data-start="1">Iniciar entregas (contar o tempo)</button>` : ""}
-      ${sameStreet.length || near.length ? `<div class="street-more"><div class="eyebrow">Ainda nesta rua e por perto</div>
-        ${sameStreet.map(x => `<button type="button" data-sel="${esc(x.key)}"><span><b>nº ${x.nums?.join(" / ") || "?"}</b> · parada ${x.n} · ${x.pkgs.length} pct${shopee(x) ? " · " + shopee(x) : ""}</span></button>`).join("")}
-        ${near.map(({ x, d }) => `<button type="button" data-sel="${esc(x.key)}"><span><b>${esc(x.label)}</b> · ${Math.round(d)} m · parada ${x.n}</span></button>`).join("")}</div>` : ""}`;
+      ${!sess.start ? `<button type="button" class="brand" data-start="1">Iniciar entregas (contar o tempo)</button>` : ""}`;
   }
 
   // Da parada anterior (ou de onde você está) até esta: a pé até 500 m, senão de carro.
@@ -485,13 +510,13 @@
         html += `<div class="car-head"><b>Carro ${gi + 1}</b><span>${rows.length} endereço${rows.length > 1 ? "s" : ""} a pé · ${n} pacote${n > 1 ? "s" : ""}${g.park.bairro ? " · " + esc(g.park.bairro) : ""}</span></div>`;
         rows.forEach(({ a, ps }) => {
           const ceps = [...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8))].map(c => c.slice(0, 5) + "-" + c.slice(5));
-          html += `<div class="sep-addr"><div class="sa-top"><span class="sa-n">${a.n}</span><span><b>${esc(a.label)}</b><br><small>${esc([ceps.length ? "CEP " + ceps.join(", ") : "", a.bairro].filter(Boolean).join(" · "))}${a.pkgs.length > 1 ? ` · <b>${a.pkgs.length} pacotes juntos</b>` : ""}</small></span></div>${ps.map(p => line(p, a)).join("")}</div>`;
+          html += `<div class="sep-addr"><div class="sa-top"><span class="sa-n">${num(a)}</span><span><b>${esc(a.label)}</b><br><small>${esc([ceps.length ? "CEP " + ceps.join(", ") : "", a.bairro].filter(Boolean).join(" · "))}${a.pkgs.length > 1 ? ` · <b>${a.pkgs.length} pacotes juntos</b>` : ""}</small></span></div>${ps.map(p => line(p, a)).join("")}</div>`;
         });
       });
     } else {
       const cs = carStops(), carOf = new Map(); cs.forEach((g, i) => g.list.forEach(a => carOf.set(a, i + 1)));
       const rows = all().filter(p => hit(p) && (q || !pkgDone(p))).sort((x, y) => (x.src ? 1 : 0) - (y.src ? 1 : 0) || atList().indexOf(x.at) - atList().indexOf(y.at) || (x.shopeeStop ?? 9999) - (y.shopeeStop ?? 9999));
-      html = rows.map(p => { const a = byTn.get(p.tn); return line(p, a, `vai no endereço <b>${a.n}</b> · ${esc(a.label)} · carro ${carOf.get(a)}`); }).join("");
+      html = rows.map(p => { const a = byTn.get(p.tn); return line(p, a, `vai em <b>${esc(a.label)}</b> · carro ${carOf.get(a)}`); }).join("");
     }
     box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para separar."}</p>`;
   }
@@ -512,10 +537,10 @@
       const pend = a.pkgs.filter(p => !pkgDone(p));
       sh.innerHTML = `<button type="button" class="grabwrap" data-grab="1" aria-label="Abrir o cartão"><span class="grab"></span></button>
         <div class="mini${here && a === nextAddr() && Core.hav(here, a) < 60 ? " arrived" : ""}">
-          <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${a.n}</span>
+          <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${num(a)}</span>
           <button type="button" class="mini-body" data-grab="1">
             <b>${esc(a.label)}</b>
-            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${walkChip(a)}${zoneChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
+            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${carroChip(a)}${walkChip(a)}${zoneChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
             <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
             ${streetLine(a) ? `<span class="streetline">${esc(streetLine(a))}</span>` : ""}
           </button>
@@ -567,7 +592,7 @@
     const left = a.pkgs.filter(p => !pkgDone(p)).length;
     const size = cls === "next" ? 46 : cls === "far" ? 26 : 34;
     const ring = multiAt() && atsOf(a)[0] ? ` style="border:3px solid ${atColor(atsOf(a)[0])}"` : "";
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}"${ring}>${addrDone(a) ? "✓" : a.n}${left > 1 ? `<span class="cnt">${left}</span>` : ""}</div>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}${a.key === selKey ? " sel" : ""}"${ring}>${addrDone(a) ? "✓" : num(a)}${left > 1 ? `<span class="cnt">${left}</span>` : ""}</div>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
   }
   const visibleStops = () => order.filter(a => showDone || !addrDone(a));
   function drawMarkers(fit) {
@@ -922,14 +947,14 @@
       }
       html += `<div class="street"><div class="street-head"><b>${esc(streetName(g[0]))}</b><span>${esc(g[0].bairro)} · ${pk} pct${left ? ` · faltam ${left}` : " · feita"}</span></div>
         ${g.map(a => `<button type="button" class="row${addrDone(a) ? " done" : ""}${a === nx ? " next" : ""}" data-sel="${esc(a.key)}">
-          <span class="n">${addrDone(a) ? "✓" : a.n}</span>
+          <span class="n">${addrDone(a) ? "✓" : num(a)}</span>
           <span><span class="num">${a.nums?.length ? "nº " + a.nums.join(" / ") : esc(a.label)}</span><br><span class="sub">${[shopee(a), ...platformsOf(a).filter(k => k !== "shopee").map(k => PLATFORMS[k]?.name || k)].filter(Boolean).join(" · ") || "fora da rota"}${a.pkgs.some(p => attempt(p) > 1) ? " · <b class=\"att\">nova tentativa</b>" : ""}${issues.has(a.key) ? " · <b class=\"att\">conferir endereço</b>" : ""}${zoneOf(a) ? " · carga " + zoneOf(a).code : ""}${etaMap.has(a.key) && !addrDone(a) ? " · ~" + hm(etaMap.get(a.key)) : ""}${a.pkgs.some(failOf) ? " · <b class=\"att\">ocorrência</b>" : ""} · <span class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</span></span></span>
           <span class="count">${a.pkgs.length}${bagsOf(a).length ? `<br><small>${bagsOf(a).join("+")}</small>` : ""}${!addrDone(a) ? `<br><small class="${checkedOf(a) === a.pkgs.length ? "chk on" : "chk"}">📷 ${checkedOf(a)}/${a.pkgs.length}</small>` : ""}</span></button>`).join("")}</div>`;
       i = j;
     }
     const leg = nextLeg();
     $("legBtn").hidden = leg.length < 2;
-    if (leg.length > 1) { $("legBtn").href = Core.links.gmapsLeg(leg); $("legBtn").textContent = `Próximas ${leg.length} paradas no Google Maps (${leg[0].n} a ${leg[leg.length - 1].n})`; }
+    if (leg.length > 1) { $("legBtn").href = Core.links.gmapsLeg(leg); $("legBtn").textContent = `Próximas ${leg.length} paradas no Google Maps`; }
     const pend = all().filter(p => !pkgDone(p)), got = pend.filter(isChecked).length;
     $("checkBox").innerHTML = pend.length ? `<div class="top" style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>Conferência na separação</b><span class="sub">${got} de ${pend.length} conferidos${got < pend.length ? ` · faltam ${pend.length - got}` : " · tudo conferido ✓"}</span></div>
       <div class="bar" style="background:var(--line)"><i style="width:${(got / pend.length * 100).toFixed(0)}%;background:${got === pend.length ? "var(--ok)" : "var(--brand)"}"></i></div>
@@ -1365,7 +1390,7 @@
       ${issues.size ? [...issues].map(([key, it]) => {
         const a = byKey.get(key); if (!a) return "";
         return `<div class="issue">
-          <div class="issue-top"><span class="mini-n">${a.n}</span><span><b>${esc(a.label)}</b><br><span class="sub">${esc([shopee(a), a.cep ? "CEP " + fmtCep(a.cep) : "", a.pkgs.length + " pacote" + (a.pkgs.length > 1 ? "s" : "")].filter(Boolean).join(" · "))}</span></span></div>
+          <div class="issue-top"><span class="mini-n">${num(a)}</span><span><b>${esc(a.label)}</b><br><span class="sub">${esc([shopee(a), a.cep ? "CEP " + fmtCep(a.cep) : "", a.pkgs.length + " pacote" + (a.pkgs.length > 1 ? "s" : "")].filter(Boolean).join(" · "))}</span></span></div>
           ${it.pin ? `<p>📍 ${esc(it.pin)}</p>` : ""}${it.cep ? `<p>✉️ ${esc(it.cep)}</p>` : ""}
           <div class="issue-opts">
             ${opt(key, "near", it.near, "pelas casas vizinhas", a)}${opt(key, "label", it.label, "pela rua da etiqueta", a)}${opt(key, "byCep", it.byCep, "pela rua do CEP", a)}
@@ -1522,7 +1547,7 @@
     $("scanOverlay").hidden = true;
     numberOrder(); fillAjustes(); drawMarkers(false); renderAll();
     const a = byTn.get(p.tn);
-    toast(`Entrou na rota como parada ${a.n}`);
+    toast("Entrou na rota");
     select(a.key);
   }
 
@@ -1685,7 +1710,7 @@
   function openScan(a, tn, missHtml) {
     $("scanOverlay").hidden = false;
     const tp = tn && all().find(p => p.tn === tn);
-    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${a.n}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
+    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${esc(num(a, true))}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sel="${esc(a.key)}">Ver no mapa</button><button type="button" class="line" data-close="1">Fechar</button></div>`;
   }
   $("photo").addEventListener("change", async e => {

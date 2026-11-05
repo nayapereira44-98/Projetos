@@ -896,6 +896,19 @@ main { flex: 1; min-height: 0; position: relative; }
 .area-head b { font: 800 1.05rem var(--font-display); }
 .area-head span { font-size: 0.82rem; }
 .chip.rt { color: #fff; font-weight: 800; }
+.bigstop { font: 800 1.6rem var(--font-display); color: var(--brand); }
+.chip.car { background: var(--ink); color: var(--surface); font-weight: 800; }
+.carro { display: grid; gap: 10px; }
+.carro-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; background: var(--ink); color: var(--surface); border-radius: 12px; padding: 8px 12px; }
+.carro-head b { font: 800 1.1rem var(--font-display); }
+.carro-head span { font-size: .85rem; opacity: .85; }
+.cx { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 16px; padding: 10px; }
+.cx.here { border: 2px solid var(--brand); }
+.cx-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cx-top b { font: 800 1.05rem var(--font-display); }
+.cx-tag { background: var(--brand); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: .75rem; font-weight: 800; }
+.cx-tag.far { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+.pkg .t b.stp { font: 800 1.15rem var(--font-display); letter-spacing: 0; }
 .map-fail { position: absolute; inset: 80px 16px auto; z-index: 500; background: var(--surface); border-radius: 16px; padding: 16px; display: grid; gap: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
 .map-fail span { color: var(--muted); }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--bg); padding: 4px; border-radius: 14px; }
@@ -1453,7 +1466,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261105a"></script>
-<script src="app.js?v=20261105b"></script>
+<script src="app.js?v=20261105c"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

@@ -118,6 +118,11 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Visão única: um número só e o "Carro" na rua (05/11)
+- O único número do app é a **parada da Shopee**, a mesma da etiqueta: no pino do mapa, no cartão ("Parada 39 · 40"), na lista e na separação. Um endereço com mais de uma parada aparece como "39+" no pino. A ordem interna do app não aparece mais.
+- O cartão da entrega mostra o **Carro** inteiro, o mesmo grupo da tela Separar: primeiro "AQUI" com todos os pacotes do endereço (parada + final do BR) e os botões. Depois vem "Também a pé daqui", com os outros endereços a até 500 m e os pacotes de cada um. Dá para marcar entregue direto ali.
+- No cartão fechado, o chip "Carro 1 · +2 end. a pé (3 pct)" avisa que ainda tem pacote perto antes de você ir embora.
+
 ## Separação por endereço, 500 m a pé e mapa mais firme (05/11)
 - **Separar** (abre sozinho ao subir a planilha, e pelo botão no topo de Paradas): cada pacote com a **parada da Shopee** em destaque e o **código BR completo** (final em negrito), agrupado por endereço na ordem da entrega, com CEP e bairro. Toque para marcar como separado ou escaneie a etiqueta. Há busca pela parada (ex.: 48) ou pelo final do BR, e um botão para imprimir.
 - **Por parada Shopee**: o de-para ao contrário. Pega o pacote da "Parada 48" e o app diz em que endereço e em que "Carro" ele vai.
