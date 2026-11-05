@@ -896,6 +896,33 @@ main { flex: 1; min-height: 0; position: relative; }
 .area-head b { font: 800 1.05rem var(--font-display); }
 .area-head span { font-size: 0.82rem; }
 .chip.rt { color: #fff; font-weight: 800; }
+.map-fail { position: absolute; inset: 80px 16px auto; z-index: 500; background: var(--surface); border-radius: 16px; padding: 16px; display: grid; gap: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.map-fail span { color: var(--muted); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--bg); padding: 4px; border-radius: 14px; }
+.seg button { background: transparent; color: var(--muted); border: 0; box-shadow: none; min-height: 42px; border-radius: 10px; font-weight: 800; }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.sep-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sep-head span { color: var(--muted); font-size: .85rem; }
+#sepBar { display: block; height: 100%; border-radius: inherit; }
+.car-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; background: var(--ink); color: var(--surface); border-radius: 12px; padding: 8px 12px; margin-top: 8px; }
+.car-head b { font: 800 1.1rem var(--font-display); }
+.car-head span { font-size: .82rem; opacity: .85; }
+.sep-addr { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: grid; gap: 6px; }
+.sa-top { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; }
+.sa-top b { font: 800 1.05rem var(--font-display); }
+.sa-top small { color: var(--muted); }
+.sa-n { width: 38px; height: 38px; border-radius: 50%; background: var(--pin); color: #fff; display: grid; place-items: center; font: 800 1rem var(--font-display); }
+.sp { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; text-align: left; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px; min-height: 52px; font-weight: 400; color: var(--ink); box-shadow: none; }
+.sp .box { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--muted); display: grid; place-items: center; }
+.sp.on { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); border-color: var(--ok); }
+.sp.on .box { background: var(--ok); border-color: var(--ok); color: #fff; }
+.sp.gone { opacity: .5; }
+.spc { display: grid; gap: 2px; min-width: 0; }
+.spp { font-size: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.spp b { font: 800 1.35rem var(--font-display); }
+.sptn { font-size: .9rem; word-break: break-all; }
+.sptn b { font-size: 1.1rem; }
+@media print { .tabbar, #nextBar, header, .sep-top .nav3, .sep-top .search, .seg, #v-separar > .pad > a { display: none !important; } .sp { break-inside: avoid; } }
 .rt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; color: #fff; border-radius: 12px; padding: 8px 12px; margin-top: 10px; }
 .rt-head b { font: 800 1.05rem var(--font-display); }
 .rt-head span { font-size: 0.82rem; }
@@ -1287,12 +1314,30 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     <section class="view" id="v-lista" hidden>
       <div class="pad">
         <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
+        <a class="btn primary loadbtn" href="#separar"><b>Separar pacotes por endereço</b><span>Parada Shopee + código BR de cada pacote, na ordem da entrega</span></a>
         <button type="button" class="line loadbtn" data-load="1"><b>Ordem de carga do veículo</b><span>Onde colocar cada pacote no carro, na ordem da rota</span></button>
         <div id="issueBox"></div>
         <div class="card" id="checkBox" style="gap:10px"></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
         <div id="list" style="display:grid;gap:14px"></div>
+      </div>
+    </section>
+
+    <!-- Separação -->
+    <section class="view" id="v-separar" hidden>
+      <div class="pad">
+        <div class="card sep-top">
+          <h2>Separar os pacotes</h2>
+          <div class="sep-head" id="sepHead"></div>
+          <div class="bar" style="background:var(--line)"><i id="sepBar" style="background:var(--ok)"></i></div>
+          <div class="seg"><button type="button" data-sepby="end">Por endereço</button><button type="button" data-sepby="shp">Por parada Shopee</button></div>
+          <p class="sub">Toque no pacote para marcar como separado, ou escaneie a etiqueta. "Carro 1, 2, 3…" são os lugares onde você para o carro: os endereços de cada um ficam a até 500 m a pé.</p>
+          <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photo">Escanear etiqueta</label><button type="button" class="line" data-sepprint="1">Imprimir</button></div>
+          <div class="search"><input id="sepQ" type="search" autocomplete="off" autocapitalize="characters" placeholder="Parada Shopee (ex.: 48) ou final do BR" aria-label="Buscar pacote"></div>
+        </div>
+        <div id="sepList" style="display:grid;gap:10px"></div>
+        <a class="btn primary" href="#mapa">Pronto, ir para o mapa</a>
       </div>
     </section>
 
@@ -1405,10 +1450,10 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261104b"></script>
-<script src="app.js?v=20261104b"></script>
+<script src="../rota-certa/core.js?v=20261105a"></script>
+<script src="app.js?v=20261105a"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

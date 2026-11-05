@@ -118,6 +118,14 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Separação por endereço, 500 m a pé e mapa mais firme (05/11)
+- **Separar** (abre sozinho ao subir a planilha, e pelo botão no topo de Paradas): cada pacote com a **parada da Shopee** em destaque e o **código BR completo** (final em negrito), agrupado por endereço na ordem da entrega, com CEP e bairro. Toque para marcar como separado ou escaneie a etiqueta. Há busca pela parada (ex.: 48) ou pelo final do BR, e um botão para imprimir.
+- **Por parada Shopee**: o de-para ao contrário. Pega o pacote da "Parada 48" e o app diz em que endereço e em que "Carro" ele vai.
+- **Carro 1, 2, 3…**: lugares onde você estaciona. Os endereços de cada um ficam a até 500 m a pé, pelas ruas (linha reta x 1,25). As áreas agora têm no máximo 500 m.
+- O cartão da entrega mostra **"a pé · 230 m"** ou **"de carro · 1,2 km"** a partir da parada anterior ou de onde você está.
+- Mapa: o Leaflet vem do próprio site, não da CDN. O app espera no máximo 3 s pela rede e depois usa a cópia guardada. Se o mapa do OpenStreetMap falhar, ele troca para o da Esri. Se o mapa não carregar, aparece um aviso com o botão "Ver a lista", em vez da tela em branco.
+- Projetos avaliados (05/11): planejador-de-rotas (MIT; dele veio o recálculo do tamanho do mapa e o cálculo de reserva sem OSRM, que já tínhamos), Fleetbase (plataforma de frota com servidor, grande demais para hoje), roteirizador e Routemax (servidor e app de gerente, não servem para o motorista com planilha).
+
 ## Duas rotas (duas ATs) no mesmo dia (04/11)
 - A planilha pode trazer mais de uma AT (ex.: `AT20261103C474W` e `AT20261104C5Y84`). O app separa por AT e mostra cada rota com o final da AT e uma cor: **Rota 4W**, **Rota 84**.
 - O card, o anel do pino no mapa, a conferência e a busca mostram a rota de cada pacote. Os sacos e as faixas da Shopee recebem o prefixo da rota ("4W 11–20", "84 Shopee 5"), porque as duas ATs começam na parada 1.
