@@ -132,6 +132,7 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - A lista de Paradas é agrupada por rota, com "faltam N de M" em cada uma.
 - Subir uma planilha de outra AT com o dia em andamento: o app pergunta se é para **Somar as rotas no mesmo dia** ou **Começar dia novo só com esta**. Subir de novo a planilha de uma AT que já está no dia atualiza só aquela rota.
 - O percurso continua um só, por endereço, juntando as duas rotas.
+- (05/11) Nos cartões, na separação e nos sacos aparece só o **número da parada** ("Parada 1 · 2"), sem "Rota 84". A AT aparece apenas pela cor (anel do pino, faixa na separação) e no título de cada grupo da lista.
 
 ## Regras de rota
 - **CEP + número da casa** também identifica o mesmo endereço, mesmo com a rua escrita de outro jeito ou a coordenada imprecisa (até 300 m). Um CEP usado em mais de duas ruas (CEP geral da cidade) é ignorado. O cartão mostra o CEP.
