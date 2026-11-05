@@ -818,7 +818,7 @@ main { flex: 1; min-height: 0; position: relative; }
 /* Barra de abas */
 .tabbar {
   background: var(--surface); border-top: 1px solid var(--line);
-  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end;
   padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
 }
 .tabbar a, .tabbar label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; color: var(--muted); text-decoration: none; font-size: 0.72rem; font-weight: 700; cursor: pointer; min-height: 52px; justify-content: center; }
@@ -896,6 +896,12 @@ main { flex: 1; min-height: 0; position: relative; }
 .area-head b { font: 800 1.05rem var(--font-display); }
 .area-head span { font-size: 0.82rem; }
 .chip.rt { color: #fff; font-weight: 800; }
+.btn.big { min-height: 64px; font-size: 1.1rem; }
+.bk { display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.bk.ok { border: 2px solid var(--ok); }
+.bk.no { border: 2px dashed var(--warn, #e8590c); }
+.bk.done { opacity: .6; }
+.bk span { color: var(--muted); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; }
 .tile { display: grid; gap: 0; place-items: center; padding: 6px 2px; min-height: 54px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 400; }
 .tile b { font: 800 1.2rem var(--font-display); }
@@ -910,7 +916,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .tk { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 6px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 700; }
 .tk .i { width: 16px; height: 16px; }
 .tk.on { background: var(--ok); border-color: var(--ok); color: #fff; }
-.tabbar a, .tabbar label { font-size: 0.68rem; }
+.tabbar a, .tabbar label { font-size: 0.62rem; }
 .bigstop { font: 800 1.6rem var(--font-display); color: var(--brand); }
 .chip.car { background: var(--ink); color: var(--surface); font-weight: 800; }
 .carro { display: grid; gap: 10px; }
@@ -1369,6 +1375,21 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
       </div>
     </section>
 
+    <!-- Voltar pacote para a rota -->
+    <section class="view" id="v-voltar" hidden>
+      <div class="pad">
+        <div class="card">
+          <h2>Pacote fora da rota</h2>
+          <p class="sub">Já deu baixa e o pacote sumiu da planilha, mas ele ainda está com você? Tire foto da etiqueta e ele <b>volta para a rota</b> com o endereço e a parada de antes. Dá para fotografar vários de uma vez.</p>
+          <label class="btn primary big" for="photoBack">Tirar foto da etiqueta</label>
+          <label class="btn line" for="photoBackMany">Escolher fotos da galeria</label>
+          <div class="search" style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="backCode" type="search" autocomplete="off" autocapitalize="characters" placeholder="Ou digite o código BR (ou o final)" aria-label="Código do pacote"><button type="button" class="brand" id="backGo">Voltar</button></div>
+        </div>
+        <div id="backOut" style="display:grid;gap:10px"></div>
+        <div class="card" id="backList" style="gap:8px"></div>
+      </div>
+    </section>
+
     <!-- Painel -->
     <section class="view" id="v-painel" hidden>
       <div class="pad">
@@ -1466,6 +1487,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     <a href="#lista" data-tab="lista"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Paradas</a>
     <a href="#separar" data-tab="separar"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Organizar</a>
     <label class="scan" for="photo"><span class="circle"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></span>Escanear</label>
+    <a href="#voltar" data-tab="voltar"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Voltar</a>
     <a href="#painel" data-tab="painel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel</a>
     <a href="#ajustes" data-tab="ajustes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</a>
   </nav>
@@ -1474,6 +1496,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <input id="fileOther" type="file" accept=".xlsx,.csv,text/csv">
 <input id="photo" type="file" accept="image/*" capture="environment">
 <input id="photoMany" type="file" accept="image/*" multiple>
+<input id="photoBack" type="file" accept="image/*" capture="environment">
+<input id="photoBackMany" type="file" accept="image/*" multiple>
 <input id="restoreFile" type="file" accept=".json,application/json">
 <input id="proofPhoto" type="file" accept="image/*" capture="environment">
 <div class="overlay" id="scanOverlay" hidden><section class="sheet" id="scanSheet"></section></div>
@@ -1481,8 +1505,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261105a"></script>
-<script src="app.js?v=20261105d"></script>
+<script src="../rota-certa/core.js?v=20261106a"></script>
+<script src="app.js?v=20261106a"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>
