@@ -96,6 +96,40 @@
     Object.keys(seen).forEach(k => { seen[k] = seen[k].filter(x => x >= cut); if (!seen[k].length) delete seen[k]; });
     store.set("re:seen", seen);
   }
+  // Catálogo: todo pacote de toda planilha aberta nos últimos 10 dias, com endereço e parada. Serve para pôr de volta
+  // na rota um pacote que já foi baixado no app da Shopee e sumiu da planilha nova.
+  let cat = store.get("re:cat", {});
+  function catAdd(pkgs) {
+    const t = Date.now();
+    pkgs.forEach(p => { if (p && p.tn) { const { olat, olng, ...q } = p; cat[p.tn] = { ...q, _t: t }; } });
+    const cut = t - 10 * 864e5;
+    Object.keys(cat).forEach(k => { if (!(cat[k]._t > cut)) delete cat[k]; });
+    try { store.set("re:cat", cat); } catch {}
+  }
+  const catFind = text => {
+    const t = String(text || "").toUpperCase().replace(/\s+/g, "");
+    if (!t) return null;
+    if (cat[t]) return cat[t];
+    const k = Object.keys(cat).find(k => t.includes(k.toUpperCase()) || (t.length >= 4 && k.toUpperCase().endsWith(t)));
+    return k ? cat[k] : null;
+  };
+  // Coloca o pacote de volta na rota (pendente), com o endereço e a parada que ele tinha.
+  function putBack(c) {
+    const inRoute = all().find(p => p.tn === c.tn);
+    if (inRoute) {
+      const was = pkgDone(inRoute);
+      delete ok[inRoute.tn]; if (D.fail) delete D.fail[inRoute.tn];
+      save(); renderAll();
+      return { a: byTn.get(inRoute.tn), msg: was ? "Estava como entregue: voltou para a rota" : "Já estava na rota" };
+    }
+    const { _t, ...q } = c;
+    const p = { ...q, back: Date.now() };
+    D.extra = (D.extra || []).concat(p);
+    delete ok[p.tn]; if (D.fail) delete D.fail[p.tn];
+    derive(); plan(nextAddr()?.key); save();
+    numberOrder(); fillAjustes(); drawMarkers(false); renderAll();
+    return { a: byTn.get(p.tn), msg: "Voltou para a rota" };
+  }
   const attempt = p => (seen[p.tn] || []).filter(x => x <= dayOf(D?.createdAt || Date.now())).length || 1;
   const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
   const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
@@ -300,6 +334,7 @@
     try {
       const { pkgs } = Core.parseRows(await readXlsxFile(f));
       if (!pkgs.length) throw new Error("A planilha não tem pacotes com coordenadas.");
+      catAdd(pkgs);
       const ats = [...new Set(pkgs.map(p => p.at).filter(Boolean))].sort();
       const at = ats.length ? ats.join("+") : f.name;
       const dayAts = D ? [...new Set(D.pkgs.map(p => p.at).filter(Boolean))] : [];
@@ -318,7 +353,8 @@
         // Atualiza só as rotas que vieram nesta planilha; as outras rotas do dia ficam como estão.
         const before = new Set(D.pkgs.map(p => p.tn));
         const fresh = pkgs.filter(p => !before.has(p.tn)).length;
-        D.pkgs = D.pkgs.filter(p => !ats.includes(p.at)).concat(pkgs); D.file = f.name; derive();
+        D.pkgs = D.pkgs.filter(p => !ats.includes(p.at)).concat(pkgs); D.file = f.name;
+        const newTn = new Set(pkgs.map(p => p.tn)); D.extra = (D.extra || []).filter(p => !newTn.has(p.tn)); derive();
         if (!active) { ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); }
         const nx = order.find(a => !addrDone(a));
         plan(nx && byKey.has(nx.key) ? nx.key : null);
@@ -346,6 +382,7 @@
 
   function start() {
     active = true;
+    catAdd(all());
     $("resume").hidden = true;
     numberOrder();
     fillAjustes();
@@ -357,14 +394,14 @@
   }
 
   // ---------- abas ----------
-  const TABS = ["mapa", "lista", "separar", "painel", "ajustes"];
+  const TABS = ["mapa", "lista", "separar", "voltar", "painel", "ajustes"];
   let listDone = false;
   // Barra "Próxima parada" nas abas Paradas, Painel e Ajustes: entregar ou navegar sem voltar para o mapa.
   function renderNextBar() {
     const bar = $("nextBar");
     const tab = location.hash.slice(1);
     const a = active ? nextAddr() : null;
-    if (!a || tab === "mapa" || tab === "separar" || !TABS.includes(tab)) { bar.hidden = true; return; }
+    if (!a || tab === "mapa" || tab === "separar" || tab === "voltar" || !TABS.includes(tab)) { bar.hidden = true; return; }
     const pend = a.pkgs.filter(p => !pkgDone(p)).length;
     const app = navAppNow() || "waze";
     bar.hidden = false;
@@ -394,6 +431,7 @@
     renderSheet();
     renderList();
     renderSep();
+    renderBack();
     renderPainel();
     renderNextBar();
     if (map) updateMarkers();
@@ -531,6 +569,51 @@
     box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para separar."}</p>`;
   }
   $("sepQ")?.addEventListener("input", renderSep);
+
+  // ---------- aba Voltar: pacote que saiu da planilha volta para a rota ----------
+  function backResult(items) {
+    // items: [{ text, c, res }]
+    $("backOut").innerHTML = items.map(({ text, c, res }) => res
+      ? `<div class="bk ok"><b>${esc(res.msg)}</b><span>Parada ${esc(num(res.a, true))} · Grupo ${carOfAddr(res.a).i + 1}</span><span>${esc(res.a.label)}</span><span class="mono">${esc(c.tn)}</span><button type="button" class="line" data-sel="${esc(res.a.key)}">Ver no mapa</button></div>`
+      : `<div class="bk no"><b>${text ? "Não achei este pacote nas planilhas dos últimos dias" : "Não consegui ler o código"}</b>${text ? `<span class="mono">${esc(text)}</span><span>Coloque o endereço à mão e ele entra na rota.</span><button type="button" class="primary" data-backadd="${esc(text)}">Digitar o endereço</button>` : `<span>Fotografe só a etiqueta, de perto e com luz. Ou digite o código abaixo.</span>`}</div>`).join("");
+    renderBack();
+  }
+  function renderBack() {
+    const l = $("backList");
+    if (!l || !active) return;
+    const b = (D.extra || []).filter(p => p.back);
+    l.hidden = !b.length;
+    l.innerHTML = b.length ? `<h2>Voltaram para a rota hoje (${b.length})</h2>` + b.map(p => { const a = byTn.get(p.tn); return `<div class="bk${pkgDone(p) ? " done" : ""}"><b>${p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº"} · <span class="mono">${esc(tail(p.tn))}</span>${pkgDone(p) ? " · entregue" : ""}</b><span>${esc(a?.label || p.address || "")}</span><button type="button" class="line" data-rmextra="${esc(p.tn)}">Tirar da rota</button></div>`; }).join("") : "";
+  }
+  const onBack = async e => {
+    const files = [...e.target.files];
+    e.target.value = "";
+    if (!files.length) return;
+    if (!active) return toast("Abra a planilha da rota antes.");
+    if (!window.ZXing) return toast("O leitor de código não carregou. Confira a internet.");
+    const items = [];
+    for (let i = 0; i < files.length; i++) {
+      $("backOut").innerHTML = `<p class="sub">Lendo etiqueta ${i + 1} de ${files.length}…</p>`;
+      try {
+        const { p, read } = await decodePhoto(files[i]);
+        const text = p ? p.tn : read[0] || "";
+        const c = p || read.map(catFind).find(Boolean) || null;
+        items.push({ text, c, res: c ? putBack(c) : null });
+      } catch { items.push({ text: "", c: null, res: null }); }
+    }
+    buzz(items.every(x => x.res) ? 60 : [200, 80, 200]);
+    backResult(items);
+  };
+  $("photoBack").addEventListener("change", onBack);
+  $("photoBackMany").addEventListener("change", onBack);
+  $("backGo").addEventListener("click", () => {
+    if (!active) return toast("Abra a planilha da rota antes.");
+    const text = $("backCode").value.trim().toUpperCase();
+    if (text.length < 4) return toast("Digite o código BR ou pelo menos o final dele.");
+    const c = all().find(p => p.tn.toUpperCase().endsWith(text) || text.includes(p.tn.toUpperCase())) || catFind(text);
+    backResult([{ text, c, res: c ? putBack(c) : null }]);
+    $("backCode").value = "";
+  });
   function renderSheet() {
     const sh = $("sheet");
     let a = selKey && byKey.get(selKey);
@@ -822,6 +905,7 @@
       toast("Endereço movido para o fim. Siga para a próxima.");
     }
     else if (d.add) openAdd();
+    else if (d.backadd != null) { openAdd(); addDraft.src = "shopee"; addDraft.code = d.backadd; openAdd(true); }
     else if (d.place != null) {
       const p = (D.unplaced || [])[+d.place]; if (!p) return;
       D.unplaced.splice(+d.place, 1); save();
@@ -1482,7 +1566,7 @@
     $("scanOverlay").hidden = false;
     $("scanSheet").innerHTML = `<div class="addr-big">Adicionar pacote</div>
       <div class="form">
-        <label for="aSrc" class="full">De onde é<select id="aSrc">${Object.entries(PLATFORMS).filter(([k]) => k !== "shopee").map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("")}</select></label>
+        <label for="aSrc" class="full">De onde é<select id="aSrc">${Object.entries(PLATFORMS).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join("")}</select></label>
         <label for="aAddr" class="full">Endereço (rua e número)<input id="aAddr" type="search" autocomplete="off" placeholder="ex. Rua Tatuapé, 130" value="${esc(addDraft.address)}"></label>
         ${SR ? `<button type="button" class="line full" data-voice="1">Falar o endereço</button>` : ""}
       </div>
@@ -1734,7 +1818,9 @@
       const { p, read } = await decodePhoto(f);
       if (p) { D.checked = D.checked || {}; D.checked[p.tn] = D.checked[p.tn] || Date.now(); save(); renderList(); renderSep(); buzz(60); return openScan(byTn.get(p.tn), p.tn); }
       buzz([200, 80, 200]);
-      openScan(null, null, `<div class="miss"><b>${read.length ? "Este pacote não está nesta rota" : "Não consegui ler o código"}</b><span class="sub">${read.length ? "Código lido: " + esc(read.join(", ")) : "Fotografe só a etiqueta, de perto e com luz."}</span></div>
+      const back = read.map(catFind).find(Boolean);
+      if (back) { const res = putBack(back); toast(res.msg); return openScan(res.a, back.tn); }
+      openScan(null, null, `<div class="miss"><b>${read.length ? "Este pacote não está nesta rota" : "Não consegui ler o código"}</b>${read.length ? `<button type="button" class="primary" data-backadd="${esc(read[0])}">Colocar na rota (digitar o endereço)</button>` : ""}<span class="sub">${read.length ? "Código lido: " + esc(read.join(", ")) : "Fotografe só a etiqueta, de perto e com luz."}</span></div>
         <label class="btn primary" for="photo">Tentar de novo</label><button type="button" class="line" data-close="1">Fechar</button>`);
     } catch { openScan(null, null, `<div class="miss"><b>Não consegui ler o código</b></div><button type="button" class="line" data-close="1">Fechar</button>`); }
   });

@@ -118,6 +118,14 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Aba Voltar: pacote fora da planilha volta para a rota (06/11)
+- O app guarda no celular todos os pacotes das planilhas abertas nos últimos 10 dias, com endereço, CEP, parada e AT.
+- Pacote que já foi baixado no app da Shopee e sumiu da planilha nova, mas ainda está com você: na aba **Voltar**, tire foto da etiqueta (uma ou várias, pela câmera ou pela galeria) ou digite o código BR ou o final dele. O pacote volta para a rota com o endereço e a parada de antes e aparece no Grupo certo.
+- Escanear pelo botão do meio também faz isso: se o código não está na rota, mas está guardado, ele volta sozinho.
+- Código que o app nunca viu: o botão "Digitar o endereço" abre o cadastro manual já com o código preenchido.
+- A lista "Voltaram para a rota hoje" tem o botão "Tirar da rota". Se o pacote reaparecer numa planilha nova, ele não fica duplicado.
+- Só entram pacotes de planilhas abertas a partir desta versão.
+
 ## Aba Organizar (05/11)
 - Uma aba própria na barra de baixo, só para separar os pacotes. Tudo pela **parada da Shopee**, o número da etiqueta.
 - **Parada → Grupo**: um quadro com todas as paradas em ordem crescente e o grupo de cada uma (ex.: "48 · G22"). Tocar leva até o grupo. A busca pelo número mostra só aquela parada. Com duas ATs, a faixa colorida embaixo indica a AT.
