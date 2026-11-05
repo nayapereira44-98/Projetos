@@ -818,7 +818,7 @@ main { flex: 1; min-height: 0; position: relative; }
 /* Barra de abas */
 .tabbar {
   background: var(--surface); border-top: 1px solid var(--line);
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: end;
   padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
 }
 .tabbar a, .tabbar label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; color: var(--muted); text-decoration: none; font-size: 0.72rem; font-weight: 700; cursor: pointer; min-height: 52px; justify-content: center; }
@@ -896,6 +896,21 @@ main { flex: 1; min-height: 0; position: relative; }
 .area-head b { font: 800 1.05rem var(--font-display); }
 .area-head span { font-size: 0.82rem; }
 .chip.rt { color: #fff; font-weight: 800; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; }
+.tile { display: grid; gap: 0; place-items: center; padding: 6px 2px; min-height: 54px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 400; }
+.tile b { font: 800 1.2rem var(--font-display); }
+.tile span { font-size: .78rem; font-weight: 800; color: var(--brand); }
+.tile.on { background: color-mix(in srgb, var(--ok) 18%, var(--surface)); border-color: var(--ok); }
+.grp { display: grid; gap: 8px; scroll-margin-top: 80px; }
+.pr { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.pr-n { font: 800 1.7rem var(--font-display); text-align: center; background: var(--bg); border-radius: 10px; padding: 6px 0; }
+.pr-b { display: grid; gap: 6px; min-width: 0; }
+.pr-b small { color: var(--muted); }
+.pr-pk { display: flex; flex-wrap: wrap; gap: 6px; }
+.tk { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 6px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 700; }
+.tk .i { width: 16px; height: 16px; }
+.tk.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.tabbar a, .tabbar label { font-size: 0.68rem; }
 .bigstop { font: 800 1.6rem var(--font-display); color: var(--brand); }
 .chip.car { background: var(--ink); color: var(--surface); font-weight: 800; }
 .carro { display: grid; gap: 10px; }
@@ -1341,15 +1356,15 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     <section class="view" id="v-separar" hidden>
       <div class="pad">
         <div class="card sep-top">
-          <h2>Separar os pacotes</h2>
+          <h2>Organizar os pacotes</h2>
           <div class="sep-head" id="sepHead"></div>
           <div class="bar" style="background:var(--line)"><i id="sepBar" style="background:var(--ok)"></i></div>
-          <div class="seg"><button type="button" data-sepby="end">Por endereço</button><button type="button" data-sepby="shp">Por parada Shopee</button></div>
-          <p class="sub">Toque no pacote para marcar como separado, ou escaneie a etiqueta. "Carro 1, 2, 3…" são os lugares onde você para o carro: os endereços de cada um ficam a até 500 m a pé.</p>
+          <p class="sub">Pegue o pacote, veja a <b>parada</b> na etiqueta e procure aqui: <b>G</b> é o grupo. Paradas do mesmo grupo ficam perto (até 500 m a pé) e vão juntas. Toque no código para marcar como separado.</p>
+          <div class="search"><input id="sepQ" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Número da parada (ex.: 48) ou final do BR" aria-label="Buscar parada"></div>
           <div class="nav3" style="grid-template-columns:1fr 1fr"><label class="btn brand" for="photo">Escanear etiqueta</label><button type="button" class="line" data-sepprint="1">Imprimir</button></div>
-          <div class="search"><input id="sepQ" type="search" autocomplete="off" autocapitalize="characters" placeholder="Parada Shopee (ex.: 48) ou final do BR" aria-label="Buscar pacote"></div>
         </div>
-        <div id="sepList" style="display:grid;gap:10px"></div>
+        <div class="card"><h2>Parada → Grupo</h2><div class="tiles" id="sepIdx"></div></div>
+        <div id="sepList" style="display:grid;gap:14px"></div>
         <a class="btn primary" href="#mapa">Pronto, ir para o mapa</a>
       </div>
     </section>
@@ -1449,6 +1464,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
   <nav class="tabbar" aria-label="Menu">
     <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
     <a href="#lista" data-tab="lista"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Paradas</a>
+    <a href="#separar" data-tab="separar"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Organizar</a>
     <label class="scan" for="photo"><span class="circle"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></span>Escanear</label>
     <a href="#painel" data-tab="painel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel</a>
     <a href="#ajustes" data-tab="ajustes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</a>
@@ -1466,7 +1482,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261105a"></script>
-<script src="app.js?v=20261105c"></script>
+<script src="app.js?v=20261105d"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

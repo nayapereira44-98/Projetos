@@ -427,10 +427,10 @@
     const blk = x => `<div class="cx${x === a ? " here" : ""}"><div class="cx-top">${x === a ? `<span class="cx-tag">AQUI</span>` : `<span class="cx-tag far">${fmtDist(walkM(a, x))} a pé</span>`}<b>${esc(x.label)}</b></div>
       <div class="pkgs">${x.pkgs.map(p => pkgBtn(p, x, tn)).join("")}</div>
       ${x !== a ? `<button type="button" class="line" data-sel="${esc(x.key)}">Ir para este endereço</button>` : ""}</div>`;
-    if (part === "rest") return others.length || doneA.length ? `<div class="carro"><div class="eyebrow">Também a pé daqui (Carro ${i + 1})</div>${others.map(blk).join("")}
+    if (part === "rest") return others.length || doneA.length ? `<div class="carro"><div class="eyebrow">Também a pé daqui (Grupo ${i + 1})</div>${others.map(blk).join("")}
       ${doneA.length ? `<div class="sub">Já entregues neste carro: ${doneA.map(x => esc(x.label)).join(" · ")}</div>` : ""}</div>` : "";
-    return `<div class="carro"><div class="carro-head"><b>${g ? "Carro " + (i + 1) : "Este endereço"}</b><span>${others.length ? `${others.length + (addrDone(a) ? 0 : 1)} endereços a pé · ` : ""}faltam ${left} pacote${left === 1 ? "" : "s"}</span></div>
-      ${others.length ? `<div class="together">Além deste, mais <b>${others.length} endereço${others.length > 1 ? "s" : ""}</b> a pé com <b>${others.reduce((t, x) => t + leftOf(x), 0)} pacote${others.reduce((t, x) => t + leftOf(x), 0) > 1 ? "s" : ""}</b>. Leve todos do Carro ${i + 1}.</div>` : ""}
+    return `<div class="carro"><div class="carro-head"><b>${g ? "Grupo " + (i + 1) : "Este endereço"}</b><span>${others.length ? `${others.length + (addrDone(a) ? 0 : 1)} endereços a pé · ` : ""}faltam ${left} pacote${left === 1 ? "" : "s"}</span></div>
+      ${others.length ? `<div class="together">Além deste, mais <b>${others.length} endereço${others.length > 1 ? "s" : ""}</b> a pé com <b>${others.reduce((t, x) => t + leftOf(x), 0)} pacote${others.reduce((t, x) => t + leftOf(x), 0) > 1 ? "s" : ""}</b>. Leve todos do Grupo ${i + 1}.</div>` : ""}
       ${blk(a)}</div>`;
   }
   // Para o cartão fechado: quantos endereços e pacotes ainda tem a pé a partir daqui.
@@ -439,7 +439,7 @@
     if (!g) return "";
     const others = g.list.filter(x => x !== a && !addrDone(x));
     const n = others.reduce((t, x) => t + leftOf(x), 0);
-    return `<span class="chip car">Carro ${i + 1}${others.length ? ` · +${others.length} end. a pé (${n} pct)` : ""}</span>`;
+    return `<span class="chip car">Grupo ${i + 1}${others.length ? ` · +${others.length} end. a pé (${n} pct)` : ""}</span>`;
   }
   function addrCard(a, tn) {
     const nx = nextAddr();
@@ -486,38 +486,48 @@
     });
     return g;
   }
-  let sepBy = store.get("re:sepBy", "end");
+  // Aba Organizar: tudo pela parada da Shopee (o número da etiqueta). Paradas perto umas das outras (a até 500 m a pé,
+  // o mesmo grupo do cartão na rua) ficam no mesmo Grupo, para separar juntas e entregar juntas.
+  function sepEntries(q) {
+    const cs = carStops(), gOf = new Map();
+    cs.forEach((g, i) => g.list.forEach(a => gOf.set(a, i + 1)));
+    const m = new Map();
+    all().forEach(p => {
+      const a = byTn.get(p.tn);
+      if (!a) return;
+      const k = p.src ? "x|" + p.tn : (p.at || "") + "|" + (p.shopeeStop ?? "s" + p.tn);
+      if (!m.has(k)) m.set(k, { stop: p.src ? null : p.shopeeStop, src: p.src, at: p.at, a, g: gOf.get(a), pkgs: [] });
+      m.get(k).pkgs.push(p);
+    });
+    let es = [...m.values()].filter(e => q || e.pkgs.some(p => !pkgDone(p)));
+    if (q) es = es.filter(e => (/^\d{1,3}$/.test(q) ? e.stop === +q : e.pkgs.some(p => p.tn.toUpperCase().includes(q))));
+    const ai = e => Math.max(0, atList().indexOf(e.at));
+    return es.sort((x, y) => (x.src ? 1 : 0) - (y.src ? 1 : 0) || ai(x) - ai(y) || (x.stop ?? 9999) - (y.stop ?? 9999));
+  }
+  const stopName = e => (e.src ? PLATFORMS[e.src]?.short || "ML" : e.stop ?? "s/n");
   function renderSep() {
     const box = $("sepList");
     if (!box || !active) return;
     const pk = all().filter(p => !pkgDone(p)), got = pk.filter(isChecked).length;
     $("sepHead").innerHTML = `<b>${got} de ${pk.length} separados</b><span>${pk.length - got ? `faltam ${pk.length - got}` : "tudo separado ✓"}</span>`;
     $("sepBar").style.width = (pk.length ? got / pk.length * 100 : 100).toFixed(0) + "%";
-    document.querySelectorAll("[data-sepby]").forEach(b => b.classList.toggle("on", b.dataset.sepby === sepBy));
     const q = ($("sepQ").value || "").trim().toUpperCase();
-    const hit = p => !q || (/^\d{1,3}$/.test(q) ? p.shopeeStop === +q : p.tn.toUpperCase().includes(q));
-    const tnHtml = tn => `${esc(tn.slice(0, -5))}<b>${esc(tn.slice(-5))}</b>`;
-    const line = (p, a, extraTxt) => `<button type="button" class="sp${isChecked(p) ? " on" : ""}${pkgDone(p) ? " gone" : ""}"${multiAt() && p.at && !p.src ? ` style="border-left:6px solid ${atColor(p.at)}"` : ""} data-sepchk="${esc(p.tn)}">
-      <span class="box">${isChecked(p) ? ICON_CHECK : ""}</span>
-      <span class="spc"><span class="spp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? `Parada <b>${p.shopeeStop}</b>` : "<b>sem nº</b>"}</span>
-      <span class="sptn mono">${tnHtml(p.tn)}${pkgDone(p) ? " · entregue" : ""}${extraTxt ? `<br><small>${extraTxt}</small>` : ""}</span></span></button>`;
+    const es = sepEntries(q);
+    const stripe = e => (multiAt() && e.at && !e.src ? ` style="box-shadow: inset 0 -4px 0 ${atColor(e.at)}"` : "");
+    const allOn = e => e.pkgs.filter(p => !pkgDone(p)).every(isChecked);
+    // 1) Índice: cada parada e o grupo dela.
+    $("sepIdx").innerHTML = es.length ? es.map(e => `<button type="button" class="tile${allOn(e) ? " on" : ""}" data-sepgo="${e.g}"${stripe(e)}><b>${esc(String(stopName(e)))}</b><span>G${e.g}</span></button>`).join("") : "";
+    // 2) Grupos na ordem da entrega, e dentro de cada grupo as paradas em ordem crescente.
+    const byG = new Map();
+    es.forEach(e => { if (!byG.has(e.g)) byG.set(e.g, []); byG.get(e.g).push(e); });
     let html = "";
-    if (sepBy === "end") {
-      carStops().forEach((g, gi) => {
-        const rows = g.list.map(a => ({ a, ps: a.pkgs.filter(hit) })).filter(r => r.ps.length && (q || !r.a.pkgs.every(pkgDone)));
-        if (!rows.length) return;
-        const n = rows.reduce((t, r) => t + r.ps.length, 0);
-        html += `<div class="car-head"><b>Carro ${gi + 1}</b><span>${rows.length} endereço${rows.length > 1 ? "s" : ""} a pé · ${n} pacote${n > 1 ? "s" : ""}${g.park.bairro ? " · " + esc(g.park.bairro) : ""}</span></div>`;
-        rows.forEach(({ a, ps }) => {
-          const ceps = [...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8))].map(c => c.slice(0, 5) + "-" + c.slice(5));
-          html += `<div class="sep-addr"><div class="sa-top"><span class="sa-n">${num(a)}</span><span><b>${esc(a.label)}</b><br><small>${esc([ceps.length ? "CEP " + ceps.join(", ") : "", a.bairro].filter(Boolean).join(" · "))}${a.pkgs.length > 1 ? ` · <b>${a.pkgs.length} pacotes juntos</b>` : ""}</small></span></div>${ps.map(p => line(p, a)).join("")}</div>`;
-        });
-      });
-    } else {
-      const cs = carStops(), carOf = new Map(); cs.forEach((g, i) => g.list.forEach(a => carOf.set(a, i + 1)));
-      const rows = all().filter(p => hit(p) && (q || !pkgDone(p))).sort((x, y) => (x.src ? 1 : 0) - (y.src ? 1 : 0) || atList().indexOf(x.at) - atList().indexOf(y.at) || (x.shopeeStop ?? 9999) - (y.shopeeStop ?? 9999));
-      html = rows.map(p => { const a = byTn.get(p.tn); return line(p, a, `vai em <b>${esc(a.label)}</b> · carro ${carOf.get(a)}`); }).join("");
-    }
+    [...byG.keys()].sort((x, y) => x - y).forEach(g => {
+      const list = byG.get(g), n = list.reduce((t, e) => t + e.pkgs.filter(p => q || !pkgDone(p)).length, 0);
+      const ok = list.reduce((t, e) => t + e.pkgs.filter(p => !pkgDone(p) && isChecked(p)).length, 0);
+      html += `<div class="grp" id="grp-${g}"><div class="car-head"><b>Grupo ${g}</b><span>Paradas ${list.map(e => esc(String(stopName(e)))).join(", ")} · ${n} pacote${n === 1 ? "" : "s"}${ok ? ` · ${ok} separados` : ""}${list[0].a.bairro ? " · " + esc(list[0].a.bairro) : ""}</span></div>
+        ${list.map(e => `<div class="pr"><div class="pr-n"${stripe(e)}>${esc(String(stopName(e)))}</div><div class="pr-b"><small>${esc(e.a.label)}</small>
+          <div class="pr-pk">${e.pkgs.filter(p => q || !pkgDone(p)).map(p => `<button type="button" class="tk${isChecked(p) ? " on" : ""}" data-sepchk="${esc(p.tn)}">${isChecked(p) ? ICON_CHECK : ""}<span class="mono">${esc(tail(p.tn))}</span></button>`).join("")}</div></div></div>`).join("")}</div>`;
+    });
     box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para separar."}</p>`;
   }
   $("sepQ")?.addEventListener("input", renderSep);
@@ -789,7 +799,7 @@
     }
     else if (d.sel) { $("scanOverlay").hidden = true; select(d.sel); }
     else if (d.mode) setMode(d.mode);
-    else if (d.sepby) { sepBy = d.sepby; store.set("re:sepBy", sepBy); renderSep(); }
+    else if (d.sepgo) $("grp-" + d.sepgo)?.scrollIntoView({ block: "start" });
     else if (d.sepprint) window.print();
     else if (d.sepchk) {
       D.checked = D.checked || {};
@@ -1710,7 +1720,7 @@
   function openScan(a, tn, missHtml) {
     $("scanOverlay").hidden = false;
     const tp = tn && all().find(p => p.tn === tn);
-    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${esc(num(a, true))}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
+    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${esc(num(a, true))}</div><div class="bagbig">Grupo ${carOfAddr(a).i + 1}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sel="${esc(a.key)}">Ver no mapa</button><button type="button" class="line" data-close="1">Fechar</button></div>`;
   }
   $("photo").addEventListener("change", async e => {
