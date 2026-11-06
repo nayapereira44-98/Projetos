@@ -118,6 +118,12 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Nova rota: pacotes bipados, separada da rota comum (06/11)
+- Aba **Nova rota** na barra de baixo, no lugar de "Voltar". A aba Voltar continua acessível pelo botão na aba Organizar.
+- Serve para pacotes que já foram baixados no app da Shopee, mas que você ainda vai entregar. Toque em **Bipar pacotes para a Nova rota**, ou digite o código. Cada pacote entra com o endereço e a parada que tinha na planilha (da rota aberta ou do catálogo dos últimos 10 dias). Pacote sem endereço conhecido: "Digitar o endereço".
+- O app monta a ordem só desses pacotes (1º, 2º…), a partir de onde você está, com Waze, Google e Apple, "Próximas 10 no Google Maps", "Entreguei", "Desfazer" e o × para tirar um pacote.
+- Fica guardada à parte e não mexe na rota comum. Se um pacote bipado também estiver na rota comum, entregar aqui marca ele como entregue lá também. "Apagar a Nova rota" pede dois toques.
+
 ## Bipar: câmera aberta, etiqueta atrás de etiqueta (06/11)
 - O botão do meio da barra virou **Bipar**. Também está em Organizar e em Voltar. Ele abre a câmera ao vivo: basta apontar para a etiqueta (código de barras ou QR) e o app lê sozinho, **apita** e mostra **Parada** e **Grupo** em letra grande. Não precisa tirar foto.
   - Pacote da rota: bip agudo e fica marcado como separado.
