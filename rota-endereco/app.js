@@ -394,14 +394,14 @@
   }
 
   // ---------- abas ----------
-  const TABS = ["mapa", "lista", "separar", "voltar", "painel", "ajustes"];
+  const TABS = ["mapa", "lista", "separar", "voltar", "nova", "painel", "ajustes"];
   let listDone = false;
   // Barra "Próxima parada" nas abas Paradas, Painel e Ajustes: entregar ou navegar sem voltar para o mapa.
   function renderNextBar() {
     const bar = $("nextBar");
     const tab = location.hash.slice(1);
     const a = active ? nextAddr() : null;
-    if (!a || tab === "mapa" || tab === "separar" || tab === "voltar" || !TABS.includes(tab)) { bar.hidden = true; return; }
+    if (!a || tab === "mapa" || tab === "separar" || tab === "voltar" || tab === "nova" || !TABS.includes(tab)) { bar.hidden = true; return; }
     const pend = a.pkgs.filter(p => !pkgDone(p)).length;
     const app = navAppNow() || "waze";
     bar.hidden = false;
@@ -411,8 +411,9 @@
   }
   function route() {
     let tab = location.hash.slice(1);
-    if (!active) tab = "inicio";
+    if (!active && tab !== "nova") tab = "inicio";
     else if (!TABS.includes(tab)) tab = "mapa";
+    if (tab === "nova") renderNova();
     ["inicio", ...TABS].forEach(t => ($("v-" + t).hidden = t !== tab));
     document.querySelectorAll(".tabbar a").forEach(a => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (tab === "mapa") { ensureMap(); setTimeout(() => map?.invalidateSize(), 50); }
@@ -860,7 +861,13 @@
     if (e.target.id === "scanOverlay") { $("scanOverlay").hidden = true; return; }
     if (!t) return;
     const d = t.dataset;
-    if (d.bip) return void openBip();
+    if (d.bip) return void openBip(d.bip === "nova" ? "nova" : "rota");
+    if (d.r2ok) return void r2Deliver(d.r2ok, true);
+    if (d.r2undo) return void r2Deliver(d.r2undo, false);
+    if (d.r2rm) { R2.pkgs = R2.pkgs.filter(p => p.tn !== d.r2rm); delete R2.ok[d.r2rm]; R2.order = null; r2Save(); return void renderNova(); }
+    if (d.r2re) { R2.order = null; r2Plan(true); r2Save(); renderNova(); return void toast("Nova rota refeita a partir de onde você está"); }
+    if (d.r2clear) return twoTap(t, () => { R2 = null; store.set("re:r2", null); renderNova(); toast("Nova rota apagada"); });
+    if (d.r2manual != null) { if (bip) closeBip(); openAdd(); addDraft.src = "shopee"; addDraft.code = d.r2manual; addDraft.target = "r2"; openAdd(true); return; }
     if (d.bipclose) return void closeBip();
     if (d.biptorch) return void bipTorch();
     if (d.resume === "go") { derive(); ok = store.get(okKey(), {}); sess = store.get(sessKey(), {}); start(); return; }
@@ -1634,10 +1641,15 @@
     const address = addDraft.address + (addDraft.compl ? ", " + addDraft.compl : "");
     const p = {
       tn: addDraft.code ? addDraft.code.toUpperCase() : "ML" + Date.now().toString(36).toUpperCase(),
-      code: addDraft.code, src: addDraft.src, address, bairro: "", city: D.pkgs[0]?.city || "", cep: "",
-      lat: addDraft.lat, lng: addDraft.lng, seq: null, shopeeStop: null, at: D.at,
+      code: addDraft.code, src: addDraft.target === "r2" && addDraft.src === "shopee" ? undefined : addDraft.src, address, bairro: "", city: D?.pkgs[0]?.city || "", cep: "",
+      lat: addDraft.lat, lng: addDraft.lng, seq: null, shopeeStop: null, at: D?.at,
       ...Core.parseAddress(address), window: Core.parseWindow(address),
     };
+    if (addDraft.target === "r2") {
+      const r = r2Add(p);
+      $("scanOverlay").hidden = true; location.hash = "#nova"; renderNova();
+      return toast(r === "dup" ? "Esse código já está na Nova rota." : "Entrou na Nova rota");
+    }
     if (all().some(x => x.tn === p.tn)) return toast("Esse código já está na rota.");
     D.extra = (D.extra || []).concat(p);
     derive(); plan(nextAddr()?.key); save();
@@ -1845,12 +1857,13 @@
       });
     } catch {}
   }
-  async function openBip() {
-    if (!active) return toast("Abra a planilha da rota antes.");
+  async function openBip(mode) {
+    if (!active && mode !== "nova") return toast("Abra a planilha da rota antes.");
     if (!window.ZXing) return toast("O leitor de código não carregou. Confira a internet.");
     let ac = null;
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume?.(); } catch {}
-    bip = { ac, last: {}, done: new Set(), n: 0, log: [], stream: null, stop: false, rot: 0 };
+    bip = { ac, mode: mode || "rota", last: {}, done: new Set(), n: 0, log: [], stream: null, stop: false, rot: 0 };
+    $("bip").classList.toggle("nova", bip.mode === "nova");
     $("bip").hidden = false;
     $("bipRes").innerHTML = `<div class="bip-hint">Aponte a câmera para a etiqueta</div>`;
     $("bipCount").textContent = "";
@@ -1872,7 +1885,7 @@
   function closeBip() {
     if (bip) { bip.stop = true; bip.stream?.getTracks().forEach(t => t.stop()); try { bip.ac?.close(); } catch {} }
     bip = null; $("bipVideo").srcObject = null; $("bip").hidden = true;
-    renderAll();
+    renderAll(); renderNova();
   }
   async function bipTorch() {
     const tr = bip?.stream?.getVideoTracks()[0]; if (!tr) return;
@@ -1913,6 +1926,10 @@
     if (seenAt && now - seenAt < 4000) return;
     const again = bip.done.has(text);
     bip.done.add(text);
+    if (bip.mode === "nova") return bipNova(text, again);
+    // Pacote que está na Nova rota não volta para a rota comum.
+    const inR2 = r2Has(text);
+    if (inR2 && !findPkgByCode(text)) { tone("done"); $("bipRes").innerHTML = `<div class="bip-card done"><b>Este pacote está na Nova rota</b><span class="bip-big">Parada ${esc(inR2.shopeeStop ?? "s/n")}</span><span>${esc(inR2.address || "")}</span></div>`; return; }
     let p = findPkgByCode(text), kind, html;
     if (p && !pkgDone(p)) {
       D.checked = D.checked || {}; D.checked[p.tn] = D.checked[p.tn] || now; save();
@@ -1944,6 +1961,106 @@
     $("bip").classList.remove("flash-ok", "flash-err"); void $("bip").offsetWidth;
     $("bip").classList.add(kind === "err" ? "flash-err" : "flash-ok");
   }
+
+  // ---------- Nova rota: pacotes bipados, separada da rota comum ----------
+  // Para pacotes já baixados no app da Shopee que ainda vão ser entregues. Fica guardada à parte (re:r2): entregar aqui
+  // não mexe na ordem da rota comum; se o pacote também estiver na rota comum, ele aparece lá como entregue.
+  let R2 = store.get("re:r2", null);
+  const r2Save = () => store.set("re:r2", R2);
+  const normCode = t => String(t || "").toUpperCase().replace(/\s+/g, "");
+  const r2Has = text => { const t = normCode(text); return R2?.pkgs.find(p => t.includes(p.tn.toUpperCase())) || null; };
+  function r2Lookup(text) {
+    const t = normCode(text);
+    const m = D ? all().find(p => p.tn && t.includes(p.tn.toUpperCase())) : null;
+    return m || catFind(text);
+  }
+  function r2Add(c) {
+    if (!R2) R2 = { pkgs: [], ok: {}, created: Date.now(), order: null };
+    if (R2.pkgs.some(p => p.tn === c.tn)) return "dup";
+    const { _t, back, olat, olng, ...q } = c;
+    R2.pkgs.push({ ...q, addedAt: Date.now() });
+    R2.order = null; r2Save();
+    return "ok";
+  }
+  let A2 = [], by2 = new Map();
+  const r2Done = a => a.pkgs.every(p => R2.ok[p.tn]);
+  function r2Plan(fromHere) {
+    A2 = Core.buildAddresses(R2.pkgs); by2 = new Map(A2.map(a => [a.key, a]));
+    const pend = A2.filter(a => !r2Done(a));
+    const okOrder = R2.order && pend.every(a => R2.order.includes(a.key));
+    if (!okOrder && pend.length) {
+      const start = pend.reduce((b, a) => ((a.shopeeStops[0] ?? 1e9) < (b.shopeeStops[0] ?? 1e9) ? a : b)).key;
+      const r = Core.addressRoute(pend, start, { from: (fromHere || !R2.order) && here ? { ...here } : null });
+      R2.order = r.order.map(a => a.key);
+    }
+  }
+  function r2Deliver(key, on) {
+    const a = by2.get(key); if (!a) return;
+    a.pkgs.forEach(p => {
+      if (on) { R2.ok[p.tn] = Date.now(); if (D && all().some(x => x.tn === p.tn)) ok[p.tn] = ok[p.tn] || Date.now(); }
+      else { delete R2.ok[p.tn]; if (D) delete ok[p.tn]; }
+    });
+    r2Save(); if (D) save();
+    renderNova(); if (active) renderAll();
+    if (on) toast("Entregue (Nova rota)");
+  }
+  function renderNova() {
+    const box = $("novaList");
+    if (!box) return;
+    if (!R2 || !R2.pkgs.length) {
+      $("novaHead").innerHTML = `<b>Nenhum pacote ainda</b><span>Bipe os pacotes que você vai entregar nesta rota.</span>`;
+      box.innerHTML = ""; $("novaLeg").hidden = true; $("novaTools").hidden = true; return;
+    }
+    r2Plan(false);
+    const pend = (R2.order || []).map(k => by2.get(k)).filter(a => a && !r2Done(a));
+    A2.filter(a => !r2Done(a) && !pend.includes(a)).forEach(a => pend.push(a));
+    const done = A2.filter(r2Done);
+    const nOk = R2.pkgs.filter(p => R2.ok[p.tn]).length;
+    $("novaHead").innerHTML = `<b>${R2.pkgs.length} pacote${R2.pkgs.length > 1 ? "s" : ""} em ${A2.length} endereço${A2.length > 1 ? "s" : ""}</b><span>${nOk} entregue${nOk === 1 ? "" : "s"} · faltam ${R2.pkgs.length - nOk}</span>`;
+    $("novaTools").hidden = false;
+    const leg = pend.slice(0, 10);
+    $("novaLeg").hidden = leg.length < 2;
+    if (leg.length > 1) { $("novaLeg").href = Core.links.gmapsLeg(leg); $("novaLeg").textContent = `Próximas ${leg.length} paradas no Google Maps`; }
+    const card = (a, i) => {
+      const ceps = [...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8))].map(c => c.slice(0, 5) + "-" + c.slice(5));
+      const dist = here ? fmtDist(walkM(here, a)) : "";
+      return `<div class="r2a${i === 0 ? " next" : ""}">
+        <div class="r2-top"><span class="r2-i">${i + 1}º</span><span><b class="r2-stop">${a.shopeeStops.length ? "Parada " + a.shopeeStops.join(" · ") : "sem nº"}</b><br><b>${esc(a.label)}</b><br><small>${esc([ceps.length ? "CEP " + ceps.join(", ") : "", a.bairro, dist].filter(Boolean).join(" · "))}</small></span></div>
+        <div class="pr-pk">${a.pkgs.map(p => `<span class="tk">${esc(tail(p.tn))}<button type="button" class="tk-x" data-r2rm="${esc(p.tn)}" aria-label="Tirar da Nova rota">×</button></span>`).join("")}</div>
+        <div class="nav3"><a class="btn" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>
+        <button type="button" class="primary deliver" data-r2ok="${esc(a.key)}">Entreguei ${a.pkgs.length > 1 ? `os ${a.pkgs.length}` : "aqui"}</button></div>`;
+    };
+    box.innerHTML = pend.map(card).join("") + (pend.length ? "" : `<div class="card"><b>Nova rota concluída ✓</b></div>`)
+      + (done.length ? `<h2 class="r2-done-h">Entregues (${done.length})</h2>` + done.map(a => `<div class="r2a done"><span><b>${a.shopeeStops.length ? "Parada " + a.shopeeStops.join(" · ") + " · " : ""}${esc(a.label)}</b><br><small class="mono">${a.pkgs.map(p => esc(tail(p.tn))).join(" ")}</small></span><button type="button" class="line" data-r2undo="${esc(a.key)}">Desfazer</button></div>`).join("") : "");
+  }
+  function bipNova(text, again) {
+    const now = Date.now();
+    const c = r2Lookup(text);
+    let kind, html;
+    if (!c) {
+      kind = "err";
+      html = `<div class="bip-card err"><b>Não achei o endereço deste pacote</b><span class="mono">${esc(text)}</span><button type="button" class="line" data-r2manual="${esc(text)}">Digitar o endereço</button></div>`;
+    } else {
+      const r = r2Add(c);
+      kind = r === "dup" ? "done" : "ok";
+      html = `<div class="bip-card ${r === "dup" ? "done" : "ok"}"><b>${r === "dup" ? "Já está na Nova rota" : "Entrou na Nova rota"}</b><span class="bip-big">Parada ${esc(c.shopeeStop ?? "s/n")}</span><span>${esc(c.address || "")}</span><span class="mono">${esc(c.tn)}</span></div>`;
+    }
+    tone(kind); buzz(kind === "err" ? [200, 80, 200] : 60);
+    if (!again) bip.log.unshift((kind === "err" ? "✕ " : (c.shopeeStop ?? "s/n") + " · ") + tail(c ? c.tn : text));
+    $("bipRes").innerHTML = html;
+    $("bipCount").textContent = `Nova rota: ${R2?.pkgs.length || 0} pacote${R2?.pkgs.length === 1 ? "" : "s"}`;
+    $("bipLog").textContent = bip.log.slice(0, 6).join("   ");
+    $("bip").classList.remove("flash-ok", "flash-err"); void $("bip").offsetWidth;
+    $("bip").classList.add(kind === "err" ? "flash-err" : "flash-ok");
+  }
+  $("novaGo").addEventListener("click", () => {
+    const text = normCode($("novaCode").value);
+    if (text.length < 4) return toast("Digite o código BR ou pelo menos o final dele.");
+    const c = (D ? all().find(p => p.tn.toUpperCase().endsWith(text)) : null) || catFind(text);
+    if (!c) { $("novaCode").value = ""; openAdd(); addDraft.src = "shopee"; addDraft.code = text; addDraft.target = "r2"; openAdd(true); return toast("Não achei esse pacote: digite o endereço."); }
+    const r = r2Add(c); $("novaCode").value = ""; renderNova();
+    toast(r === "dup" ? "Já está na Nova rota" : `Entrou: Parada ${c.shopeeStop ?? "s/n"}`);
+  });
 
   // ---------- conferir pacotes por foto (várias de uma vez) ----------
   // Lê o código de cada etiqueta, marca como conferido e mostra a área de cada pacote, para separar por área de uma vez.
