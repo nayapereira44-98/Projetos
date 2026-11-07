@@ -918,6 +918,69 @@ main { flex: 1; min-height: 0; position: relative; }
 .area-head b { font: 800 1.05rem var(--font-display); }
 .area-head span { font-size: 0.82rem; }
 .chip.rt { color: #fff; font-weight: 800; }
+.btn.sm, button.sm { min-height: 40px; font-size: .9rem; }
+.chip.comm { background: #fff4e6; color: #d9480f; border: 1px solid #ffc078; font-weight: 800; }
+.ponto-head { display: grid; gap: 6px; background: #e7f5ff; border: 1px solid #a5d8ff; border-radius: 14px; padding: 10px 12px; color: #0b3d62; }
+.ph-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ph-top b { font: 800 1.15rem var(--font-display); }
+.ph-top span { font-size: .85rem; }
+.ph-park { font-size: .95rem; line-height: 1.35; }
+.ph-contra { font-size: .88rem; color: #d9480f; font-weight: 700; }
+.lock-off, .lock-on { display: grid; gap: 8px; }
+.lock-off b { font: 800 1.1rem var(--font-display); color: #d9480f; }
+.lock-on > b { font: 800 1.1rem var(--font-display); color: var(--ok); }
+.lock-off span, .lock-on span { font-size: .92rem; }
+.pr2 { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.pr2-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pr2-top b, .pr2-a { font: 800 1.02rem var(--font-display); }
+.pr2-a { background: none; border: 0; box-shadow: none; padding: 0; min-height: 0; width: auto; text-align: left; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); }
+.pr2 small { color: var(--muted); }
+.tk b { font: 800 1.05rem var(--font-display); margin-right: 2px; }
+.tk.gone { opacity: .45; }
+.load-help { gap: 6px; }
+.load-help span { font-size: .92rem; }
+.load-end { text-align: center; font: 800 .8rem var(--font-display); letter-spacing: .12em; color: var(--muted); padding: 6px; border: 2px dashed var(--line); border-radius: 12px; }
+.load-end.near { color: var(--brand); border-color: var(--brand); }
+.ld { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.ld.on { background: color-mix(in srgb, var(--ok) 12%, var(--surface)); border-color: var(--ok); }
+.ld-chk { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 10px; border: 2px solid var(--muted); background: var(--surface); box-shadow: none; display: grid; place-items: center; }
+.ld.on .ld-chk { background: var(--ok); border-color: var(--ok); color: #fff; }
+.ld-b { display: grid; gap: 6px; min-width: 0; }
+.ld-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ld-top b { font: 800 1.1rem var(--font-display); }
+.ld-top span { font-size: .82rem; color: var(--muted); }
+.ld-n { background: var(--ink); color: var(--surface) !important; border-radius: 8px; padding: 1px 8px; font: 800 .95rem var(--font-display) !important; }
+.ld small { color: var(--muted); }
+.pk-pin { display: inline-flex; flex-direction: column; align-items: center; background: #1c7ed6; color: #fff; font: 800 .8rem var(--font-display); border-radius: 8px; padding: 2px 6px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); white-space: nowrap; }
+.pk-pin small { font-size: .62rem; font-weight: 700; }
+#map.zfar .pk-pin { display: none; }
+.pk-pin.cur { background: #0b3d62; }
+.bip-st { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-card, .cal-day { gap: 10px; }
+.cal-nav { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; text-align: center; }
+.cal-nav b { font: 800 1.15rem var(--font-display); text-transform: capitalize; }
+.cal-nav button { min-height: 44px; font-size: 1.3rem; padding: 0; }
+.cal-sum { text-align: center; color: var(--muted); font-size: .9rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-h { text-align: center; font-size: .75rem; font-weight: 800; color: var(--muted); }
+.cal-c { display: grid; align-content: start; justify-items: center; gap: 1px; min-height: 58px; padding: 4px 2px; border-radius: 10px; background: var(--bg); border: 1px solid transparent; box-shadow: none; color: var(--ink); font-weight: 400; }
+.cal-c.empty { background: transparent; }
+.cal-c.has { background: var(--surface); border-color: var(--line); }
+.cal-c.today { border-color: var(--brand); }
+.cal-c.sel { outline: 2px solid var(--ink); }
+.cal-d { font-size: .78rem; color: var(--muted); }
+.cal-c b { font: 800 1.05rem var(--font-display); }
+.cal-bars { display: flex; gap: 2px; }
+.cal-bars i { width: 10px; height: 4px; border-radius: 2px; }
+
+.cal-tot, .cal-nums { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .9rem; }
+.cal-at { display: grid; gap: 6px; border: 1px solid var(--line); border-left: 6px solid; border-radius: 12px; padding: 10px 12px; }
+.cal-at-top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cal-at-top b { font: 800 1.05rem var(--font-display); }
+.cal-pay { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+.cal-val { font-size: .95rem; }
+.cal-list { display: grid; gap: 4px; font-size: .88rem; margin-top: 6px; }
+.cal-at summary { cursor: pointer; font-weight: 700; color: var(--brand); }
 .r2a { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
 .r2a.next { border: 2px solid var(--brand); }
 .r2a.done { grid-template-columns: 1fr auto; align-items: center; opacity: .65; }
@@ -1383,7 +1446,7 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
         <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-add="1">+ Adicionar pacote</button><label class="btn brand" for="fileOther">+ Planilha Mercado Livre</label></div>
         <a class="btn primary loadbtn" href="#separar"><b>Separar pacotes por endereço</b><span>Parada Shopee + código BR de cada pacote, na ordem da entrega</span></a>
         <button type="button" class="line loadbtn" data-load="1"><b>Ordem de carga do veículo</b><span>Onde colocar cada pacote no carro, na ordem da rota</span></button>
-        <div id="issueBox"></div>
+        <div id="issueBoxOld" hidden></div>
         <div class="card" id="checkBox" style="gap:10px"></div>
         <a class="btn brand" id="legBtn" href="#" target="_blank" rel="noopener" hidden>Próximas 10 paradas no Google Maps</a>
         <div class="search"><input id="q" type="search" autocomplete="off" autocapitalize="characters" placeholder="Buscar rua, final do código ou parada Shopee" aria-label="Buscar"></div>
@@ -1394,19 +1457,28 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
     <!-- Separação -->
     <section class="view" id="v-separar" hidden>
       <div class="pad">
+        <div class="card" id="lockBox"></div>
         <div class="card sep-top">
-          <h2>Organizar os pacotes</h2>
+          <h2>Organizar</h2>
           <div class="sep-head" id="sepHead"></div>
           <div class="bar" style="background:var(--line)"><i id="sepBar" style="background:var(--ok)"></i></div>
-          <p class="sub">Pegue o pacote, veja a <b>parada</b> na etiqueta e procure aqui: <b>G</b> é o grupo. Paradas do mesmo grupo ficam perto (até 500 m a pé) e vão juntas. Toque no código para marcar como separado.</p>
-          <div class="search"><input id="sepQ" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Número da parada (ex.: 48) ou final do BR" aria-label="Buscar parada"></div>
-          <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="brand" data-bip="1">Bipar etiquetas</button><button type="button" class="line" data-sepprint="1">Imprimir</button></div>
+          <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="primary" data-bip="conferir">Bipar para conferir</button><label class="btn line" for="photoMany">Fotografar pacotes</label></div>
+          <button type="button" class="line sm" data-checkview="1">Ver o que falta conferir</button>
+          <div class="seg"><button type="button" data-sepby="end">Por endereço</button><button type="button" data-sepby="car">Carregar o carro</button></div>
+          <div class="search"><input id="sepQ" type="search" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Etiqueta (ex.: 48), final do BR ou rua" aria-label="Buscar pacote"></div>
         </div>
-        <a class="btn line" href="#voltar">Pacote saiu da planilha? Voltar para a rota comum</a>
-        <div class="card"><h2>Parada → Grupo</h2><div class="tiles" id="sepIdx"></div></div>
+        <div id="issueBox"></div>
+        <div class="card" id="sepIdxWrap"><h2>Etiqueta → Ponto</h2><div class="tiles" id="sepIdx"></div></div>
         <div id="sepList" style="display:grid;gap:14px"></div>
-        <a class="btn primary" href="#mapa">Pronto, ir para o mapa</a>
+        <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-add="1">+ Adicionar pacote</button><label class="btn line" for="fileOther">+ Planilha Mercado Livre</label></div>
+        <a class="btn line" href="#voltar">Pacote saiu da planilha? Voltar para a rota</a>
+        <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sepprint="1">Imprimir</button><a class="btn primary" href="#mapa">Ir para o mapa</a></div>
       </div>
+    </section>
+
+    <!-- Calendário -->
+    <section class="view" id="v-cal" hidden>
+      <div class="pad" id="calBox"></div>
     </section>
 
     <!-- Voltar pacote para a rota -->
@@ -1535,8 +1607,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
   <div class="nextbar" id="nextBar" hidden></div>
   <nav class="tabbar" aria-label="Menu">
     <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
-    <a href="#lista" data-tab="lista"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Paradas</a>
     <a href="#separar" data-tab="separar"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Organizar</a>
+    <a href="#cal" data-tab="cal"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendário</a>
     <button type="button" class="scan" data-bip="1"><span class="circle"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></span>Bipar</button>
     <a href="#nova" data-tab="nova"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="10"/></svg>Nova rota</a>
     <a href="#painel" data-tab="painel"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Painel</a>
@@ -1562,8 +1634,8 @@ input[type=search], input[type=number], input[type=time], input[type=date], sele
 
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="../rota-certa/core.js?v=20261106a"></script>
-<script src="app.js?v=20261106c"></script>
+<script src="../rota-certa/core.js?v=20261107a"></script>
+<script src="app.js?v=20261107a"></script>
 <!-- ARTIFACT-END -->
 </body>
 </html>

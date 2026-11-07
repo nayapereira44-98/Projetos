@@ -118,6 +118,31 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 - **Planilha do Mercado Livre (ou de outra plataforma)**: Excel ou CSV, aberta antes ou depois da Shopee. As colunas são reconhecidas pelo nome (endereço, número, complemento, código, destinatário, bairro, cidade, CEP, latitude, longitude); se o endereço não for reconhecido, o app pergunta qual coluna é qual. Sem coordenadas, cada endereço é procurado no OpenStreetMap (1 por segundo) e guardado no aparelho. O que não for achado fica em Ajustes → "Localizar". Reabrir a planilha não duplica os pacotes que têm código.
 - Ao marcar o local de um pacote novo no mapa, tocar num pino coloca o pacote no mesmo endereço da parada.
 
+## Organizar unificado, rota salva, Pontos, carga de trás para frente e Calendário (07/11)
+**Barra de baixo:** Mapa · Organizar · Calendário · **Bipar** · Nova rota · Painel · Ajustes. As abas "Paradas" e "Organizar" viraram uma só.
+
+**Salvar a rota** (topo da aba Organizar):
+- Com a localização ligada, o app começa pela rua mais perto de onde você está.
+- Endereços **comerciais** (loja, sala, empresa, clínica, oficina, "horário comercial"…) ou com horário para entregar, e os vizinhos a até 300 m deles, vão para o começo de cada região. Assim o comércio vem primeiro sem atravessar a cidade. Referências como "ao lado da clínica" ou "perto do posto" não contam como comércio.
+- Depois de salva, **a ordem não muda mais**, nem ao entregar fora da ordem nem ao subir a planilha de novo, porque o carro foi arrumado por ela. Pacote novo entra no fim. "Refazer a rota" pede dois toques. O seletor "Perto de mim / Rota" some no mapa: com a rota salva, vale a ordem salva.
+
+**Pontos (onde estacionar)**:
+- Endereços seguidos na rota a até 300 m a pé de onde você para o carro formam um Ponto. Até 500 m quando, pelas ruas, ir de carro daria mais de 2,5 vezes a distância a pé (contramão), calculado pelo servidor de rotas (OSRM) na hora de salvar.
+- O cartão mostra "🅿️ Estacione na Rua X, perto do nº Y, e faça os outros N endereços a pé (até 280 m). ~8 min a pé ida e volta, ganha ~X min", o aviso de contramão e "Waze até onde estacionar".
+- No mapa, cada um dos próximos 8 Pontos tem a etiqueta "P3 +2 a pé", um círculo e linhas pontilhadas até cada endereço. Com o mapa afastado, as etiquetas somem para não amontoar.
+
+**Aba Organizar** (duas visões):
+- **Por endereço**: Ponto por Ponto. Cada endereço tem o selo "Comercial" ou o horário, CEP e os pacotes (número da etiqueta + final do BR). Tocar no pacote marca como conferido; tocar no endereço abre no mapa. Tem o quadro "Etiqueta → Ponto" e a busca por etiqueta, final do BR ou rua.
+- **Carregar o carro**: de trás para frente. O 1º da lista (última entrega) vai no fundo; o último (1ª entrega) fica mais perto de você. Cada Ponto tem a caixinha "no carro".
+- **Bipar para conferir** (câmera ao vivo) marca o pacote como conferido. Também ficam ali "Fotografar pacotes", "Ver o que falta conferir", "+ Adicionar pacote", "+ Planilha Mercado Livre" e "Voltar para a rota".
+
+**Bipar** (botão do meio): só consulta, não muda nada sozinho. Mostra a parada, o Ponto, se já foi conferido (e a que horas), "entregar até…", Comercial, entregue ou não, e a tentativa. Tem botões para marcar como conferido, voltar para a rota ou digitar o endereço.
+
+**Calendário**:
+- Cada entrega fica guardada com a hora e a ordem (AT), na rota comum e na Nova rota.
+- A grade do mês mostra o número de pacotes por dia e uma barrinha colorida por ordem.
+- O dia mostra cada ordem com "continuação de 06/11" ou "continua em 08/11", quantos foram entregues no dia, o total da ordem, o horário, o **valor pago pela ordem** (você digita), o valor do dia proporcional aos pacotes, R$ por hora e a lista de pacotes.
+
 ## Nova rota: pacotes bipados, separada da rota comum (06/11)
 - Aba **Nova rota** na barra de baixo, no lugar de "Voltar". A aba Voltar continua acessível pelo botão na aba Organizar.
 - Serve para pacotes que já foram baixados no app da Shopee, mas que você ainda vai entregar. Toque em **Bipar pacotes para a Nova rota**, ou digite o código. Cada pacote entra com o endereço e a parada que tinha na planilha (da rota aberta ou do catálogo dos últimos 10 dias). Pacote sem endereço conhecido: "Digitar o endereço".
