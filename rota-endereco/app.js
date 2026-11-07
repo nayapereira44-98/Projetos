@@ -132,7 +132,117 @@
   }
   const attempt = p => (seen[p.tn] || []).filter(x => x <= dayOf(D?.createdAt || Date.now())).length || 1;
   const okKey = () => "re:ok:" + D.at, sessKey = () => "re:sess:" + D.at;
-  const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); };
+  // ---------- Calendário ----------
+  // Cada entrega fica guardada com a hora e a ordem (AT) dela, mesmo depois de trocar de planilha. Uma ordem pode
+  // começar num dia e terminar no outro: no calendário ela aparece nos dois dias, com "continua" / "continuação".
+  let deliv = store.get("re:deliv", {});
+  let pay = store.get("re:pay", {});
+  const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const orderName = at => (!at ? "Sem ordem" : /^AT/i.test(at) ? "Ordem …" + String(at).slice(-4) : String(at));
+  function syncDeliv() {
+    if (!D) return;
+    let ch = false;
+    const since = D.createdAt || 0;
+    all().forEach(p => {
+      const t = ok[p.tn], cur = deliv[p.tn];
+      if (t && (!cur || cur.t !== t)) {
+        deliv[p.tn] = { t, at: p.at || D.at || "", s: p.shopeeStop ?? null, l: byTn.get(p.tn)?.label || p.address || "", src: p.src || null };
+        ch = true;
+      } else if (!t && cur && !cur.n && cur.t >= since) { delete deliv[p.tn]; ch = true; }
+    });
+    if (ch) { pruneDeliv(); store.set("re:deliv", deliv); }
+  }
+  function syncDelivR2() {
+    if (!R2) return;
+    let ch = false;
+    R2.pkgs.forEach(p => {
+      const t = R2.ok[p.tn], cur = deliv[p.tn];
+      if (t && (!cur || cur.t !== t)) { deliv[p.tn] = { t, at: p.at || "", s: p.shopeeStop ?? null, l: p.address || "", src: p.src || null, n: 1 }; ch = true; }
+      else if (!t && cur && cur.n) { delete deliv[p.tn]; ch = true; }
+    });
+    if (ch) { pruneDeliv(); store.set("re:deliv", deliv); }
+  }
+  function pruneDeliv() {
+    const cut = Date.now() - 400 * 864e5;
+    Object.keys(deliv).forEach(k => { if (!(deliv[k].t > cut)) delete deliv[k]; });
+  }
+  let calMonth = null, calDay = null;
+  const MES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  const SEM = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  const brl2 = v => "R$ " + (Math.round(v * 100) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Cor de cada ordem: pela ordem em que ela apareceu (duas ordens do mesmo dia nunca ficam com a mesma cor).
+  let calIdx = new Map();
+  const calColor = at => ["#0b7285", "#c2255c", "#5f3dc4", "#e67700", "#2b8a3e", "#1864ab", "#862e9c", "#a61e4d"][(calIdx.get(at) ?? 0) % 8];
+  function renderCal() {
+    const box = $("calBox");
+    if (!box) return;
+    if (D) syncDeliv();
+    const now = new Date();
+    if (!calMonth) calMonth = { y: now.getFullYear(), m: now.getMonth() };
+    if (!calDay) calDay = dayKey(Date.now());
+    const items = Object.entries(deliv).map(([tn, v]) => ({ tn, ...v, d: dayKey(v.t) }));
+    calIdx = new Map();
+    items.slice().sort((x, y) => x.t - y.t).forEach(it => { if (!calIdx.has(it.at)) calIdx.set(it.at, calIdx.size); });
+    const byDay = new Map();
+    items.forEach(it => { if (!byDay.has(it.d)) byDay.set(it.d, []); byDay.get(it.d).push(it); });
+    // Total da ordem: todos os pacotes dela que o app conhece (entregues em qualquer dia + os da rota aberta).
+    const tnsOf = new Map(), daysOf = new Map();
+    const addTn = (at, tn) => { if (!tnsOf.has(at)) tnsOf.set(at, new Set()); tnsOf.get(at).add(tn); };
+    items.forEach(it => { addTn(it.at, it.tn); if (!daysOf.has(it.at)) daysOf.set(it.at, new Set()); daysOf.get(it.at).add(it.d); });
+    if (D) all().forEach(p => addTn(p.at || D.at || "", p.tn));
+    const totalOf = new Map([...tnsOf].map(([at, set]) => [at, set.size]));
+    // Grade do mês
+    const { y, m } = calMonth;
+    const first = new Date(y, m, 1), nDays = new Date(y, m + 1, 0).getDate();
+    let cells = "";
+    for (let i = 0; i < first.getDay(); i++) cells += `<span class="cal-c empty"></span>`;
+    for (let d = 1; d <= nDays; d++) {
+      const k = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const l = byDay.get(k) || [];
+      const ats = [...new Set(l.map(x => x.at))];
+      cells += `<button type="button" class="cal-c${l.length ? " has" : ""}${k === dayKey(Date.now()) ? " today" : ""}${k === calDay ? " sel" : ""}" data-calday="${k}"><span class="cal-d">${d}</span>${l.length ? `<b>${l.length}</b><span class="cal-bars">${ats.slice(0, 4).map(at => `<i style="background:${calColor(at)}"></i>`).join("")}</span>` : ""}</button>`;
+    }
+    const monthItems = items.filter(it => it.d.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`));
+    const monthVal = [...new Set(monthItems.map(x => x.at))].reduce((t, at) => t + (pay[at] ? pay[at] * monthItems.filter(x => x.at === at).length / (totalOf.get(at) || 1) : 0), 0);
+    // Dia escolhido
+    const l = (byDay.get(calDay) || []).sort((a, b) => a.t - b.t);
+    const dd = new Date(calDay + "T12:00:00");
+    const ats = [...new Set(l.map(x => x.at))];
+    let dayVal = 0;
+    const blocks = ats.map(at => {
+      const li = l.filter(x => x.at === at), tot = totalOf.get(at) || li.length;
+      const days = [...(daysOf.get(at) || [])].sort();
+      const pos = days.indexOf(calDay);
+      const val = pay[at] ? pay[at] * li.length / tot : null;
+      if (val) dayVal += val;
+      const h = (li[li.length - 1].t - li[0].t) / 3.6e6;
+      const tags = [pos > 0 ? `continuação de ${days[pos - 1].slice(8, 10)}/${days[pos - 1].slice(5, 7)}` : "", pos < days.length - 1 ? `continua em ${days[pos + 1].slice(8, 10)}/${days[pos + 1].slice(5, 7)}` : ""].filter(Boolean);
+      return `<div class="cal-at" style="border-left-color:${calColor(at)}">
+        <div class="cal-at-top"><b>${esc(orderName(at))}</b>${li.some(x => x.n) ? `<span class="chip">Nova rota</span>` : ""}${tags.map(t => `<span class="chip">${t}</span>`).join("")}</div>
+        <span class="sub">${esc(at)}</span>
+        <div class="cal-nums"><span><b>${li.length}</b> entregues neste dia</span><span><b>${tot}</b> na ordem${items.filter(x => x.at === at).length < tot ? ` (${items.filter(x => x.at === at).length} entregues até agora)` : ""}</span><span><b>${hhmm(li[0].t)}–${hhmm(li[li.length - 1].t)}</b></span></div>
+        <label class="cal-pay">Valor pago pela ordem (R$)<input type="number" inputmode="decimal" step="0.01" min="0" data-payat="${esc(at)}" value="${pay[at] ?? ""}" placeholder="ex.: 180"></label>
+        ${val != null ? `<div class="cal-val">Neste dia: <b>${brl2(val)}</b>${days.length > 1 ? ` (${li.length} de ${tot} pacotes)` : ""}${h >= 0.25 ? ` · ${brl2(val / h)} por hora` : ""}</div>` : ""}
+        <details><summary>Ver os ${li.length} pacotes</summary><div class="cal-list">${li.map(x => `<div><span class="mono">${hhmm(x.t)}</span> <b>${x.src ? esc(PLATFORMS[x.src]?.short || "ML") : "Parada " + esc(x.s ?? "s/n")}</b> · ${esc(x.l || "")} <span class="mono sub">${esc(tail(x.tn))}</span></div>`).join("")}</div></details>
+      </div>`;
+    }).join("");
+    box.innerHTML = `<div class="card cal-card">
+        <div class="cal-nav"><button type="button" class="line" data-calm="-1" aria-label="Mês anterior">‹</button><b>${MES[m]} ${y}</b><button type="button" class="line" data-calm="1" aria-label="Próximo mês">›</button></div>
+        <div class="cal-sum">${monthItems.length} pacotes entregues no mês${monthVal ? ` · ${brl2(monthVal)}` : ""}</div>
+        <div class="cal-grid">${["D", "S", "T", "Q", "Q", "S", "S"].map(s => `<span class="cal-h">${s}</span>`).join("")}${cells}</div>
+      </div>
+      <div class="card cal-day"><h2>${SEM[dd.getDay()][0].toUpperCase() + SEM[dd.getDay()].slice(1)}, ${dd.getDate()} de ${MES[dd.getMonth()]}</h2>
+        ${l.length ? `<div class="cal-tot"><span><b>${l.length}</b> pacotes</span><span><b>${ats.length}</b> ${ats.length > 1 ? "ordens" : "ordem"}</span><span><b>${hhmm(l[0].t)}–${hhmm(l[l.length - 1].t)}</b></span>${dayVal ? `<span><b>${brl2(dayVal)}</b></span>` : ""}</div>${blocks}` : `<p class="sub">Nenhuma entrega neste dia.</p>`}
+      </div>`;
+  }
+  document.addEventListener("change", e => {
+    const at = e.target?.dataset?.payat;
+    if (at == null) return;
+    const v = parseFloat(String(e.target.value).replace(",", "."));
+    if (v > 0) pay[at] = v; else delete pay[at];
+    store.set("re:pay", pay); renderCal();
+  });
+  const save = () => { store.set("re:day", D); store.set(okKey(), ok); store.set(sessKey(), sess); try { syncDeliv(); } catch {} };
   const all = () => D.pkgs.concat(D.extra || []);
   // Resolvido = entregue ou com ocorrência (não entregue, com motivo). Só "entregue" conta no faturamento.
   const pkgOk = p => !!ok[p.tn];
@@ -226,7 +336,7 @@
   function nextAddr() {
     const pend = pendingList();
     if (!pend.length) return undefined;
-    if (mode !== "perto" || typeof here === "undefined" || !here) return pend[0];
+    if (D?.locked || mode !== "perto" || typeof here === "undefined" || !here) return pend[0];
     const best = Core.streetFirst(pend, { here, street: curStreet(), area: lastArea(), areaOf });
     const cur = curKey && byKey.get(curKey);
     if (cur && pend.includes(cur) && (Core.hav(here, cur) <= 80 || Core.hav(here, cur) - Core.hav(here, best) < 50)) return cur;
@@ -273,6 +383,7 @@
     byKey = new Map(A.map(a => [a.key, a]));
     byTn = new Map();
     A.forEach(a => a.pkgs.forEach(p => byTn.set(p.tn, a)));
+    pontosCache = null;
   }
   const orderOk = () => D.order && D.order.length === A.length && D.order.every(k => byKey.has(k));
 
@@ -280,6 +391,21 @@
   // Com o GPS ligado e nenhuma entrega feita (ou pedindo "a partir de onde estou"), a rota sai de onde você está.
   // Endereços com horário ("entrega até 12:00", "após 14h") são encaixados pelo relógio.
   function plan(startKey, fromHere) {
+    // Rota salva: a ordem não muda. Endereço novo (planilha somada, pacote adicionado) entra no fim.
+    if (D.locked && D.order?.length) {
+      const kept = D.order.filter(k => byKey.has(k)), known = new Set(kept);
+      const fresh = A.filter(a => !known.has(a.key));
+      const freshDone = fresh.filter(addrDone), freshPend = fresh.filter(a => !addrDone(a));
+      let add = [];
+      if (freshPend.length) {
+        const last = byKey.get(kept[kept.length - 1]);
+        const s0 = last ? nearestFrom(last, freshPend) : freshPend[0];
+        add = Core.addressRoute(freshPend, s0.key, { from: last ? { lat: last.lat, lng: last.lng } : null }).order.map(a => a.key);
+      }
+      D.order = kept.concat(freshDone.map(a => a.key), add);
+      pontosCache = null;
+      return;
+    }
     const doneA = (orderOk() ? D.order.map(k => byKey.get(k)) : A).filter(addrDone);
     const pend = A.filter(a => !addrDone(a));
     if (!pend.length) { D.order = doneA.map(a => a.key); return; }
@@ -297,6 +423,7 @@
     D.cmp = { app: r.km, shopee: Core.seqMeters(shp, from, to), n: pend.length, from: !!from, to: !!to, at: Date.now() };
   }
   function numberOrder() {
+    pontosCache = null;
     if (!orderOk()) plan(null);
     order = D.order.map(k => byKey.get(k));
     // "Ninguém atendeu": o endereço vai para o fim até ser entregue.
@@ -394,14 +521,14 @@
   }
 
   // ---------- abas ----------
-  const TABS = ["mapa", "lista", "separar", "voltar", "nova", "painel", "ajustes"];
+  const TABS = ["mapa", "lista", "separar", "voltar", "nova", "cal", "painel", "ajustes"];
   let listDone = false;
   // Barra "Próxima parada" nas abas Paradas, Painel e Ajustes: entregar ou navegar sem voltar para o mapa.
   function renderNextBar() {
     const bar = $("nextBar");
     const tab = location.hash.slice(1);
     const a = active ? nextAddr() : null;
-    if (!a || tab === "mapa" || tab === "separar" || tab === "voltar" || tab === "nova" || !TABS.includes(tab)) { bar.hidden = true; return; }
+    if (!a || tab === "mapa" || tab === "separar" || tab === "voltar" || tab === "nova" || tab === "cal" || !TABS.includes(tab)) { bar.hidden = true; return; }
     const pend = a.pkgs.filter(p => !pkgDone(p)).length;
     const app = navAppNow() || "waze";
     bar.hidden = false;
@@ -411,9 +538,11 @@
   }
   function route() {
     let tab = location.hash.slice(1);
-    if (!active && tab !== "nova") tab = "inicio";
+    if (tab === "lista") tab = "separar"; // Paradas e Organizar viraram uma aba só
+    if (!active && tab !== "nova" && tab !== "cal") tab = "inicio";
     else if (!TABS.includes(tab)) tab = "mapa";
     if (tab === "nova") renderNova();
+    if (tab === "cal") renderCal();
     ["inicio", ...TABS].forEach(t => ($("v-" + t).hidden = t !== tab));
     document.querySelectorAll(".tabbar a").forEach(a => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (tab === "mapa") { ensureMap(); setTimeout(() => map?.invalidateSize(), 50); }
@@ -436,6 +565,7 @@
     renderPainel();
     renderNextBar();
     if (map) updateMarkers();
+    document.querySelectorAll(".modes").forEach(m => (m.hidden = !!D.locked));
   }
 
   // ---------- cronômetro ----------
@@ -450,35 +580,88 @@
   function startSession() { sess = { start: Date.now() }; save(); renderAll(); toast("Entregas iniciadas. Bom trabalho!"); }
   setInterval(() => { if (active && sess.start && !sess.end) { renderTimer(); if (!$("v-painel").hidden) renderSession(); } }, 1000);
 
+  // ---------- Pontos: onde estacionar o carro e fazer a pé ----------
+  // Na rua: você para o carro num lugar e entrega a pé tudo que está a até 300 m. Se o próximo endereço fica a até
+  // 500 m, mas de carro seria uma volta grande (contramão: pelas ruas dá mais de 2,5 vezes a distância a pé), ele
+  // também entra no mesmo Ponto. Os Pontos são montados quando você salva a rota e não mudam até o fim.
+  const PARK = 300, PARK_MAX = 500, WALK_MPM = 70; // 70 m por minuto a pé (≈ 4,2 km/h)
+  // Endereço comercial (ou com horário para entregar): vai primeiro na rota.
+  const COMM_RE = /\b(loja|lj|comercial|com[eé]rcio|empresa|escrit[oó]rio|sala\s*\d+|conjunto\s*\d+|ltda|eireli|mercado|supermercado|mercearia|minimercado|oficina|cl[ií]nica|consult[oó]rio|farm[aá]cia|drogaria|restaurante|lanchonete|padaria|confeitaria|academia|sal[aã]o\s+de|barbearia|pet\s?shop|galp[aã]o|ind[uú]stria|f[aá]brica|dep[oó]sito|shopping|hor[aá]rio\s+comercial|recep[cç][aã]o|cnpj|hospital|laborat[oó]rio|escola|col[eé]gio|hotel|distribuidora|transportadora|imobili[aá]ria|ag[eê]ncia|ateli[eê]|studio|est[uú]dio|papelaria|autope[cç]as|borracharia|lavanderia|a[cç]ougue|sorveteria|pizzaria|bar\s+e|loteria|cart[oó]rio|prefeitura|unidade|cooperativa)\b/i;
+  // Referências ("ao lado da clínica", "perto do posto", "próximo ao colégio") não fazem o endereço ser comercial.
+  const LANDMARK_RE = /\b(ao\s+lado|lado|perto|pr[oó]ximo|em\s+frente|frente|atr[aá]s|esquina|vizinh[oa]|depois|antes|ref\.?|refer[eê]ncia)\b[^,;]*/gi;
+  const pkgText = p => [p.address, p.compl, p.obs].filter(Boolean).join(" ").replace(LANDMARK_RE, " ");
+  const isComm = a => a.pkgs.some(p => COMM_RE.test(pkgText(p)) || p.window?.until);
+  const commChip = a => (isComm(a) ? `<span class="chip comm">${a.pkgs.some(p => COMM_RE.test(pkgText(p))) ? "Comercial" : "Com horário"}</span>` : "");
+  let pontosCache = null;
+  function getPontos() {
+    if (pontosCache) return pontosCache;
+    const out = [], inP = new Set();
+    (D?.pontos || []).forEach(g => {
+      const list = g.keys.map(k => byKey.get(k)).filter(Boolean);
+      if (!list.length) return;
+      list.forEach(a => inP.add(a.key));
+      out.push({ id: g.keys[0], list, park: byKey.get(g.park) || list[0], drive: g.drive, contra: g.contra || [] });
+    });
+    // Endereços sem Ponto (rota ainda não salva, ou pacote novo depois de salvar): agrupa pela ordem, até 300 m.
+    const rest = order.filter(a => !inP.has(a.key));
+    const extraP = [];
+    let cur = null;
+    rest.forEach(a => {
+      if (!cur || walkM(cur.park, a) > PARK) { cur = { id: a.key, list: [], park: a, drive: null, contra: [] }; extraP.push(cur); }
+      cur.list.push(a);
+    });
+    pontosCache = D?.pontos?.length ? out.concat(extraP) : extraP;
+    pontosCache.forEach((g, i) => (g.n = i + 1));
+    return pontosCache;
+  }
+  function carOfAddr(a) { const cs = getPontos(), i = cs.findIndex(g => g.list.includes(a)); return { g: cs[i], i }; }
+  const pontoOf = a => carOfAddr(a).g;
+  // Quanto tempo o Ponto economiza: ir de carro de porta em porta (manobra e estacionar 1,5 min cada) contra ir a pé.
+  function pontoInfo(g) {
+    const others = g.list.filter(x => x !== g.park);
+    const walkMin = others.reduce((t, x) => t + 2 * walkM(g.park, x) / WALK_MPM, 0);
+    let driveMin = 0;
+    for (let i = 1; i < g.list.length; i++) driveMin += g.drive?.[i - 1] != null ? g.drive[i - 1] / 60 : walkM(g.list[i - 1], g.list[i]) * 1.4 / 330;
+    driveMin += 1.5 * others.length;
+    return { walkMin: Math.round(walkMin), saved: Math.round(driveMin - walkMin), far: others.length ? Math.max(...others.map(x => walkM(g.park, x))) : 0 };
+  }
+  const streetOf = a => streetName(a) || a.label;
+  function pontoHead(g, a) {
+    const pend = g.list.filter(x => !addrDone(x));
+    const left = g.list.reduce((t, x) => t + leftOf(x), 0);
+    const inf = pontoInfo(g);
+    const contra = g.list.filter(x => g.contra.includes(x.key));
+    return `<div class="ponto-head"><div class="ph-top"><b>Ponto ${g.n}</b><span>${pend.length} endereço${pend.length === 1 ? "" : "s"} · faltam ${left} pacote${left === 1 ? "" : "s"}</span></div>
+      ${g.list.length > 1 ? `<div class="ph-park">🅿️ Estacione na <b>${esc(streetOf(g.park))}</b>${g.park.nums?.length ? `, perto do nº ${esc(g.park.nums[0])}` : ""}, e faça ${g.list.length - 1 > 1 ? `os outros ${g.list.length - 1} endereços` : "o outro endereço"} a pé (até ${fmtDist(inf.far)}).${inf.walkMin ? ` ~${inf.walkMin} min a pé ida e volta` : ""}${inf.saved >= 1 ? `, <b>ganha ~${inf.saved} min</b> em vez de manobrar o carro.` : "."}</div>` : `<div class="ph-park">🅿️ Estacione na <b>${esc(streetOf(g.park))}</b>.</div>`}
+      ${contra.length ? `<div class="ph-contra">${contra.map(x => esc(x.label)).join(", ")}: de carro seria uma volta grande (contramão). Vá a pé.</div>` : ""}
+      ${a && a !== g.park && !addrDone(g.park) ? "" : `<a class="btn line sm" href="${Core.links.waze(g.park)}" target="_blank" rel="noopener">Waze até onde estacionar</a>`}</div>`;
+  }
+
   // ---------- cartão do endereço ----------
   // Pacote: a parada da Shopee em destaque e o final do código BR, como na etiqueta.
   const pkgBtn = (p, a, tn) => `<button type="button" class="pkg${pkgDone(p) ? " done" : ""}${p.tn === tn ? " me" : ""}" data-p="${esc(p.tn)}" aria-pressed="${pkgDone(p)}">
         <span class="box">${pkgDone(p) ? ICON_CHECK : ""}</span>
-        <span class="t"><b class="stp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº"}</b> · <b>${esc(tail(p.tn))}</b>${failOf(p) ? ` · <span class="att">não entregue: ${esc(failOf(p).r)}</span>` : ""}${!pkgDone(p) && !isChecked(p) ? ` · <span class="chk">não separado</span>` : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`;
-  // Visão única: o endereço da vez e todos os outros a até 500 m a pé (o mesmo "Carro" da separação), com todos os pacotes.
-  function carOfAddr(a) { const cs = carStops(), i = cs.findIndex(g => g.list.includes(a)); return { g: cs[i], i }; }
+        <span class="t"><b class="stp">${p.src ? esc(PLATFORMS[p.src]?.name || p.src) : p.shopeeStop != null ? "Parada " + p.shopeeStop : "sem nº"}</b> · <b>${esc(tail(p.tn))}</b>${failOf(p) ? ` · <span class="att">não entregue: ${esc(failOf(p).r)}</span>` : ""}${!pkgDone(p) ? (isChecked(p) ? ` · <span class="chk on">conferido</span>` : ` · <span class="chk">não conferido</span>`) : ""}${p.window ? ` · <span class="att">${p.window.until ? "até " + esc(p.window.until) : "após " + esc(p.window.after)}</span>` : ""}${attempt(p) > 1 ? ` · <span class="att">${attempt(p)}ª tentativa</span>` : ""}${extra(p) ? `<br><span class="sub">${esc(extra(p))}</span>` : ""}</span></button>`;
   const leftOf = x => x.pkgs.filter(p => !pkgDone(p)).length;
+  // O cartão mostra o Ponto inteiro: onde estacionar, o endereço da vez e os outros que dá para fazer a pé.
   function carroBox(a, tn, part) {
-    const { g, i } = carOfAddr(a);
+    const { g } = carOfAddr(a);
     const list = g ? g.list : [a];
     const others = list.filter(x => x !== a && !addrDone(x)), doneA = list.filter(x => x !== a && addrDone(x));
-    const left = list.reduce((t, x) => t + leftOf(x), 0);
-    const blk = x => `<div class="cx${x === a ? " here" : ""}"><div class="cx-top">${x === a ? `<span class="cx-tag">AQUI</span>` : `<span class="cx-tag far">${fmtDist(walkM(a, x))} a pé</span>`}<b>${esc(x.label)}</b></div>
+    const blk = x => `<div class="cx${x === a ? " here" : ""}"><div class="cx-top">${x === a ? `<span class="cx-tag">AQUI</span>` : `<span class="cx-tag far">${fmtDist(walkM(a, x))} a pé</span>`}<b>${esc(x.label)}</b>${commChip(x)}</div>
       <div class="pkgs">${x.pkgs.map(p => pkgBtn(p, x, tn)).join("")}</div>
       ${x !== a ? `<button type="button" class="line" data-sel="${esc(x.key)}">Ir para este endereço</button>` : ""}</div>`;
-    if (part === "rest") return others.length || doneA.length ? `<div class="carro"><div class="eyebrow">Também a pé daqui (Grupo ${i + 1})</div>${others.map(blk).join("")}
-      ${doneA.length ? `<div class="sub">Já entregues neste carro: ${doneA.map(x => esc(x.label)).join(" · ")}</div>` : ""}</div>` : "";
-    return `<div class="carro"><div class="carro-head"><b>${g ? "Grupo " + (i + 1) : "Este endereço"}</b><span>${others.length ? `${others.length + (addrDone(a) ? 0 : 1)} endereços a pé · ` : ""}faltam ${left} pacote${left === 1 ? "" : "s"}</span></div>
-      ${others.length ? `<div class="together">Além deste, mais <b>${others.length} endereço${others.length > 1 ? "s" : ""}</b> a pé com <b>${others.reduce((t, x) => t + leftOf(x), 0)} pacote${others.reduce((t, x) => t + leftOf(x), 0) > 1 ? "s" : ""}</b>. Leve todos do Grupo ${i + 1}.</div>` : ""}
-      ${blk(a)}</div>`;
+    if (part === "rest") return others.length || doneA.length ? `<div class="carro"><div class="eyebrow">Também a pé daqui (Ponto ${g.n})</div>${others.map(blk).join("")}
+      ${doneA.length ? `<div class="sub">Já entregues neste Ponto: ${doneA.map(x => esc(x.label)).join(" · ")}</div>` : ""}</div>` : "";
+    return `<div class="carro">${g ? pontoHead(g, a) : ""}${blk(a)}</div>`;
   }
-  // Para o cartão fechado: quantos endereços e pacotes ainda tem a pé a partir daqui.
+  // Para o cartão fechado: o Ponto e quantos endereços ainda dá para fazer a pé dali.
   function carroChip(a) {
-    const { g, i } = carOfAddr(a);
+    const { g } = carOfAddr(a);
     if (!g) return "";
     const others = g.list.filter(x => x !== a && !addrDone(x));
     const n = others.reduce((t, x) => t + leftOf(x), 0);
-    return `<span class="chip car">Grupo ${i + 1}${others.length ? ` · +${others.length} end. a pé (${n} pct)` : ""}</span>`;
+    return `<span class="chip car">Ponto ${g.n}${others.length ? ` · +${others.length} a pé (${n} pct)` : ""}</span>`;
   }
   function addrCard(a, tn) {
     const nx = nextAddr();
@@ -490,7 +673,7 @@
       ${issues.has(a.key) ? `<button type="button" class="issue-bar" data-issues="1"><b>Conferir endereço</b><span>${esc([issues.get(a.key).pin, issues.get(a.key).cep].filter(Boolean).join(" "))}</span></button>` : ""}
       ${a.pkgs.some(p => D.fix?.[p.tn]) ? `<button type="button" class="line" data-fixundo="${esc(a.key)}">Posição corrigida por você · voltar à da planilha</button>` : ""}
       ${streetLine(a) ? `<div class="streetline big">${esc(streetLine(a))}. Faça a rua inteira antes de sair.</div>` : ""}
-      <div class="chips">${walkChip(a)}${zoneChip(a, true)}${etaChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+      <div class="chips">${commChip(a)}${etaChip(a)}${navText(a)}${rtChips(a)}<span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}${addrDone(a) ? `<span class="chip ok">Entregue</span>` : ""}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
       ${platformsOf(a).length > 1 ? `<div class="together">Neste endereço tem entrega de ${platformsOf(a).map(k => PLATFORMS[k]?.name || k).join(" e ")}: ${platformsOf(a).map(k => `${a.pkgs.filter(p => srcOf(p) === k).length} ${PLATFORMS[k]?.name || k}`).join(", ")}.</div>` : ""}
       ${a.unseq ? `<div class="offroute">${a.unseq} pacote${a.unseq > 1 ? "s" : ""} <b>sem nº de parada</b>: no app da Shopee fica no topo da lista.</div>` : ""}
       ${carroBox(a, tn)}
@@ -516,58 +699,161 @@
     const m = walkM(from, a);
     return m <= WALK ? `<span class="chip ok">a pé · ${fmtDist(m)}</span>` : `<span class="chip">de carro · ${fmtDist(m)}</span>`;
   }
-  // Paradas do carro: endereços seguidos na rota a até 500 m a pé do lugar onde você estaciona.
-  function carStops() {
-    const g = []; let cur = null;
-    order.forEach(a => {
-      if (!cur || walkM(cur.park, a) > WALK) { cur = { park: a, list: [] }; g.push(cur); }
-      cur.list.push(a);
-    });
-    return g;
+
+  // ---------- Salvar a rota ----------
+  // 1) Começa pela rua mais perto de onde você está (GPS).
+  // 2) Endereços comerciais ou com horário (e os vizinhos a até 300 m deles) vão primeiro.
+  // 3) Monta os Pontos (onde estacionar) com as distâncias reais pelas ruas, quando o servidor de rotas responde.
+  // Depois de salva, a ordem não muda mais: o carro foi arrumado por ela. Pacote novo entra no fim.
+  async function osrmLegs(list) {
+    // Distância e tempo de carro entre cada endereço e os 8 seguintes, em blocos (o servidor aceita até 100 pontos).
+    const res = new Map();
+    for (let s = 0; s < list.length; s += 72) {
+      const blk = list.slice(s, s + 80);
+      if (blk.length < 2) break;
+      const url = `https://router.project-osrm.org/table/v1/driving/${blk.map(a => `${a.lng.toFixed(6)},${a.lat.toFixed(6)}`).join(";")}?annotations=distance,duration`;
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
+      try {
+        const j = await (await fetch(url, { signal: ctl.signal })).json();
+        if (j.code !== "Ok") throw new Error(j.code);
+        blk.forEach((a, i) => { for (let k = i + 1; k < Math.min(blk.length, i + 9); k++) res.set(a.key + ">" + blk[k].key, { d: j.distances[i][k], t: j.durations[i][k] }); });
+      } finally { clearTimeout(tm); }
+    }
+    return res;
   }
-  // Aba Organizar: tudo pela parada da Shopee (o número da etiqueta). Paradas perto umas das outras (a até 500 m a pé,
-  // o mesmo grupo do cartão na rua) ficam no mesmo Grupo, para separar juntas e entregar juntas.
-  function sepEntries(q) {
-    const cs = carStops(), gOf = new Map();
-    cs.forEach((g, i) => g.list.forEach(a => gOf.set(a, i + 1)));
-    const m = new Map();
-    all().forEach(p => {
-      const a = byTn.get(p.tn);
-      if (!a) return;
-      const k = p.src ? "x|" + p.tn : (p.at || "") + "|" + (p.shopeeStop ?? "s" + p.tn);
-      if (!m.has(k)) m.set(k, { stop: p.src ? null : p.shopeeStop, src: p.src, at: p.at, a, g: gOf.get(a), pkgs: [] });
-      m.get(k).pkgs.push(p);
+  function makePontos(ord, M) {
+    const P = []; let cur = null;
+    ord.forEach((a, i) => {
+      if (cur) {
+        const w = walkM(cur.parkA, a);
+        let fits = w <= PARK, contra = false;
+        const dr = M?.get(cur.parkA.key + ">" + a.key);
+        if (!fits && w <= PARK_MAX && dr && dr.d > 2.5 * w) { fits = true; contra = true; }
+        if (fits) { cur.keys.push(a.key); if (contra) cur.contra.push(a.key); const lg = M?.get(ord[i - 1].key + ">" + a.key); cur.drive.push(lg ? lg.t : null); return; }
+      }
+      cur = { parkA: a, park: a.key, keys: [a.key], contra: [], drive: [] };
+      P.push(cur);
     });
-    let es = [...m.values()].filter(e => q || e.pkgs.some(p => !pkgDone(p)));
-    if (q) es = es.filter(e => (/^\d{1,3}$/.test(q) ? e.stop === +q : e.pkgs.some(p => p.tn.toUpperCase().includes(q))));
-    const ai = e => Math.max(0, atList().indexOf(e.at));
-    return es.sort((x, y) => (x.src ? 1 : 0) - (y.src ? 1 : 0) || ai(x) - ai(y) || (x.stop ?? 9999) - (y.stop ?? 9999));
+    return P.map(({ parkA, ...g }) => g);
   }
-  const stopName = e => (e.src ? PLATFORMS[e.src]?.short || "ML" : e.stop ?? "s/n");
+  let locking = false;
+  async function lockRoute() {
+    if (locking || !active) return;
+    if (!here) {
+      startGps(false);
+      $("lockBox").innerHTML = `<p class="sub">Ligando a localização para saber por qual rua começar…</p>`;
+      for (let i = 0; i < 16 && !here; i++) await new Promise(r => setTimeout(r, 500));
+      if (!here) { toast("Sem localização: a rota começa pela parada 1 da Shopee. Libere a localização para começar perto de você."); }
+    }
+    locking = true;
+    $("lockBox").innerHTML = `<p class="sub">Montando a rota e os Pontos…</p>`;
+    try {
+      const pend = A.filter(a => !addrDone(a));
+      const from = here ? { lat: here.lat, lng: here.lng } : null;
+      const comm = pend.filter(isComm);
+      const first = (pt, list) => (pt ? nearestFrom(pt, list) : list.reduce((b, a) => ((a.shopeeStops[0] ?? 1e9) < (b.shopeeStops[0] ?? 1e9) ? a : b)));
+      const run = (list, pt) => (list.length ? Core.addressRoute(list, first(pt, list).key, { from: pt }).order : []);
+      // Rota normal a partir de onde você está; depois, em cada região (trecho sem salto maior que 1,5 km),
+      // os comerciais e os vizinhos a até 300 m deles vão para o começo da região. Assim o comércio vem primeiro
+      // sem atravessar a cidade de um lado para o outro.
+      const base = run(pend, from);
+      const regions = [];
+      base.forEach((a, i) => { if (!i || Core.hav(base[i - 1], a) > 1500) regions.push([]); regions[regions.length - 1].push(a); });
+      let ord = [], pri = 0, entry = from;
+      regions.forEach(reg => {
+        const cm = reg.filter(isComm);
+        const p1 = reg.filter(a => isComm(a) || cm.some(c => walkM(c, a) <= PARK));
+        const p2 = reg.filter(a => !p1.includes(a));
+        const part = p1.length && p2.length ? (() => { const o1 = run(p1, entry || reg[0]); return o1.concat(run(p2, o1[o1.length - 1])); })() : reg;
+        pri += p1.length; ord = ord.concat(part); entry = part[part.length - 1];
+      });
+      let M = null;
+      try { M = await osrmLegs(ord); } catch { M = null; }
+      D.order = A.filter(addrDone).map(a => a.key).concat(ord.map(a => a.key));
+      D.pontos = makePontos(ord, M);
+      D.locked = { at: Date.now(), from, pri, comm: comm.length, start: ord[0] ? streetOf(ord[0]) : "", osrm: !!M };
+      D.loaded = {};
+      pontosCache = null; curKey = null; selKey = null;
+      if (mode !== "rota") { mode = "rota"; store.set("re:mode", mode); document.querySelectorAll("[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === mode)); }
+      save(); numberOrder(); if (map) drawMarkers(false); renderAll();
+      toast(`Rota salva: ${getPontos().length} Pontos. Comece pela ${D.locked.start}.`);
+    } finally { locking = false; renderSep(); }
+  }
+  function unlockRoute() { if (!D) return; D.locked = null; D.pontos = null; D.loaded = {}; pontosCache = null; }
+
+  // ---------- aba Organizar ----------
+  // Duas visões: "Por endereço" (os pacotes de cada endereço, Ponto por Ponto, para conferir) e "Carregar o carro"
+  // (de trás para frente: o que você entrega por último vai primeiro, no fundo; a 1ª entrega fica mais perto de você).
+  let sepBy = store.get("re:sepBy2", "end");
+  const stopsTxt = list => {
+    const s = [...new Set(list.flatMap(a => a.pkgs.filter(p => !p.src).map(p => p.shopeeStop)).filter(v => v != null))].sort((x, y) => x - y);
+    const o = list.flatMap(a => a.pkgs.filter(p => p.src)).length, sn = list.flatMap(a => a.pkgs.filter(p => !p.src && p.shopeeStop == null)).length;
+    return [s.join(", "), sn ? "sem nº" : "", o ? o + " ML/outro" : ""].filter(Boolean).join(" · ");
+  };
+  function renderLock() {
+    const box = $("lockBox");
+    if (!box || !active || locking) return;
+    if (!D.locked) {
+      box.innerHTML = `<div class="lock-off"><b>Rota ainda não salva</b><span>Ligue a localização onde você vai começar e toque abaixo. O app começa pela rua mais perto de você, coloca comércio primeiro e diz onde estacionar. Depois disso a ordem não muda mais.</span>
+        <button type="button" class="primary big" data-lock="1">Salvar a rota a partir de onde estou</button></div>`;
+      return;
+    }
+    const L = D.locked, ps = getPontos();
+    box.innerHTML = `<div class="lock-on"><b>✓ Rota salva às ${hhmm(L.at)}</b><span>Começa na <b>${esc(L.start || "")}</b> · ${ps.length} Pontos${L.comm ? ` · ${L.comm} endereço${L.comm > 1 ? "s" : ""} comercia${L.comm > 1 ? "is" : "l"} primeiro` : ""}${L.osrm ? "" : " · distâncias estimadas (sem servidor de rotas)"}</span>
+      <span class="sub">A ordem fica igual até o fim, porque o carro foi arrumado por ela. Pacote novo entra no fim.</span>
+      <button type="button" class="line sm" data-unlock="1">Refazer a rota (só antes de arrumar o carro)</button></div>`;
+  }
   function renderSep() {
     const box = $("sepList");
     if (!box || !active) return;
+    renderLock();
     const pk = all().filter(p => !pkgDone(p)), got = pk.filter(isChecked).length;
-    $("sepHead").innerHTML = `<b>${got} de ${pk.length} separados</b><span>${pk.length - got ? `faltam ${pk.length - got}` : "tudo separado ✓"}</span>`;
+    $("sepHead").innerHTML = `<b>${got} de ${pk.length} conferidos</b><span>${pk.length - got ? `faltam ${pk.length - got}` : "tudo conferido ✓"}</span>`;
     $("sepBar").style.width = (pk.length ? got / pk.length * 100 : 100).toFixed(0) + "%";
+    document.querySelectorAll("[data-sepby]").forEach(b => b.classList.toggle("on", b.dataset.sepby === sepBy));
     const q = ($("sepQ").value || "").trim().toUpperCase();
-    const es = sepEntries(q);
-    const stripe = e => (multiAt() && e.at && !e.src ? ` style="box-shadow: inset 0 -4px 0 ${atColor(e.at)}"` : "");
-    const allOn = e => e.pkgs.filter(p => !pkgDone(p)).every(isChecked);
-    // 1) Índice: cada parada e o grupo dela.
-    $("sepIdx").innerHTML = es.length ? es.map(e => `<button type="button" class="tile${allOn(e) ? " on" : ""}" data-sepgo="${e.g}"${stripe(e)}><b>${esc(String(stopName(e)))}</b><span>G${e.g}</span></button>`).join("") : "";
-    // 2) Grupos na ordem da entrega, e dentro de cada grupo as paradas em ordem crescente.
-    const byG = new Map();
-    es.forEach(e => { if (!byG.has(e.g)) byG.set(e.g, []); byG.get(e.g).push(e); });
+    const ps = getPontos();
+    const nrm = x => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const hit = p => !q || (/^\d{1,3}$/.test(q) ? p.shopeeStop === +q : p.tn.toUpperCase().includes(q) || nrm(byTn.get(p.tn)?.label).includes(nrm(q)));
+    const tk = p => `<button type="button" class="tk${isChecked(p) ? " on" : ""}${pkgDone(p) ? " gone" : ""}" data-sepchk="${esc(p.tn)}">${isChecked(p) ? ICON_CHECK : ""}<b>${p.src ? esc(PLATFORMS[p.src]?.short || "ML") : esc(p.shopeeStop ?? "s/n")}</b><span class="mono">${esc(tail(p.tn))}</span></button>`;
+    $("sepIdxWrap").hidden = sepBy !== "end";
     let html = "";
-    [...byG.keys()].sort((x, y) => x - y).forEach(g => {
-      const list = byG.get(g), n = list.reduce((t, e) => t + e.pkgs.filter(p => q || !pkgDone(p)).length, 0);
-      const ok = list.reduce((t, e) => t + e.pkgs.filter(p => !pkgDone(p) && isChecked(p)).length, 0);
-      html += `<div class="grp" id="grp-${g}"><div class="car-head"><b>Grupo ${g}</b><span>Paradas ${list.map(e => esc(String(stopName(e)))).join(", ")} · ${n} pacote${n === 1 ? "" : "s"}${ok ? ` · ${ok} separados` : ""}${list[0].a.bairro ? " · " + esc(list[0].a.bairro) : ""}</span></div>
-        ${list.map(e => `<div class="pr"><div class="pr-n"${stripe(e)}>${esc(String(stopName(e)))}</div><div class="pr-b"><small>${esc(e.a.label)}</small>
-          <div class="pr-pk">${e.pkgs.filter(p => q || !pkgDone(p)).map(p => `<button type="button" class="tk${isChecked(p) ? " on" : ""}" data-sepchk="${esc(p.tn)}">${isChecked(p) ? ICON_CHECK : ""}<span class="mono">${esc(tail(p.tn))}</span></button>`).join("")}</div></div></div>`).join("")}</div>`;
-    });
-    box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para separar."}</p>`;
+    if (sepBy === "end") {
+      // Índice: número da etiqueta → Ponto.
+      const idx = [];
+      ps.forEach(g => g.list.forEach(a => a.pkgs.forEach(p => { if (!pkgDone(p) && hit(p)) idx.push({ p, g }); })));
+      idx.sort((x, y) => (x.p.src ? 1 : 0) - (y.p.src ? 1 : 0) || atList().indexOf(x.p.at) - atList().indexOf(y.p.at) || (x.p.shopeeStop ?? 9999) - (y.p.shopeeStop ?? 9999));
+      const seenIdx = new Set();
+      $("sepIdx").innerHTML = idx.filter(({ p, g }) => { const k = (p.src ? p.tn : (p.at || "") + (p.shopeeStop ?? p.tn)) + "|" + g.n; if (seenIdx.has(k)) return false; seenIdx.add(k); return true; })
+        .map(({ p, g }) => `<button type="button" class="tile${isChecked(p) ? " on" : ""}" data-sepgo="${g.n}"${multiAt() && p.at && !p.src ? ` style="box-shadow: inset 0 -4px 0 ${atColor(p.at)}"` : ""}><b>${p.src ? esc(PLATFORMS[p.src]?.short || "ML") : esc(p.shopeeStop ?? "s/n")}</b><span>P${g.n}</span></button>`).join("");
+      ps.forEach(g => {
+        const rows = g.list.map(a => ({ a, ps: a.pkgs.filter(p => hit(p) && (q || !pkgDone(p))) })).filter(r => r.ps.length);
+        if (!rows.length) return;
+        const n = rows.reduce((t, r) => t + r.ps.length, 0);
+        html += `<div class="grp" id="grp-${g.n}"><div class="car-head"><b>Ponto ${g.n}</b><span>${esc(streetOf(g.park))} · ${rows.length} endereço${rows.length > 1 ? "s" : ""} · ${n} pacote${n > 1 ? "s" : ""}</span></div>
+          ${rows.map(({ a, ps: pp }) => `<div class="pr2"><div class="pr2-top"><button type="button" class="pr2-a" data-sel="${esc(a.key)}">${esc(a.label)}</button>${commChip(a)}${a.pkgs.some(p => p.window) ? `<span class="chip warn">${a.pkgs.map(p => p.window).filter(Boolean).map(w => (w.until ? "até " + w.until : "após " + w.after)).join(" · ")}</span>` : ""}</div>
+            <small>${esc([a.bairro, ...new Set(a.pkgs.map(p => String(p.cep || "").replace(/\D/g, "")).filter(c => c.length === 8).map(c => "CEP " + c.slice(0, 5) + "-" + c.slice(5)))].filter(Boolean).join(" · "))}${a.pkgs.length > 1 ? ` · <b>${a.pkgs.length} pacotes juntos</b>` : ""}</small>
+            <div class="pr-pk">${pp.map(tk).join("")}</div></div>`).join("")}</div>`;
+      });
+    } else {
+      // Carregar o carro: de trás para frente.
+      const pend = ps.filter(g => g.list.some(a => !addrDone(a)));
+      const L = D.loaded || {};
+      const steps = pend.slice().reverse();
+      const nL = steps.filter(g => L[g.id]).length;
+      html += `<div class="card load-help"><b>Arrume o carro nesta ordem</b><span>Comece pelo <b>1º</b>: ele vai no <b>fundo</b> (porta-malas). O último da lista é a <b>1ª entrega</b> e fica <b>mais perto de você</b>. ${D.locked ? "" : "<b>Salve a rota antes</b>, para a ordem não mudar depois de arrumar."}</span><span class="sub">${nL} de ${steps.length} Pontos no carro</span></div>`;
+      html += `<div class="load-end">FUNDO DO CARRO</div>`;
+      steps.forEach((g, i) => {
+        const pp = g.list.flatMap(a => a.pkgs.filter(p => !pkgDone(p) && hit(p)));
+        if (!pp.length) return;
+        html += `<div class="ld${L[g.id] ? " on" : ""}"><button type="button" class="ld-chk" data-ldchk="${esc(g.id)}" aria-pressed="${!!L[g.id]}">${L[g.id] ? ICON_CHECK : ""}</button>
+          <div class="ld-b"><div class="ld-top"><span class="ld-n">${i + 1}º</span><b>Ponto ${g.n}</b><span>${g.n === pend[0]?.n ? "1ª entrega" : `entrega nº ${pend.indexOf(g) + 1}`}</span></div>
+          <small>${esc(streetOf(g.park))}${g.list.length > 1 ? ` + ${g.list.length - 1} a pé` : ""} · ${pp.length} pacote${pp.length > 1 ? "s" : ""} · etiquetas ${esc(stopsTxt(g.list))}</small>
+          <div class="pr-pk">${pp.map(tk).join("")}</div></div></div>`;
+      });
+      html += `<div class="load-end near">PERTO DE VOCÊ · 1ª ENTREGA</div>`;
+    }
+    box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para organizar."}</p>`;
   }
   $("sepQ")?.addEventListener("input", renderSep);
 
@@ -575,7 +861,7 @@
   function backResult(items) {
     // items: [{ text, c, res }]
     $("backOut").innerHTML = items.map(({ text, c, res }) => res
-      ? `<div class="bk ok"><b>${esc(res.msg)}</b><span>Parada ${esc(num(res.a, true))} · Grupo ${carOfAddr(res.a).i + 1}</span><span>${esc(res.a.label)}</span><span class="mono">${esc(c.tn)}</span><button type="button" class="line" data-sel="${esc(res.a.key)}">Ver no mapa</button></div>`
+      ? `<div class="bk ok"><b>${esc(res.msg)}</b><span>Parada ${esc(num(res.a, true))} · Ponto ${carOfAddr(res.a).g?.n ?? "?"}</span><span>${esc(res.a.label)}</span><span class="mono">${esc(c.tn)}</span><button type="button" class="line" data-sel="${esc(res.a.key)}">Ver no mapa</button></div>`
       : `<div class="bk no"><b>${text ? "Não achei este pacote nas planilhas dos últimos dias" : "Não consegui ler o código"}</b>${text ? `<span class="mono">${esc(text)}</span><span>Coloque o endereço à mão e ele entra na rota.</span><button type="button" class="primary" data-backadd="${esc(text)}">Digitar o endereço</button>` : `<span>Fotografe só a etiqueta, de perto e com luz. Ou digite o código abaixo.</span>`}</div>`).join("");
     renderBack();
   }
@@ -634,7 +920,7 @@
           <span class="mini-n ${a.pkgs.length > 1 ? "multi" : ""}">${num(a)}</span>
           <button type="button" class="mini-body" data-grab="1">
             <b>${esc(a.label)}</b>
-            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${carroChip(a)}${walkChip(a)}${zoneChip(a)}${navText(a)}${rtChips(a)}${areaChip(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${bagChip(a)}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
+            <span class="chips">${issues.has(a.key) ? `<span class="chip warn">Conferir endereço</span>` : ""}${carroChip(a)}${commChip(a)}${navText(a)}${rtChips(a)}${a.pkgs.length > 1 ? `<span class="chip count">${a.pkgs.length} pacotes</span>` : ""}${shopee(a) ? `<span class="chip shp">${shopee(a)}</span>` : ""}${platformsOf(a).filter(k => k !== "shopee").map(k => `<span class="chip ${PLATFORMS[k]?.cls || "other"}">${esc(PLATFORMS[k]?.name || k)}</span>`).join("")}</span>
             <span class="mono sub">${a.pkgs.map(p => (pkgDone(p) ? "✓" : "") + esc(tail(p.tn))).join(" · ")}</span>
             ${streetLine(a) ? `<span class="streetline">${esc(streetLine(a))}</span>` : ""}
           </button>
@@ -660,9 +946,12 @@
   const upcoming = () => order.filter(a => !addrDone(a)).slice(0, 10);
   function ensureMap() {
     if (map || !active) return;
-    if (!window.L) { $("map").innerHTML = `<div class="map-fail"><b>O mapa não carregou (sem internet?)</b><span>A rota continua funcionando: use a lista e os botões Waze e Google.</span><button type="button" class="primary" onclick="location.reload()">Tentar de novo</button><a class="btn line" href="#lista">Ver a lista</a></div>`; return; }
+    if (!window.L) { $("map").innerHTML = `<div class="map-fail"><b>O mapa não carregou (sem internet?)</b><span>A rota continua funcionando: use a aba Organizar e os botões Waze e Google.</span><button type="button" class="primary" onclick="location.reload()">Tentar de novo</button><a class="btn line" href="#separar">Abrir Organizar</a></div>`; return; }
     map = L.map("map", { zoomControl: false });
     map.on("click", onMapPin);
+    // Afastado (cidade inteira), as etiquetas "P" dos Pontos se amontoam: só aparecem com o mapa mais perto.
+    const zf = () => $("map").classList.toggle("zfar", map.getZoom() < 15);
+    map.on("zoomend", zf); setTimeout(zf, 0);
     map.on("dragstart", () => { if (here) { follow = false; $("btnRecenter").hidden = false; } });
     if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($("map"));
     const sheetH = () => $("v-mapa").style.setProperty("--sheet-h", ($("sheet").hidden ? 0 : $("sheet").offsetHeight) + "px");
@@ -707,6 +996,25 @@
     seqLine?.remove();
     const pts = upcoming().map(a => [a.lat, a.lng]);
     seqLine = pts.length > 1 ? L.polyline(pts, { color: brand(), weight: 3, opacity: 0.5, dashArray: "2 8", lineCap: "round" }).addTo(map) : null;
+    drawPontos();
+  }
+  // No mapa, cada Ponto: "P" onde estacionar, um círculo com o que dá para fazer a pé e linhas pontilhadas até cada
+  // endereço. Só os próximos 8 Pontos, para não poluir.
+  let pontoLayer = null;
+  function drawPontos() {
+    pontoLayer?.remove(); pontoLayer = null;
+    if (!map || !window.L || !D) return;
+    pontoLayer = L.layerGroup().addTo(map);
+    getPontos().filter(g => g.list.some(a => !addrDone(a))).slice(0, 8).forEach((g, i) => {
+      const P = [g.park.lat, g.park.lng];
+      const walk = g.list.filter(x => x !== g.park && !addrDone(x));
+      if (walk.length) {
+        const r = Math.max(45, ...walk.map(x => Core.hav(g.park, x))) + 20;
+        L.circle(P, { radius: r, color: "#1c7ed6", weight: 1.5, opacity: i ? 0.45 : 0.8, dashArray: "4 6", fillColor: "#1c7ed6", fillOpacity: i ? 0.03 : 0.08, interactive: false }).addTo(pontoLayer);
+        walk.forEach(x => L.polyline([P, [x.lat, x.lng]], { color: g.contra.includes(x.key) ? "#e8590c" : "#1c7ed6", weight: 2.5, opacity: 0.8, dashArray: "1 6", lineCap: "round", interactive: false }).addTo(pontoLayer));
+      }
+      L.marker(P, { icon: L.divIcon({ className: "", html: `<div class="pk-pin${i ? "" : " cur"}">P${g.n}${walk.length ? `<small>+${walk.length} a pé</small>` : ""}</div>`, iconSize: [60, 24], iconAnchor: [30, 46] }), zIndexOffset: 1800, interactive: false }).addTo(pontoLayer);
+    });
   }
   function updateMarkers() {
     if (!map) return;
@@ -861,7 +1169,15 @@
     if (e.target.id === "scanOverlay") { $("scanOverlay").hidden = true; return; }
     if (!t) return;
     const d = t.dataset;
-    if (d.bip) return void openBip(d.bip === "nova" ? "nova" : "rota");
+    if (d.bip) return void openBip(d.bip === "nova" || d.bip === "conferir" ? d.bip : "rota");
+    if (d.calday) { calDay = d.calday; return void renderCal(); }
+    if (d.calm) { const dt = new Date(calMonth.y, calMonth.m + +d.calm, 1); calMonth = { y: dt.getFullYear(), m: dt.getMonth() }; return void renderCal(); }
+    if (d.chkon) { D.checked = D.checked || {}; D.checked[d.chkon] = Date.now(); save(); renderSep(); t.outerHTML = `<span class="chip ok">✓ conferido agora</span>`; return; }
+    if (d.backput) { const c = catFind(d.backput); if (c) { const r = putBack(c); t.outerHTML = `<span class="chip ok">${esc(r.msg)}</span>`; } return; }
+    if (d.lock) return void lockRoute();
+    if (d.unlock) return twoTap(t, () => { unlockRoute(); save(); numberOrder(); if (map) drawMarkers(false); renderAll(); toast("Rota liberada. Salve de novo a partir de onde você vai começar."); });
+    if (d.sepby) { sepBy = d.sepby; store.set("re:sepBy2", sepBy); return void renderSep(); }
+    if (d.ldchk) { D.loaded = D.loaded || {}; D.loaded[d.ldchk] ? delete D.loaded[d.ldchk] : (D.loaded[d.ldchk] = Date.now()); save(); return void renderSep(); }
     if (d.r2ok) return void r2Deliver(d.r2ok, true);
     if (d.r2undo) return void r2Deliver(d.r2undo, false);
     if (d.r2rm) { R2.pkgs = R2.pkgs.filter(p => p.tn !== d.r2rm); delete R2.ok[d.r2rm]; R2.order = null; r2Save(); return void renderNova(); }
@@ -1541,7 +1857,7 @@
   });
   $("bagMode").value = bagMode;
   $("bagMode").addEventListener("change", e => { bagMode = e.target.value; store.set("re:bag", bagMode); renderAll(); toast("Sacos atualizados"); });
-  $("recalc").addEventListener("click", () => { plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
+  $("recalc").addEventListener("click", () => { unlockRoute(); plan($("start").value); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); toast("Ordem refeita"); });
   $("endMode").value = fin.endMode || "livre";
   $("endMode").addEventListener("change", e => {
     fin.endMode = e.target.value; store.set("re:fin", fin);
@@ -1555,6 +1871,7 @@
     toast("Casa salva. A rota termina perto dela.");
   });
   $("reverse").addEventListener("click", () => {
+    unlockRoute();
     const done = order.filter(addrDone), pend = D.order.map(k => byKey.get(k)).filter(a => a && !addrDone(a));
     D.order = done.concat(pend.reverse()).map(a => a.key); curKey = null;
     save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
@@ -1564,7 +1881,7 @@
   $("autoNav").addEventListener("change", e => { fin.autoNav = e.target.value; store.set("re:fin", fin); toast(fin.autoNav === "off" ? "Navegação automática desligada" : "Depois de Entreguei, a navegação abre sozinha na próxima parada"); });
   $("recalcHere").addEventListener("click", () => {
     if (!here) { startGps(false); return toast("Ligando a localização. Toque de novo em alguns segundos."); }
-    curKey = null; plan(null, true); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
+    unlockRoute(); curKey = null; plan(null, true); save(); numberOrder(); fillAjustes(); drawMarkers(false); renderAll(); updateNav(true);
     toast(`Rota refeita a partir de onde você está: ${fmtDist(D.cmp.app)}`);
   });
 
@@ -1819,7 +2136,7 @@
   function openScan(a, tn, missHtml) {
     $("scanOverlay").hidden = false;
     const tp = tn && all().find(p => p.tn === tn);
-    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${esc(num(a, true))}</div><div class="bagbig">Grupo ${carOfAddr(a).i + 1}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
+    $("scanSheet").innerHTML = missHtml || `<div class="bigno">Parada ${esc(num(a, true))}</div><div class="bagbig">Ponto ${carOfAddr(a).g?.n ?? "?"}</div>${tp && bagOf(tp, a) ? `<div class="bagbig">Saco ${esc(bagOf(tp, a))}</div>` : ""}${addrCard(a, tn)}
       <div class="nav3" style="grid-template-columns:1fr 1fr"><button type="button" class="line" data-sel="${esc(a.key)}">Ver no mapa</button><button type="button" class="line" data-close="1">Fechar</button></div>`;
   }
   $("photo").addEventListener("change", async e => {
@@ -1918,6 +2235,40 @@
     }
     setTimeout(() => requestAnimationFrame(bipLoop), 60);
   }
+  // Bipar do botão do meio: só consulta. Mostra a parada, o Ponto, se já foi conferido (fotografado/bipado na
+  // organização), o horário para entregar e se é comercial. Não muda nada sem você tocar num botão.
+  function bipShow(kind, html, logTxt, again) {
+    tone(kind); buzz(kind === "err" ? [200, 80, 200] : 60);
+    if (!again) { bip.log.unshift(logTxt); if (kind !== "err") bip.n++; }
+    $("bipRes").innerHTML = html;
+    $("bipCount").textContent = `${bip.n} consultado${bip.n === 1 ? "" : "s"}`;
+    $("bipLog").textContent = bip.log.slice(0, 6).join("   ");
+    $("bip").classList.remove("flash-ok", "flash-err"); void $("bip").offsetWidth;
+    $("bip").classList.add(kind === "err" ? "flash-err" : "flash-ok");
+  }
+  function bipConsulta(text, again) {
+    const p = findPkgByCode(text);
+    if (p) {
+      const a = byTn.get(p.tn), g = pontoOf(a), w = p.window;
+      const st = [
+        isChecked(p) ? `<span class="chip ok">✓ conferido às ${hhmm(D.checked[p.tn])}</span>` : `<span class="chip warn">ainda não conferido</span>`,
+        w ? `<span class="chip warn">${w.until ? "entregar até " + esc(w.until) : "entregar após " + esc(w.after)}</span>` : "",
+        commChip(a),
+        pkgOk(p) ? `<span class="chip ok">entregue às ${hhmm(ok[p.tn])}</span>` : failOf(p) ? `<span class="chip warn">não entregue: ${esc(failOf(p).r)}</span>` : "",
+        attempt(p) > 1 ? `<span class="chip warn">${attempt(p)}ª tentativa</span>` : "",
+      ].join("");
+      return bipShow(pkgDone(p) ? "done" : "ok", `<div class="bip-card ${pkgDone(p) ? "done" : "ok"}"><span class="bip-big">Parada ${esc(p.src ? PLATFORMS[p.src]?.name || p.src : p.shopeeStop ?? "s/n")}</span>
+        <span class="bip-grp">Ponto ${g?.n ?? "?"} · ${esc(g ? streetOf(g.park) : "")}</span><span>${esc(a.label)}</span><div class="bip-st">${st}</div>
+        ${!pkgDone(p) && !isChecked(p) ? `<button type="button" class="line" data-chkon="${esc(p.tn)}">Marcar como conferido</button>` : ""}
+        ${pkgDone(p) ? `<button type="button" class="line" data-p="${esc(p.tn)}">Não foi entregue: voltar para a rota</button>` : ""}</div>`, (p.shopeeStop ?? "s/n") + " · " + tail(p.tn), again);
+    }
+    const inR2 = r2Has(text);
+    if (inR2) return bipShow("done", `<div class="bip-card back"><b>Este pacote está na Nova rota</b><span class="bip-big">Parada ${esc(inR2.shopeeStop ?? "s/n")}</span><span>${esc(inR2.address || "")}</span>${R2.ok[inR2.tn] ? `<span class="chip ok">entregue às ${hhmm(R2.ok[inR2.tn])}</span>` : ""}</div>`, "N · " + tail(inR2.tn), again);
+    const c = catFind(text);
+    if (c) return bipShow("done", `<div class="bip-card done"><b>Saiu da planilha (já baixado na Shopee)</b><span class="bip-big">Parada ${esc(c.shopeeStop ?? "s/n")}</span><span>${esc(c.address || "")}</span>
+      <button type="button" class="line" data-backput="${esc(c.tn)}">Voltar para a rota comum</button></div>`, "↩ " + tail(c.tn), again);
+    return bipShow("err", `<div class="bip-card err"><b>Não conheço este pacote</b><span class="mono">${esc(text)}</span><button type="button" class="line" data-backadd="${esc(text)}">Colocar na rota (digitar endereço)</button></div>`, "✕ " + tail(text), again);
+  }
   function bipHandle(text) {
     const now = Date.now();
     // Mesma etiqueta parada na frente da câmera: não apita de novo. Só repete se você afastar e voltar depois de 4 s.
@@ -1930,12 +2281,13 @@
     // Pacote que está na Nova rota não volta para a rota comum.
     const inR2 = r2Has(text);
     if (inR2 && !findPkgByCode(text)) { tone("done"); $("bipRes").innerHTML = `<div class="bip-card done"><b>Este pacote está na Nova rota</b><span class="bip-big">Parada ${esc(inR2.shopeeStop ?? "s/n")}</span><span>${esc(inR2.address || "")}</span></div>`; return; }
+    if (bip.mode === "rota") return bipConsulta(text, again);
     let p = findPkgByCode(text), kind, html;
     if (p && !pkgDone(p)) {
       D.checked = D.checked || {}; D.checked[p.tn] = D.checked[p.tn] || now; save();
       const a = byTn.get(p.tn);
       kind = "ok";
-      html = `<div class="bip-card ok"><span class="bip-big">Parada ${esc(p.shopeeStop ?? "s/n")}</span><span class="bip-grp">Grupo ${carOfAddr(a).i + 1}</span><span>${esc(a.label)}</span><span class="mono">${esc(p.tn)}</span></div>`;
+      html = `<div class="bip-card ok"><span class="bip-big">Parada ${esc(p.shopeeStop ?? "s/n")}</span><span class="bip-grp">Ponto ${carOfAddr(a).g?.n ?? "?"}</span><span>${esc(a.label)}</span><span class="mono">${esc(p.tn)}</span></div>`;
     } else if (p) {
       kind = "done";
       html = `<div class="bip-card done"><span class="bip-big">Parada ${esc(p.shopeeStop ?? "s/n")}</span><b>Este pacote está como entregue</b><span class="mono">${esc(p.tn)}</span><button type="button" class="line" data-p="${esc(p.tn)}">Não foi entregue: voltar para a rota</button></div>`;
@@ -1945,7 +2297,7 @@
         const res = putBack(c);
         D.checked = D.checked || {}; D.checked[c.tn] = now; save();
         kind = "back";
-        html = `<div class="bip-card back"><b>Voltou para a rota</b><span class="bip-big">Parada ${esc(num(res.a, true))}</span><span class="bip-grp">Grupo ${carOfAddr(res.a).i + 1}</span><span>${esc(res.a.label)}</span></div>`;
+        html = `<div class="bip-card back"><b>Voltou para a rota</b><span class="bip-big">Parada ${esc(num(res.a, true))}</span><span class="bip-grp">Ponto ${carOfAddr(res.a).g?.n ?? "?"}</span><span>${esc(res.a.label)}</span></div>`;
       } else {
         kind = "err";
         html = `<div class="bip-card err"><b>Não está na rota</b><span class="mono">${esc(text)}</span><button type="button" class="line" data-backadd="${esc(text)}">Colocar na rota (digitar endereço)</button></div>`;
@@ -1966,7 +2318,7 @@
   // Para pacotes já baixados no app da Shopee que ainda vão ser entregues. Fica guardada à parte (re:r2): entregar aqui
   // não mexe na ordem da rota comum; se o pacote também estiver na rota comum, ele aparece lá como entregue.
   let R2 = store.get("re:r2", null);
-  const r2Save = () => store.set("re:r2", R2);
+  const r2Save = () => { store.set("re:r2", R2); try { syncDelivR2(); } catch {} };
   const normCode = t => String(t || "").toUpperCase().replace(/\s+/g, "");
   const r2Has = text => { const t = normCode(text); return R2?.pkgs.find(p => t.includes(p.tn.toUpperCase())) || null; };
   function r2Lookup(text) {
