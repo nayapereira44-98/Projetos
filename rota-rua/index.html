@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5f3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rota Rua</title>
+<style>
+:root { --bg: #f4f3ef; --surface: #fff; --ink: #16181d; --muted: #6b7280; --line: #e3e1da; --brand: #1f5f3a; --accent: #f59f00; --ok: #2f9e44; --com: #d9480f; --apt: #1971c2; --casa: #5c940d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.35 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+button, .btn { font: inherit; font-weight: 700; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-height: 48px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
+.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.line { background: var(--surface); }
+.sm { min-height: 42px; padding: 0 10px; font-size: .92rem; }
+.mono { font-family: ui-monospace, Menlo, monospace; }
+.sub { color: var(--muted); font-size: .9rem; }
+.center { text-align: center; }
+header { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px; }
+.h-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.h-top h1 { font-size: 1.25rem; margin: 0; }
+#meta { font-size: .85rem; color: var(--muted); }
+.prog { height: 5px; background: var(--line); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+#bar { height: 100%; background: var(--ok); width: 0; }
+.filters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.filters button { min-height: 52px; flex-direction: column; gap: 0; padding: 4px; font-size: .78rem; color: var(--muted); }
+.filters button b { font-size: 1.15rem; color: var(--ink); }
+.filters button.on { border: 2px solid var(--ink); color: var(--ink); }
+.filters button[data-filter="com"] b { color: var(--com); }
+.filters button[data-filter="apt"] b { color: var(--apt); }
+.filters button[data-filter="casa"] b { color: var(--casa); }
+main, #empty { padding: 12px 16px calc(110px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; }
+#empty { min-height: 70vh; align-content: center; text-align: center; }
+#empty .primary { min-height: 64px; font-size: 1.1rem; }
+#next { background: var(--ink); color: #fff; border-radius: 18px; padding: 14px; display: grid; gap: 6px; }
+.nx-k { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; opacity: .7; font-weight: 800; }
+.nx-st { font-size: 1.35rem; font-weight: 800; }
+.nx-s { opacity: .85; font-size: .92rem; }
+.nx-nums { display: flex; flex-wrap: wrap; gap: 6px; }
+.nx-nums span { background: rgba(255,255,255,.14); border-radius: 8px; padding: 3px 8px; font-weight: 800; border-left: 4px solid #fff; }
+.nx-nums .com { border-left-color: #ff922b; } .nx-nums .apt { border-left-color: #4dabf7; } .nx-nums .casa { border-left-color: #94d82d; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 6px; }
+#next .btn { background: #fff; color: var(--ink); }
+.st { display: grid; gap: 8px; }
+.st-h { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; padding: 6px 2px 0; border-bottom: 2px solid var(--ink); }
+.st-h b { font-size: 1.08rem; }
+.st-h span { font-size: .82rem; color: var(--muted); }
+.ad { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; display: grid; gap: 6px; }
+.ad.next { border: 2px solid var(--brand); }
+.ad.done { opacity: .55; }
+.ad-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ad-num { font-size: 1.3rem; font-weight: 800; }
+.ad-stop { margin-left: auto; font-weight: 800; color: var(--brand); }
+.tb { min-height: 30px; padding: 0 10px; border-radius: 999px; font-size: .8rem; font-weight: 800; color: #fff; border: 0; display: inline-flex; align-items: center; }
+.tb.com { background: var(--com); } .tb.apt { background: var(--apt); } .tb.casa { background: var(--casa); }
+.pk { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; font-size: .9rem; }
+.pk .mono b { font-size: 1.05rem; }
+.pk small { flex-basis: 100%; color: var(--muted); }
+.pk-s { font-weight: 800; color: var(--brand); }
+.pk-c { font-weight: 800; color: var(--ok); }
+.foot { display: grid; gap: 8px; }
+#bipBtn { position: fixed; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20; min-height: 62px; font-size: 1.15rem; background: var(--accent); border-color: var(--accent); color: #111; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+#toast { position: fixed; left: 16px; right: 16px; bottom: 96px; z-index: 4000; background: var(--ink); color: #fff; padding: 12px 14px; border-radius: 12px; text-align: center; font-weight: 700; }
+#bip { position: fixed; inset: 0; z-index: 3000; background: #000; color: #fff; }
+#bip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bip-frame { position: absolute; left: 8%; right: 8%; top: 16%; height: 36%; border: 3px solid rgba(255,255,255,.9); border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); }
+#bip.flash-ok .bip-frame { animation: bipok .6s; }
+#bip.flash-err .bip-frame { animation: biperr .8s; }
+@keyframes bipok { 0% { border-color: #2f9e44; background: rgba(47,158,68,.35); } 100% { background: transparent; } }
+@keyframes biperr { 0% { border-color: #e03131; background: rgba(224,49,49,.35); } 100% { background: transparent; } }
+.bip-top { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bip-top button { background: rgba(0,0,0,.6); color: #fff; border-color: rgba(255,255,255,.6); }
+#bipCount { font-weight: 800; text-shadow: 0 1px 3px #000; }
+.bip-bottom { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+.bip-hint { text-align: center; font-weight: 800; font-size: 1.1rem; text-shadow: 0 1px 4px #000; }
+.bip-card { display: grid; gap: 6px; background: #fff; color: #111; border-radius: 18px; padding: 14px; border-left: 10px solid var(--ok); }
+.bip-card.done { border-left-color: var(--accent); }
+.bip-card.err { border-left-color: #e03131; }
+.bip-big { font-size: 2.4rem; font-weight: 900; line-height: 1.05; }
+.bip-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bip-addr { font-size: 1.05rem; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="h-top"><div><h1>Rota Rua</h1><div id="meta"></div></div><label class="btn sm" for="file">Abrir planilha</label></div>
+  <div class="prog"><div id="bar"></div></div>
+  <div class="filters"><button type="button" data-filter="all"><b>0</b>Todos</button><button type="button" data-filter="com"><b>0</b>Comércio</button><button type="button" data-filter="apt"><b>0</b>Apto</button><button type="button" data-filter="casa"><b>0</b>Casa</button></div>
+</header>
+<div id="empty">
+  <h2>Abra a planilha da Shopee</h2>
+  <p class="sub">O app monta a rota rua por rua (todos os números da mesma rua juntos), começando pela rua mais perto de você, e separa Comércio, Apartamento e Casa.</p>
+  <label class="btn primary" for="file">Abrir planilha (.xlsx)</label>
+</div>
+<main id="main" hidden>
+  <div id="next"></div>
+  <div id="list" style="display:grid;gap:14px"></div>
+  <div class="foot">
+    <button type="button" id="toggleDone" class="line">Mostrar entregues</button>
+    <button type="button" id="replan" class="line">Refazer a rota a partir de onde estou</button>
+    <button type="button" id="newDay" class="line">Começar dia novo</button>
+    <p class="sub center">Toque no selo Comércio / Apto / Casa para trocar, se estiver errado.</p>
+  </div>
+</main>
+<button type="button" id="bipBtn">Bipar etiqueta</button>
+<div id="toast" hidden></div>
+<div id="bip" hidden>
+  <video id="bipVideo" playsinline muted autoplay></video>
+  <div class="bip-frame"></div>
+  <div class="bip-top"><button type="button" id="bipClose">Fechar</button><span id="bipCount"></span></div>
+  <div class="bip-bottom"><div id="bipRes"></div></div>
+</div>
+<input id="file" type="file" accept=".xlsx" style="position:absolute;left:-9999px;opacity:0;width:1px;height:1px">
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="../rota-certa/core.js?v=20261107r"></script>
+<script src="app.js?v=20261107r"></script>
+</body>
+</html>
