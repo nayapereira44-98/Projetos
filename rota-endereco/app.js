@@ -836,22 +836,21 @@
             <div class="pr-pk">${pp.map(tk).join("")}</div></div>`).join("")}</div>`;
       });
     } else {
-      // Carregar o carro: de trás para frente.
+      // Carregar o carro, na ordem da entrega: a 1ª entrega fica na frente (perto de você) e as últimas, no fundo.
       const pend = ps.filter(g => g.list.some(a => !addrDone(a)));
       const L = D.loaded || {};
-      const steps = pend.slice().reverse();
-      const nL = steps.filter(g => L[g.id]).length;
-      html += `<div class="card load-help"><b>Arrume o carro nesta ordem</b><span>Comece pelo <b>1º</b>: ele vai no <b>fundo</b> (porta-malas). O último da lista é a <b>1ª entrega</b> e fica <b>mais perto de você</b>. ${D.locked ? "" : "<b>Salve a rota antes</b>, para a ordem não mudar depois de arrumar."}</span><span class="sub">${nL} de ${steps.length} Pontos no carro</span></div>`;
-      html += `<div class="load-end">FUNDO DO CARRO</div>`;
-      steps.forEach((g, i) => {
+      const nL = pend.filter(g => L[g.id]).length;
+      html += `<div class="card load-help"><b>Como arrumar o carro</b><span>A lista está na ordem da entrega. O <b>1º</b> é a <b>1ª entrega</b> e fica <b>na frente</b>, mais perto de você. Os últimos da lista vão <b>no fundo</b> (porta-malas). ${D.locked ? "" : "<b>Salve a rota antes</b>, para a ordem não mudar depois de arrumar."}</span><span class="sub">${nL} de ${pend.length} Pontos no carro</span></div>`;
+      html += `<div class="load-end near">FRENTE · PERTO DE VOCÊ · 1ª ENTREGA</div>`;
+      pend.forEach((g, i) => {
         const pp = g.list.flatMap(a => a.pkgs.filter(p => !pkgDone(p) && hit(p)));
         if (!pp.length) return;
         html += `<div class="ld${L[g.id] ? " on" : ""}"><button type="button" class="ld-chk" data-ldchk="${esc(g.id)}" aria-pressed="${!!L[g.id]}">${L[g.id] ? ICON_CHECK : ""}</button>
-          <div class="ld-b"><div class="ld-top"><span class="ld-n">${i + 1}º</span><b>Ponto ${g.n}</b><span>${g.n === pend[0]?.n ? "1ª entrega" : `entrega nº ${pend.indexOf(g) + 1}`}</span></div>
+          <div class="ld-b"><div class="ld-top"><span class="ld-n">${i + 1}ª entrega</span><b>Ponto ${g.n}</b><span>${i === 0 ? "na frente" : i === pend.length - 1 ? "no fundo" : ""}</span></div>
           <small>${esc(streetOf(g.park))}${g.list.length > 1 ? ` + ${g.list.length - 1} a pé` : ""} · ${pp.length} pacote${pp.length > 1 ? "s" : ""} · etiquetas ${esc(stopsTxt(g.list))}</small>
           <div class="pr-pk">${pp.map(tk).join("")}</div></div></div>`;
       });
-      html += `<div class="load-end near">PERTO DE VOCÊ · 1ª ENTREGA</div>`;
+      html += `<div class="load-end">FUNDO DO CARRO · ÚLTIMAS ENTREGAS</div>`;
     }
     box.innerHTML = html || `<p class="empty-list">${q ? `Nada com "${esc(q)}".` : "Nada para organizar."}</p>`;
   }

@@ -133,7 +133,7 @@ Regra do produto: **todas as plataformas (Shopee, Mercado Livre e as que vierem)
 
 **Aba Organizar** (duas visões):
 - **Por endereço**: Ponto por Ponto. Cada endereço tem o selo "Comercial" ou o horário, CEP e os pacotes (número da etiqueta + final do BR). Tocar no pacote marca como conferido; tocar no endereço abre no mapa. Tem o quadro "Etiqueta → Ponto" e a busca por etiqueta, final do BR ou rua.
-- **Carregar o carro**: de trás para frente. O 1º da lista (última entrega) vai no fundo; o último (1ª entrega) fica mais perto de você. Cada Ponto tem a caixinha "no carro".
+- **Carregar o carro**: na ordem da entrega. A 1ª entrega fica **na frente**, mais perto de você, e as últimas vão **no fundo** (porta-malas). Cada Ponto tem a caixinha "no carro".
 - **Bipar para conferir** (câmera ao vivo) marca o pacote como conferido. Também ficam ali "Fotografar pacotes", "Ver o que falta conferir", "+ Adicionar pacote", "+ Planilha Mercado Livre" e "Voltar para a rota".
 
 **Bipar** (botão do meio): só consulta, não muda nada sozinho. Mostra a parada, o Ponto, se já foi conferido (e a que horas), "entregar até…", Comercial, entregue ou não, e a tentativa. Tem botões para marcar como conferido, voltar para a rota ou digitar o endereço.
