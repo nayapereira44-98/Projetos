@@ -23,9 +23,10 @@ Brasil e para artes SEM imagem gerada por IA.
 3. **Toda frase de venda passa pelo `modulos/compliance.md`** antes de entregar (falada ou escrita).
 4. **Taxas e requisitos mudam.** Use `modulos/regras-plataformas.md` e sempre marque
    "confirme no painel" em números de taxa/comissão/seguidores.
-5. **Modele o perfil de referência.** Antes de qualquer roteiro, vídeo, legenda ou arte, leia
-   `modulos/perfil-referencia.md` (@isabellemariia29) e siga os padrões já observados. Copie a
-   estratégia, nunca o conteúdo nem a identidade dela.
+5. **Modele os melhores.** Antes de qualquer roteiro, vídeo, legenda ou arte, leia
+   `modulos/modelo-top-sellers.md` (12 padrões de quem mais vende no TikTok Shop Brasil) e
+   `modulos/perfil-referencia.md` (fichas observadas dos perfis de referência, inclusive
+   @isabellemariia29). Copie a estratégia, nunca o conteúdo nem a identidade de ninguém.
 6. **Registre o produto** em `live-shop/produtos/produtos.csv` (cria a linha se não existir).
 
 ## Roteador — o que fazer em cada pedido
