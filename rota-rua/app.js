@@ -164,7 +164,7 @@
       const pk = st.reduce((t, a) => t + a.pkgs.filter(p => !D.ok[p.tn]).length, 0);
       return `<div class="nx-k">Agora</div><div class="nx-st">${esc(streetName(next))}</div>
         <div class="nx-s">${st.length} endereço${st.length > 1 ? "s" : ""} nesta rua · ${pk} pacote${pk > 1 ? "s" : ""} · faça a rua inteira</div>
-        <div class="nx-nums">${st.map(a => `<span class="${typeOf(a)}">nº ${esc(a.nums?.join("/") || "?")}</span>`).join("")}</div>
+        <div class="nx-nums">${st.map(a => `<span class="${typeOf(a)}">nº ${esc(a.nums?.join("/") || "?")} <em>${a.shopeeStops.length ? "P" + a.shopeeStops.join(" · P") : "s/n"}</em></span>`).join("")}</div>
         <div class="row2"><a class="btn" href="${waze(next)}" target="_blank" rel="noopener">Waze</a><a class="btn" href="${gmaps(next)}" target="_blank" rel="noopener">Google Maps</a></div>`;
     })() : `<div class="nx-st">${filter === "all" ? "Tudo entregue ✓" : "Nada pendente neste filtro"}</div>`;
     $("list").innerHTML = blocks.map(b => {
@@ -172,7 +172,7 @@
       return `<section class="st"><div class="st-h"><b>${esc(streetName(b.list[0]))}</b><span>${b.list.length} endereço${b.list.length > 1 ? "s" : ""}${pend.length < b.list.length ? ` · ${b.list.length - pend.length} feito${b.list.length - pend.length > 1 ? "s" : ""}` : ""}${b.list[0].bairro ? " · " + esc(b.list[0].bairro) : ""}</span></div>
         ${b.list.map(a => `<div class="ad${done(a) ? " done" : ""}${a === next ? " next" : ""}" id="a-${esc(a.key)}">
           <div class="ad-top"><span class="ad-num">nº ${esc(a.nums?.join(" / ") || "?")}</span>${typeBadge(a)}<span class="ad-stop">${esc(stopsOf(a))}</span></div>
-          ${a.pkgs.map(p => { const x = String(p.address).split(",").slice(2).join(",").trim(); return `<div class="pk"><span class="mono">${esc(p.tn.slice(0, -5))}<b>${esc(p.tn.slice(-5))}</b></span>${p.shopeeStop != null ? `<span class="pk-s">P${p.shopeeStop}</span>` : `<span class="pk-s">s/n</span>`}${D.chk[p.tn] ? `<span class="pk-c">✓ bipado</span>` : ""}${x ? `<small>${esc(x)}</small>` : ""}</div>`; }).join("")}
+          ${a.pkgs.map(p => { const x = String(p.address).split(",").slice(2).join(",").trim(); return `<div class="pk"><span class="pk-p">${p.shopeeStop != null ? p.shopeeStop : "s/n"}</span><span class="mono">${esc(p.tn.slice(0, -5))}<b>${esc(p.tn.slice(-5))}</b></span>${D.chk[p.tn] ? `<span class="pk-c">✓ bipado</span>` : ""}${x ? `<small>${esc(x)}</small>` : ""}</div>`; }).join("")}
           <div class="row3"><a class="btn sm" href="${waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm" href="${gmaps(a)}" target="_blank" rel="noopener">Google</a>
           <button type="button" class="${done(a) ? "line" : "primary"} sm" data-ok="${esc(a.key)}">${done(a) ? "Desfazer" : `Entreguei${a.pkgs.length > 1 ? " os " + a.pkgs.length : ""}`}</button></div></div>`).join("")}</section>`;
     }).join("") || `<p class="sub center">Nada para mostrar.</p>`;
