@@ -22,3 +22,14 @@ Refeito do zero para ser limpo e prático, no estilo do Spoke. A versão anterio
 
 ## Dados
 Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fotos do carro no IndexedDB `rc3`.
+
+## Rota em equipe (Firebase, 09/11)
+- O login é com Google ou com e-mail e senha (Firebase Authentication). O app continua funcionando sem login. A conta só serve para a equipe.
+- **Convidar**: no Início, "Convidar alguém para esta rota" sobe a rota para o Firestore e convida pelo e-mail. A outra pessoa entra no mesmo link, faz login com esse e-mail e abre em "Rotas da equipe".
+- **Ao vivo para todos**: entregas (com o nome de quem entregou), não entregues, anotações, a ordem e a planilha somada.
+- **Pego esta parada**: a parada sai da sequência de quem não pegou, aparece apagada no mapa dessa pessoa e mostra "com Bia" na lista.
+- **Carro de cada um**: cada pessoa tem o próprio carro. O pacote que outra pessoa carregou aparece como "carro de João: Meio Esquerda".
+- **Online**: o topo mostra "2 online" (presença atualizada a cada minuto).
+- Código: `sync.js` (módulo ES que usa o Firebase Web SDK 13.2.0 pela CDN do Google). Ele conversa com `app.js` por `window.RCApp` e `window.RCSync`.
+- Dados no Firestore: `routes/{id}` guarda owner, members, invites, names, emails, name, pkgs e order. As subcoleções são `st` (situação de cada pacote), `notes`, `claims`, `car` e `presence`. As regras deixam ler e gravar só quem está em `members` ou tem o e-mail em `invites`.
+- O login com Google exige `nayapereira44-98.github.io` em Authentication → Configurações → Domínios autorizados.
