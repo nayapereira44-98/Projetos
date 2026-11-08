@@ -492,14 +492,31 @@
     const pk = R ? R.pkgs.length : 0, ok = R ? R.pkgs.filter(p => pst(p) === "ok").length : 0, fail = R ? R.pkgs.filter(p => pst(p) === "fail").length : 0;
     return { pk, ok, fail, left: pk - ok - fail, sDone: stops.filter(done).length, sAll: stops.length, issues: stops.filter(a => a.pkgs.some(p => pst(p) === "fail") || R.notes[a.key]).length, loaded: R ? R.pkgs.filter(p => zoneOfPkg(p) != null && !resolved(p)).length : 0, toLoad: R ? R.pkgs.filter(p => !resolved(p)).length : 0 };
   }
+  // Botão da conta, sempre no topo: "Entrar" ou a inicial do nome.
+  function acctBtn() {
+    const b = $("tAction"), u = window.RCApp?.user;
+    b.hidden = false;
+    b.className = u ? "sm acct" : "sm pri";
+    b.textContent = u ? (u.name || "?")[0].toUpperCase() : "Entrar";
+    b.setAttribute("aria-label", u ? "Minha conta" : "Entrar");
+  }
+  $("tAction").addEventListener("click", () => {
+    const u = window.RCApp?.user;
+    if (!window.RCSync) return toast("Conectando… tente de novo em alguns segundos.");
+    if (!u) return window.RCSync.openLogin();
+    openSheet(`<div class="sheet-h"><span class="num">${esc((u.name || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(u.name)}</div><div class="muted small">${esc(u.email)}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+      ${R ? `<button type="button" class="pri full" data-sync="share">${R.shared ? "Equipe da rota · convidar" : "Convidar alguém para esta rota"}</button>` : ""}
+      <button type="button" class="full" data-sync="teamRoutes">Rotas da equipe</button>
+      <button type="button" class="ghost full danger" data-sync="logout">Sair da conta</button>`, "acct");
+  });
   function renderTop() {
-    if (!R) { $("tTitle").textContent = "Rota Certa"; $("tSub").textContent = "Rotas pelo endereço"; $("tProg").hidden = true; $("tAction").hidden = true; return; }
+    acctBtn();
+    if (!R) { $("tTitle").textContent = "Rota Certa"; $("tSub").textContent = "Rotas pelo endereço"; $("tProg").hidden = true; return; }
     const c = counts();
     $("tTitle").textContent = R.name;
     const pr = window.RCApp?.remote?.presence || {}, on = R.shared ? Object.values(pr).filter(x => Date.now() - x.t < 150000).length : 0;
     $("tSub").textContent = `${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes${on > 1 ? ` · ${on} online` : ""}`;
     $("tProg").hidden = false; $("tBar").style.width = (c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1) + "%";
-    $("tAction").hidden = true;
   }
   function render() {
     derive(); renderTop();

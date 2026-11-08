@@ -77,7 +77,7 @@ function openLogin() {
   $("lgForgot").onclick = async () => { const e = $("lgEmail").value.trim(); if (!e) return msg("Digite seu e-mail acima."); try { await sendPasswordResetEmail(auth, e); msg("Enviamos um e-mail para trocar a senha."); } catch (er) { msg(errMsg(er)); } };
 }
 const $ = id => document.getElementById(id);
-async function logout() { detach(); await signOut(auth); A().toast("Você saiu da conta"); A().render(); }
+async function logout() { detach(); A().closeSheet(); await signOut(auth); A().toast("Você saiu da conta"); A().render(); }
 
 // ---------- compartilhar e convidar ----------
 async function share() {
