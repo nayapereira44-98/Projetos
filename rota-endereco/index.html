@@ -115,8 +115,10 @@ nav.tabs .bipbtn { color: var(--ink); }
 .pin.fail { background: #fff; border-color: #dc2626; color: #dc2626; }
 .pin.other { opacity: .45; border-style: dashed; }
 .pin.part { background: #fff7ed; border-color: #d97706; color: #b45309; }
+.pin .vdot { position: absolute; left: -5px; top: -5px; width: 13px; height: 13px; border-radius: 50%; background: #facc15; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.errbar { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+#bipErr { background: rgba(0,0,0,.55); color: #fff; border-color: rgba(255,255,255,.5); }
 .pin .n2 { position: absolute; right: -6px; top: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #111827; color: #fff; font-size: 10px; display: grid; place-items: center; }
-#map.far .pin .n2 { display: none; }
 .me { width: 18px; height: 18px; border-radius: 50%; background: #2563eb; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(37,99,235,.2); }
 
 /* número da parada */
@@ -183,7 +185,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 .carsvg .cz.off text { fill: var(--muted); font-weight: 500; }
 .carsvg .cz.sel rect { fill: var(--accent); stroke: var(--accent); }
 .carsvg .cz.sel text { fill: #fff; }
-.carsvg [data-zpick] { cursor: pointer; }
+.carsvg [data-zpick], .carsvg [data-errsave] { cursor: pointer; }
 .laygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .layopt { flex-direction: column; align-items: center; gap: 6px; min-height: 0; padding: 12px 8px; text-align: center; font-weight: 400; }
 .layopt b { font-size: .88rem; line-height: 1.25; }
@@ -271,7 +273,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
   <div class="bip-frame"></div>
   <div class="bip-top"><button type="button" class="sm" id="bipClose">Fechar</button><span id="bipCount"></span></div>
   <div class="bip-mode" id="bipMode"></div>
-  <div class="bip-bottom"><div id="bipRes"></div></div>
+  <div class="bip-bottom"><div id="bipRes"></div><button type="button" class="full" id="bipErr" data-errpkg="1" hidden>Pacote com erro (não leu)</button></div>
 </div>
 <div id="sheetBg" class="sheet-bg" hidden><div class="sheet" id="sheet"></div></div>
 <div id="toast" hidden></div>
@@ -281,7 +283,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261109g"></script>
+<script src="app.js?v=20261110b"></script>
 <script type="module" src="sync.js?v=20261109g"></script>
 </body>
 </html>
