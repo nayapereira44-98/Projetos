@@ -499,14 +499,18 @@
     b.className = u ? "sm acct" : "sm pri";
     b.textContent = u ? (u.name || "?")[0].toUpperCase() : "Entrar";
     b.setAttribute("aria-label", u ? "Minha conta" : "Entrar");
+    const nt = window.RCSync?.notifCount || 0;
+    $("tBell").hidden = !u; $("tBellN").textContent = nt || ""; $("tBellN").hidden = !nt;
   }
+  $("tBell").addEventListener("click", () => window.RCSync?.openNotif());
   $("tAction").addEventListener("click", () => {
     const u = window.RCApp?.user;
     if (!window.RCSync) return toast("Conectando… tente de novo em alguns segundos.");
     if (!u) return window.RCSync.openLogin();
     openSheet(`<div class="sheet-h"><span class="num">${esc((u.name || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(u.name)}</div><div class="muted small">${esc(u.email)}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
-      ${R ? `<button type="button" class="pri full" data-sync="share">${R.shared ? "Equipe da rota · convidar" : "Convidar alguém para esta rota"}</button>` : ""}
-      <button type="button" class="full" data-sync="teamRoutes">Rotas da equipe</button>
+      ${R ? `<button type="button" class="pri full" data-sync="share">Chamar alguém para esta rota</button>` : ""}
+      <button type="button" class="full" data-sync="openTeam">Minha equipe</button>
+      <button type="button" class="full" data-sync="teamRoutes">Rotas compartilhadas comigo</button>
       <button type="button" class="ghost full danger" data-sync="logout">Sair da conta</button>`, "acct");
   });
   function renderTop() {
@@ -532,9 +536,11 @@
   function teamAct() {
     const u = window.RCApp?.user;
     if (!u) return act(ICON_TEAM, "Rota em equipe", "Entre para convidar alguém e ver tudo ao vivo", `data-sync="openLogin"`);
-    const t = window.RCApp?.remote?.team;
-    const inv = R ? act(ICON_TEAM, R.shared ? "Equipe da rota" : "Convidar alguém para esta rota", R.shared && t ? (t.members || []).map(id => t.names?.[id] || "?").join(", ") + " · convidar" : "Os dois veem e atualizam a mesma rota", `data-sync="share"`) : "";
-    return inv + act(ICON_TEAM, "Rotas da equipe", "Rotas que compartilharam com você", `data-sync="teamRoutes"`);
+    const t = window.RCApp?.remote?.team, n = window.RCSync?.teamCount || 0, nt = window.RCSync?.notifCount || 0;
+    const call = R ? act(ICON_TEAM, "Chamar alguém para esta rota", R.shared && t && (t.members || []).length > 1 ? "Nesta rota: " + (t.members || []).map(id => t.names?.[id] || "?").join(", ") : "Só você nesta rota", `data-sync="share"`) : "";
+    return (nt ? `<button type="button" class="pri full" data-sync="openNotif">🔔 ${nt} convite${nt > 1 ? "s" : ""} para você</button>` : "")
+      + call + act(ICON_TEAM, "Minha equipe", n ? `${n} pessoa${n > 1 ? "s" : ""} · convidar mais` : "Convide quem entrega com você", `data-sync="openTeam"`)
+      + act(ICON_TEAM, "Rotas compartilhadas comigo", "Rotas em que você foi chamada", `data-sync="teamRoutes"`);
   }
   function accountLine() {
     const u = window.RCApp?.user;

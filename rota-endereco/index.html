@@ -41,6 +41,9 @@ button:active, .btn:active { transform: scale(.98); }
 .top { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .top b { font-size: 1.05rem; }
 .top .muted { font-size: .82rem; }
+.top-r { display: flex; align-items: center; gap: 8px; }
+.bell { position: relative; width: 40px; min-height: 40px; padding: 0; border-radius: 50%; border: 0; background: var(--soft); }
+.bell span { position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--bad); color: #fff; font-size: .7rem; display: grid; place-items: center; padding: 0 4px; }
 .acct { width: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 body.locked > header, body.locked > section.view, body.locked > nav.tabs { display: none !important; }
 #gate { display: none; }
@@ -208,7 +211,8 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <div id="gate"><div class="gate-box"><div class="gate-logo">📦</div><h1>Rota Certa</h1><p class="muted" id="gateMsg">Carregando…</p></div></div>
 <header class="top" id="top">
   <div><b id="tTitle">Rota Certa</b><div class="muted" id="tSub"></div><div class="prog" id="tProg" hidden><i id="tBar"></i></div></div>
-  <button type="button" class="sm" id="tAction" hidden></button>
+  <div class="top-r"><button type="button" class="bell" id="tBell" aria-label="Convites" hidden><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10.5 20a1.7 1.7 0 0 0 3 0"/></svg><span id="tBellN" hidden></span></button>
+  <button type="button" class="sm" id="tAction" hidden></button></div>
 </header>
 
 <!-- Início -->
@@ -257,7 +261,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261109d"></script>
-<script type="module" src="sync.js?v=20261109d"></script>
+<script src="app.js?v=20261109e"></script>
+<script type="module" src="sync.js?v=20261109e"></script>
 </body>
 </html>

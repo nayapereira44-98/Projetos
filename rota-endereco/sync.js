@@ -55,8 +55,8 @@ onAuthStateChanged(auth, u => {
   lock(!user);
   if (!A()) return;
   A().user = user;
-  if (!user) detach();
-  else checkAttach();
+  if (!user) { detach(); invUnsubs.forEach(f => { try { f(); } catch {} }); invUnsubs = []; inv.got = []; inv.sent = []; inv.team = []; }
+  else { checkAttach(); registerMe(); listenInvites(); useLinkInvite(); }
   A().render();
 });
 const loginForm = () => `
@@ -94,6 +94,7 @@ function bindLogin() {
       user = { uid: c.user.uid, email: (c.user.email || "").toLowerCase(), name: nm.split(" ")[0] };
       try { localStorage.setItem("rc3:lastUser", JSON.stringify(user)); } catch {}
       if (A()) { A().user = user; checkAttach(); A().render(); }
+      registerMe(); listenInvites(); useLinkInvite();
       ok("Conta criada ✓");
     } catch (e) { if ($("lgMsg")) msg(errMsg(e)); else A()?.toast(errMsg(e)); }
   };
@@ -103,13 +104,11 @@ const $ = id => document.getElementById(id);
 async function logout() { detach(); A().closeSheet(); await signOut(auth); A().toast("Você saiu da conta"); A().render(); }
 
 // ---------- compartilhar e convidar ----------
-async function share() {
-  const R = A().R;
-  if (!user) return openLogin();
-  if (!R) return A().toast("Abra uma rota primeiro.");
-  if (R.shared) return openInvite();
-  const id = R.id;
-  try {
+// "share" abre a equipe da rota; a rota só sobe para o Firestore quando alguém é chamado.
+function share() { return openRouteTeam(); }
+async function shareRoute() {
+  const R = A().R, id = R.id;
+  {
     await setDoc(doc(db, "routes", id), { owner: user.uid, members: [user.uid], invites: [], names: { [user.uid]: user.name }, emails: { [user.uid]: user.email }, name: R.name, created: R.created, pkgs: clean(R.pkgs), order: clean(R.order || []), updated: Date.now() });
     // Entregas e anotações que já existem.
     let b = writeBatch(db), n = 0;
@@ -118,8 +117,7 @@ async function share() {
     for (const [k, v] of Object.entries(R.notes || {})) { b.set(doc(db, "routes", id, "notes", kid(k)), { v }); if (++n >= 400) await flush(); }
     await flush();
     R.shared = id; A().saveLocal(); attach(id);
-    openInvite();
-  } catch (e) { A().toast(errMsg(e)); }
+  }
 }
 function openInvite() {
   const t = remote.team || {}, now = Date.now();
@@ -265,6 +263,168 @@ async function claim(btn) {
   } catch (e) { A().toast(errMsg(e)); }
 }
 
-window.RCSync = { openLogin, logout, share, invite: openInvite, teamRoutes, join, claim, push, pushCar, remote, get user() { return user; }, get routeId() { return routeId; } };
+
+// ---------- equipe e convites ----------
+// Equipe: pessoas que aceitaram um convite seu (ou que você aceitou). Fica para sempre, até alguém remover.
+// Convites ficam em invites/{id}: { type: "team" | "route", from, fromName, fromEmail, toEmail, toUid, toName,
+// routeId, routeName, status: "pending" | "accepted" | "declined" | "removed", created }.
+// Quem já tem conta recebe a notificação no app. Quem não tem recebe o link pelo WhatsApp: ao criar a conta pelo
+// link (?convite=ID), já entra na equipe.
+const APP_URL = location.origin + location.pathname.replace(/index\.html$/, "");
+const inv = { got: [], sent: [], team: [] };
+let invUnsubs = [];
+function registerMe() {
+  if (!user?.email) return;
+  setDoc(doc(db, "emails", user.email), { uid: user.uid, name: user.name }).catch(() => {});
+}
+function listenInvites() {
+  invUnsubs.forEach(f => { try { f(); } catch {} }); invUnsubs = [];
+  if (!user) return;
+  const col = collection(db, "invites");
+  const maps = { a: new Map(), b: new Map(), c: new Map() };
+  const rebuild = () => {
+    const recv = new Map([...maps.a, ...maps.b]), sent = maps.c;
+    const before = new Set(inv.got.map(x => x.id));
+    inv.got = [...recv.values()].filter(x => x.status === "pending" && x.from !== user.uid);
+    inv.sent = [...sent.values()].filter(x => x.status === "pending");
+    // Equipe: convites de equipe aceitos, nos dois sentidos.
+    const team = new Map();
+    [...recv.values()].filter(x => x.type === "team" && x.status === "accepted").forEach(x => team.set(x.from, { uid: x.from, name: x.fromName, email: x.fromEmail, inv: x.id }));
+    [...sent.values()].filter(x => x.type === "team" && x.status === "accepted" && x.toUid).forEach(x => team.set(x.toUid, { uid: x.toUid, name: x.toName || x.toEmail, email: x.toEmail, inv: x.id }));
+    team.delete(user.uid);
+    inv.team = [...team.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const fresh = inv.got.filter(x => !before.has(x.id));
+    if (fresh.length && A()) A().toast(fresh[0].type === "route" ? `${fresh[0].fromName} te chamou para uma rota 🔔` : `${fresh[0].fromName} te convidou para a equipe 🔔`);
+    A()?.render();
+    if (sheetIs("team") || sheetIs("notif") || sheetIs("rteam")) reopen();
+  };
+  const sub = (q, m) => invUnsubs.push(onSnapshot(q, s => { m.clear(); s.forEach(d => m.set(d.id, { id: d.id, ...d.data() })); rebuild(); }, () => {}));
+  if (user.email) sub(query(col, where("toEmail", "==", user.email)), maps.a);
+  sub(query(col, where("toUid", "==", user.uid)), maps.b);
+  sub(query(col, where("from", "==", user.uid)), maps.c);
+}
+let openKind = null;
+const sheetIs = k => openKind === k && !document.getElementById("sheetBg").hidden;
+const reopen = () => ({ team: openTeam, notif: openNotif, rteam: openRouteTeam })[openKind]?.();
+const show = (html, kind) => { openKind = kind; A().openSheet(html, kind); };
+
+// Tela da equipe.
+function openTeam() {
+  if (!user) return openLogin();
+  show(`<div class="sheet-h"><span class="num">${inv.team.length}</span><div><div class="addr">Minha equipe</div><div class="muted small">Pessoas que fazem entregas com você</div></div><button type="button" class="x" data-close="1">✕</button></div>
+    ${inv.got.length ? `<button type="button" class="pri full" data-sync="openNotif">🔔 ${inv.got.length} convite${inv.got.length > 1 ? "s" : ""} para você</button>` : ""}
+    <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${esc(m.email || "")}</span></span><button type="button" class="ghost sm danger" data-sync="removeMember" data-id="${esc(m.inv)}">Remover</button></div>`).join("") || `<p class="muted">Ninguém na equipe ainda.</p>`}</div>
+    <h3>Convidar para a equipe</h3>
+    <label class="f">E-mail da pessoa (se ela já usa o app)<input type="text" id="tmEmail" placeholder="email@exemplo.com" inputmode="email" autocapitalize="off"></label>
+    <button type="button" class="pri full" data-sync="inviteEmail">Convidar pelo e-mail</button>
+    <button type="button" class="full" data-sync="inviteWhats" style="background:#25d366;border-color:#25d366;color:#fff">Convidar pelo WhatsApp</button>
+    <p class="muted small">Pelo WhatsApp vai uma mensagem pronta com o link. Quando a pessoa criar a conta por ele, já entra na sua equipe.</p>
+    ${inv.sent.length ? `<h3>Esperando resposta</h3><div class="list">${inv.sent.map(x => `<div class="small">${x.type === "route" ? "🚚 Rota " + esc(x.routeName || "") + " · " : "👥 Equipe · "}${esc(x.toName || x.toEmail || "convite pelo WhatsApp")} · <button type="button" class="ghost sm" data-sync="cancelInvite" data-id="${esc(x.id)}" style="min-height:0;padding:0 4px">cancelar</button></div>`).join("")}</div>` : ""}`, "team");
+}
+async function inviteEmail() {
+  const e = (document.getElementById("tmEmail")?.value || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return A().toast("Digite um e-mail válido.");
+  if (e === user.email) return A().toast("Esse é o seu e-mail 🙂");
+  if (inv.team.some(m => m.email === e)) return A().toast("Essa pessoa já está na sua equipe.");
+  try {
+    const reg = await getDoc(doc(db, "emails", e));
+    const ref = doc(collection(db, "invites"));
+    await setDoc(ref, { type: "team", from: user.uid, fromName: user.name, fromEmail: user.email, toEmail: e, toUid: reg.exists() ? reg.data().uid : null, toName: reg.exists() ? reg.data().name : null, status: "pending", created: Date.now() });
+    if (reg.exists()) A().toast(`Convite enviado. ${reg.data().name} vai receber a notificação.`);
+    else return whatsInvite(ref.id, `${e} ainda não usa o app. Mande o convite pelo WhatsApp:`);
+    openTeam();
+  } catch (er) { A().toast(errMsg(er)); }
+}
+async function inviteWhats() {
+  try {
+    const ref = doc(collection(db, "invites"));
+    await setDoc(ref, { type: "team", from: user.uid, fromName: user.name, fromEmail: user.email, toEmail: null, toUid: null, toName: null, status: "pending", created: Date.now() });
+    whatsInvite(ref.id);
+  } catch (er) { A().toast(errMsg(er)); }
+}
+function whatsInvite(id, note) {
+  const link = APP_URL + "?convite=" + id;
+  const text = `Oi! Tenha a Rota Certa junto comigo 🚚📦\nÉ o app que eu uso para organizar as entregas: rota pelo endereço, carregamento do carro e entregas ao vivo.\nEntre por este link e crie sua conta, que você já entra na minha equipe:\n${link}`;
+  show(`<h2>Convite pelo WhatsApp</h2>${note ? `<p class="muted small">${esc(note)}</p>` : ""}
+    <div class="card flat" style="padding:12px;white-space:pre-wrap;font-size:.92rem">${esc(text)}</div>
+    <a class="btn full" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" style="background:#25d366;border-color:#25d366;color:#fff">Abrir o WhatsApp</a>
+    <button type="button" class="full" data-sync="copyText" data-text="${esc(text)}">Copiar a mensagem</button>
+    <button type="button" class="ghost full" data-sync="openTeam">Voltar para a equipe</button>`, "whats");
+}
+async function copyText(btn) { try { await navigator.clipboard.writeText(btn.dataset.text); A().toast("Mensagem copiada"); } catch { A().toast("Não consegui copiar: segure o texto para copiar."); } }
+async function cancelInvite(btn) { try { await deleteDoc(doc(db, "invites", btn.dataset.id)); A().toast("Convite cancelado"); } catch (er) { A().toast(errMsg(er)); } }
+async function removeMember(btn) {
+  if (!btn.dataset.armed) { btn.dataset.armed = "1"; btn.textContent = "Confirmar"; return; }
+  try { await updateDoc(doc(db, "invites", btn.dataset.id), { status: "removed" }); A().toast("Removido da equipe"); } catch (er) { A().toast(errMsg(er)); }
+}
+
+// Notificações: convites para a equipe e para rotas.
+function openNotif() {
+  show(`<h2>Convites</h2>${inv.got.length ? `<div class="list">${inv.got.map(x => `<div class="card flat" style="padding:12px;gap:8px">
+      <b>${x.type === "route" ? `🚚 ${esc(x.fromName)} te chamou para a rota ${esc(x.routeName || "")}` : `👥 ${esc(x.fromName)} te convidou para a equipe`}</b>
+      <span class="muted small">${x.type === "route" ? "Se aceitar, vocês veem e atualizam a mesma rota." : "Na equipe, vocês podem se chamar para rotas quando quiserem."}</span>
+      <div class="row2"><button type="button" class="pri" data-sync="acceptInvite" data-id="${esc(x.id)}">${x.type === "route" ? "Entrar na rota" : "Aceitar"}</button><button type="button" data-sync="declineInvite" data-id="${esc(x.id)}">${x.type === "route" ? "Agora não" : "Recusar"}</button></div></div>`).join("")}</div>` : `<p class="muted">Nenhum convite agora.</p>`}`, "notif");
+}
+async function acceptInvite(btn, idArg) {
+  const id = idArg || btn?.dataset?.id; if (!id) return;
+  try {
+    const ref = doc(db, "invites", id), snap = await getDoc(ref);
+    if (!snap.exists()) return A().toast("Esse convite não existe mais.");
+    const x = snap.data();
+    if (x.from === user.uid) return A().toast("Esse convite é seu 🙂");
+    if (x.status !== "pending") return A().toast(x.status === "accepted" ? "Convite já aceito." : "Esse convite foi cancelado.");
+    await updateDoc(ref, { status: "accepted", toUid: user.uid, toName: user.name, toEmail: user.email, answered: Date.now() });
+    if (x.type === "route") { await join({ dataset: { id: x.routeId } }); }
+    else { A().closeSheet(); A().toast(`Você entrou na equipe de ${x.fromName} ✓`); }
+  } catch (er) { A().toast(errMsg(er)); }
+}
+async function declineInvite(btn) {
+  try { await updateDoc(doc(db, "invites", btn.dataset.id), { status: "declined", toUid: user.uid, answered: Date.now() }); A().toast("Convite recusado"); } catch (er) { A().toast(errMsg(er)); }
+}
+// Chegou pelo link do WhatsApp (?convite=ID): depois de entrar, aceita sozinho e já entra na equipe.
+function takeLinkInvite() {
+  try {
+    const id = new URLSearchParams(location.search).get("convite");
+    if (id) { localStorage.setItem("rc3:convite", id); history.replaceState(null, "", location.pathname + location.hash); }
+  } catch {}
+}
+takeLinkInvite();
+async function useLinkInvite() {
+  let id = null; try { id = localStorage.getItem("rc3:convite"); } catch {}
+  if (!id || !user) return;
+  try { localStorage.removeItem("rc3:convite"); } catch {}
+  await acceptInvite(null, id);
+}
+
+// Chamar alguém da equipe para a rota aberta (a pessoa aceita ou não).
+async function openRouteTeam() {
+  const R = A().R;
+  if (!user) return openLogin();
+  if (!R) return A().toast("Abra uma rota primeiro.");
+  const t = remote.team || {}, now = Date.now();
+  const online = uid => remote.presence[uid] && now - remote.presence[uid].t < 150000;
+  const inRoute = uid => (t.members || []).includes(uid);
+  const called = uid => inv.sent.some(x => x.type === "route" && x.routeId === R.shared && x.toUid === uid);
+  show(`<div class="sheet-h"><span class="num">${(t.members || [user.uid]).length}</span><div><div class="addr">Equipe desta rota</div><div class="muted small">${esc(R.name)}</div></div><button type="button" class="x" data-close="1">✕</button></div>
+    ${R.shared ? `<div class="list">${(t.members || []).map(uid => `<div class="small">${online(uid) ? "🟢" : "⚪"} <b>${esc(t.names?.[uid] || "?")}</b>${uid === user.uid ? " (você)" : ""} · ${online(uid) ? "online" : "offline"}</div>`).join("")}</div>` : `<p class="muted small">Esta rota ainda é só sua. Chame alguém da equipe para fazer junto.</p>`}
+    <h3>Chamar da minha equipe</h3>
+    <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm idle">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${inRoute(m.uid) ? "já está na rota" : called(m.uid) ? "chamado, esperando aceitar" : esc(m.email || "")}</span></span>${inRoute(m.uid) || called(m.uid) ? "" : `<button type="button" class="pri sm" data-sync="callToRoute" data-uid="${esc(m.uid)}">Chamar</button>`}</div>`).join("") || `<p class="muted small">Sua equipe está vazia.</p>`}</div>
+    <button type="button" class="full" data-sync="openTeam">Convidar alguém para a equipe</button>`, "rteam");
+}
+async function callToRoute(btn) {
+  const m = inv.team.find(x => x.uid === btn.dataset.uid); if (!m) return;
+  try {
+    const R = A().R;
+    if (!R.shared) await shareRoute();
+    const rid = A().R.shared;
+    await updateDoc(doc(db, "routes", rid), { invites: arrayUnion(m.email) });
+    await setDoc(doc(collection(db, "invites")), { type: "route", from: user.uid, fromName: user.name, fromEmail: user.email, toEmail: m.email, toUid: m.uid, toName: m.name, routeId: rid, routeName: R.name, status: "pending", created: Date.now() });
+    A().toast(`${m.name} foi chamado(a). Quando aceitar, entra na rota.`);
+  } catch (er) { A().toast(errMsg(er)); }
+}
+
+window.RCSync = { openLogin, logout, share, invite: openRouteTeam, teamRoutes, join, claim, push, pushCar, remote,
+  openTeam, openNotif, inviteEmail, inviteWhats, copyText, cancelInvite, removeMember, acceptInvite, declineInvite, callToRoute, openRouteTeam,
+  get notifCount() { return inv.got.length; }, get teamCount() { return inv.team.length; }, get user() { return user; }, get routeId() { return routeId; } };
 const boot = () => { if (!A()) return setTimeout(boot, 50); A().remote = remote; A().user = user; A().onSave = push; A().onSaveCar = pushCar; checkAttach(); A().render(); };
 boot();

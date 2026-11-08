@@ -33,3 +33,10 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 - Código: `sync.js` (módulo ES que usa o Firebase Web SDK 13.2.0 pela CDN do Google). Ele conversa com `app.js` por `window.RCApp` e `window.RCSync`.
 - Dados no Firestore: `routes/{id}` guarda owner, members, invites, names, emails, name, pkgs e order. As subcoleções são `st` (situação de cada pacote), `notes`, `claims`, `car` e `presence`. As regras deixam ler e gravar só quem está em `members` ou tem o e-mail em `invites`.
 - O login com Google exige `nayapereira44-98.github.io` em Authentication → Configurações → Domínios autorizados.
+
+## Equipe e convites (09/11)
+- **Minha equipe** (no Início e no menu da conta): a equipe é permanente. Para convidar:
+  - **pelo e-mail**: se a pessoa já usa o app, ela recebe a notificação (🔔 no topo) e aceita;
+  - **pelo WhatsApp**: vai uma mensagem pronta, "Tenha a Rota Certa junto comigo…", com o link `?convite=ID`. Quem cria a conta ou entra por esse link já fica na equipe.
+- **Chamar alguém para esta rota**: nem toda rota é compartilhada. Na rota aberta, você chama alguém da equipe, a pessoa recebe a notificação e escolhe "Entrar na rota" ou "Agora não".
+- Firestore: `emails/{email}` → {uid, name} serve para achar quem já tem conta (só leitura de um documento por vez). `invites/{id}` → {type: team|route, from, fromName, fromEmail, toEmail, toUid, toName, routeId, routeName, status}. A equipe é o conjunto de convites de equipe aceitos, nos dois sentidos.
