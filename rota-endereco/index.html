@@ -41,6 +41,7 @@ button:active, .btn:active { transform: scale(.98); }
 .top { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .top b { font-size: 1.05rem; }
 .top .muted { font-size: .82rem; }
+.acct { width: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 .prog { height: 4px; background: var(--soft); border-radius: 2px; overflow: hidden; margin-top: 4px; width: 140px; }
 .prog i { display: block; height: 100%; background: var(--ok); width: 0; }
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); }
@@ -249,7 +250,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261109a"></script>
-<script type="module" src="sync.js?v=20261109a"></script>
+<script src="app.js?v=20261109b"></script>
+<script type="module" src="sync.js?v=20261109b"></script>
 </body>
 </html>
