@@ -796,14 +796,33 @@
     const multi = SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1;
     const s = isNext ? 40 : 30;
     const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : ""}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
+    const multiAt = routeAts().length > 1;
+    const sty = multiAt && !isNext && st === "idle" ? `;background:${atColorOf(stopAt(a))};border-color:#fff;color:#fff` : multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : "";
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${sty}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
   // Outras rotas em andamento no mapa: todas, ou só as escolhidas. Cada uma com uma cor; tocar abre aquela rota.
   const SLOT_COLORS = ["#2563eb", "#ea580c", "#7c3aed", "#0d9488", "#db2777", "#65a30d"];
   let mapSel = store.get("rc3:mapsel", null), otherLayer = null;
   const slotColor = id => SLOT_COLORS[Math.max(0, (SLOTS || []).findIndex(x => x.id === id)) % SLOT_COLORS.length];
   const slotShown = id => !mapSel || mapSel.includes(id);
+  // ATs dentro da rota aberta (planilhas somadas): cada AT com uma cor e filtro próprio.
+  const AT_COLORS = ["#2563eb", "#ea580c", "#7c3aed", "#0d9488", "#db2777", "#65a30d", "#ca8a04"];
+  const routeAts = () => (R ? [...new Set(R.pkgs.map(p => p.at || "Manual"))] : []);
+  const atColorOf = at => AT_COLORS[Math.max(0, routeAts().indexOf(at)) % AT_COLORS.length];
+  const stopAt = a => { const c = {}; a.pkgs.forEach(p => { const k = p.at || "Manual"; c[k] = (c[k] || 0) + 1; }); return Object.keys(c).sort((x, y) => c[y] - c[x])[0]; };
+  const atShown = at => !R?.atSel || R.atSel.includes(at);
+  const atLabel = at => (at === "Manual" ? "Paradas manuais" : at);
   function openMapSel() {
+    const ats = routeAts();
+    const atBlock = ats.length > 1 ? `<h3>ATs desta rota</h3>
+      <button type="button" class="full ${!R.atSel ? "pri" : ""}" data-atsel="all">Todas as ATs</button>
+      <div class="list">${ats.map(at => { const n = R.pkgs.filter(p => (p.at || "Manual") === at), ok = n.filter(p => resolved(p)).length; return `<button type="button" class="stop" data-atsel="${esc(at)}"><span class="num sm" style="background:${atColorOf(at)}">${atShown(at) ? "✓" : ""}</span><span><span class="addr">${esc(atLabel(at))}</span><br><span class="muted small">${ok}/${n.length} resolvidos</span></span><span></span></button>`; }).join("")}</div>` : "";
+    const slotBlock = SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1 ? `<h3>Rotas em andamento</h3>
+      <button type="button" class="full ${!mapSel ? "pri" : ""}" data-mapsel="all">Todas as rotas</button>
+      <div class="list">${SLOTS.filter(x => x.R?.pkgs?.length).map(sl => `<button type="button" class="stop" data-mapsel="${esc(sl.id)}"><span class="num sm" style="background:${slotColor(sl.id)}">${slotShown(sl.id) ? "✓" : ""}</span><span><span class="addr">${esc(slotName(sl))}</span><br><span class="muted small">${sl.id === activeSlot ? "aberta agora · " : ""}${esc(slotInfo(sl))}</span></span><span></span></button>`).join("")}</div>` : "";
+    openSheet(`<h2>O que ver no mapa</h2><p class="muted small">Toque para mostrar ou esconder.</p>${atBlock}${slotBlock}`, "mapsel");
+  }
+  function openMapSelOld() {
     openSheet(`<h2>Rotas no mapa</h2><p class="muted small">Escolha quais rotas aparecem. A rota aberta é a que você entrega agora.</p>
       <button type="button" class="full ${!mapSel ? "pri" : ""}" data-mapsel="all">Todas as rotas</button>
       <div class="list">${SLOTS.filter(x => x.R?.pkgs?.length).map(sl => `<button type="button" class="stop" data-mapsel="${esc(sl.id)}"><span class="num sm" style="background:${slotColor(sl.id)}">${slotShown(sl.id) ? "✓" : ""}</span><span><span class="addr">${esc(slotName(sl))}</span><br><span class="muted small">${sl.id === activeSlot ? "aberta agora · " : ""}${esc(slotInfo(sl))}</span></span><span></span></button>`).join("")}</div>`, "mapsel");
@@ -831,12 +850,13 @@
       <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
       : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
-    if (SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1) $("mapTop").innerHTML += ` · <button type="button" class="ghost sm" data-mapselopen="1" style="min-height:0;padding:0 4px">${mapSel ? mapSel.length : "Todas"} rotas ▾</button>`;
+    const nAt = routeAts().length, nSl = SLOTS ? SLOTS.filter(x => x.R?.pkgs?.length).length : 0;
+    if (nAt > 1 || nSl > 1) $("mapTop").innerHTML += ` · <button type="button" class="ghost sm" data-mapselopen="1" style="min-height:0;padding:0 4px">${[nAt > 1 ? (R.atSel ? R.atSel.length + " de " + nAt + " ATs" : nAt + " ATs") : "", nSl > 1 ? (mapSel ? mapSel.length + " rotas" : "todas as rotas") : ""].filter(Boolean).join(" · ")} ▾</button>`;
     if (!map) return;
     layer.clearLayers();
     drawOtherRoutes();
     if (R && !slotShown(activeSlot)) { lineL?.remove(); return; }
-    stops.forEach(a => {
+    stops.filter(a => a === nx || atShown(stopAt(a))).forEach(a => {
       const m = L.marker([a.lat, a.lng], { icon: pinIcon(a, a === nx), zIndexOffset: a === nx ? 1000 : done(a) ? 0 : 500 }).addTo(layer);
       m.on("click", () => openStop(a.key));
     });
@@ -1054,6 +1074,7 @@
     }
     if (d.slot) return switchSlot(d.slot);
     if (d.slotnew) return newSlot();
+    if (d.atsel) { const ats = routeAts(); if (d.atsel === "all") R.atSel = null; else { let sel = R.atSel || ats.slice(); sel = sel.includes(d.atsel) ? sel.filter(x => x !== d.atsel) : sel.concat(d.atsel); R.atSel = !sel.length || sel.length === ats.length ? null : sel; } save(); renderMap(); return openMapSel(); }
     if (d.mapsel) { const id = d.mapsel; mapSel = id === "all" ? null : (mapSel || SLOTS.map(x => x.id)); if (id !== "all") { mapSel = mapSel.includes(id) ? mapSel.filter(x => x !== id) : mapSel.concat(id); if (!mapSel.length || mapSel.length === SLOTS.length) mapSel = null; } store.set("rc3:mapsel", mapSel); renderMap(); return openMapSel(); }
     if (d.mapselopen) return openMapSel();
     if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
