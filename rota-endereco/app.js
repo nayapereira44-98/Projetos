@@ -918,11 +918,12 @@
     closeSheet();
     let ac = null;
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume?.(); } catch {}
-    bip = { ac, mode, last: {}, stream: null, stop: false, rot: 0, cur: null };
+    bip = { ac, mode, last: {}, stream: null, stop: false, rot: 0, cur: null, zone: Math.min(CAR.cur || 0, Math.max(0, (CAR.zones || []).length - 1)) };
     $("bip").hidden = false;
     $("bipErr").hidden = mode !== "carregar";
     $("bipMode").textContent = mode === "carregar" ? "Carregar o veículo: bipe e coloque onde o app indicar" : "Consultar pacote";
     $("bipRes").innerHTML = `<div class="bip-hint">Aponte a câmera para a etiqueta</div>`;
+    if (mode === "carregar") bipZonePanel();
     bipCount();
     try {
       bip.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
@@ -963,6 +964,11 @@
     }
     setTimeout(() => requestAnimationFrame(loop), 60);
   }
+  // Carregamento: a parte do carro é escolhida ANTES de bipar, em botões grandes; cada pacote bipado vai para ela.
+  function bipZonePanel() {
+    $("bipRes").innerHTML = `${bip.lastHtml || `<div class="bip-hint">Escolha a parte do carro e bipe os pacotes</div>`}
+      <div class="bzones">${CAR.zones.map((n, i) => `<button type="button" class="${i === bip.zone ? "on" : ""}" data-bzone="${i}"><b>${esc(n)}</b><span>${zCount(i)} pacote${zCount(i) === 1 ? "" : "s"}</span></button>`).join("")}</div>`;
+  }
   function bipCount() {
     if (!bip) return;
     if (bip.mode === "carregar") {
@@ -981,9 +987,10 @@
     const code = codeOf(text), p = findPkg(code);
     if (bip.mode === "carregar") {
       // Já tem lugar no carro: mostra onde está (dá para trocar). Senão, o app sugere e já guarda.
+      // Vai direto para a parte escolhida antes de bipar (se já tinha lugar, muda para a escolhida).
       const k = carKey(p ? p.tn : code);
-      bip.again = !!k;
-      if (!k) putInCar(p ? normTn(p.tn) : code, suggestZone(p ? normTn(p.tn) : code));
+      bip.again = !!k && CAR.pk[k].z === bip.zone;
+      putInCar(k || (p ? normTn(p.tn) : code), bip.zone, k ? CAR.pk[k].v : false);
       bip.cur = p ? normTn(p.tn) : code;
       tone(k ? "warn" : "ok"); buzz(60); flash("ok");
       return bipShow();
@@ -1001,11 +1008,9 @@
     const ofN = a ? `Parada ${a.n} · Shopee ${p.shopeeStop ?? "s/n"} · pacote ${a.pkgs.indexOf(p) + 1} de ${a.pkgs.length}` : "";
     if (bip.mode === "carregar") {
       const c = CAR.pk[k];
-      $("bipRes").innerHTML = `<div class="bip-card ${bip.again ? "warn" : ""}">
-        <div class="muted small">${bip.again ? "Este pacote já está em" : "Coloque em"}</div>
-        <div class="bigz">${esc(zName(z))}</div><div class="muted small">${esc(zHint(z))}${c?.v ? " · <b>volumoso</b>" : ""}</div>
-        <div class="bipgrid">${carSvg(z, { pick: true, small: true })}<div>${a ? `<b>${esc(a.label)}</b><br><span class="muted small">${ofN}</span><br>` : `<span class="muted small">Ainda sem rota: o endereço aparece quando você importar a planilha.</span><br>`}<span class="small">${tnHtml(code)}</span><br><span class="muted small">Toque no desenho para trocar a parte.</span></div></div>
-        <button type="button" class="full ${c?.v ? "pri" : ""}" data-vol="1">${c?.v ? "✓ Volumoso (toque para tirar)" : "Marcar como volumoso"}</button></div>`;
+      bip.lastHtml = `<div class="bip-last ${bip.again ? "warn" : ""}"><b>${bip.again ? "Já estava em" : "✓ Guardado em"} ${esc(zName(z))}</b>${c?.v ? " · volumoso" : ""}<br><span class="small">${a ? `Parada ${a.n} · Shopee ${p.shopeeStop ?? "s/n"} · ` : ""}${tnHtml(code)}</span>
+        <button type="button" class="sm ${c?.v ? "pri" : ""}" data-vol="1">${c?.v ? "✓ Volumoso" : "Volumoso?"}</button></div>`;
+      bipZonePanel();
       return bipCount();
     }
     $("bipRes").innerHTML = `<div class="bip-card ${s ? "warn" : ""}">
@@ -1053,6 +1058,7 @@
     if (d.mapselopen) return openMapSel();
     if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
     if (d.navset) return openNavPick();
+    if (d.bzone != null) { bip.zone = +d.bzone; CAR.cur = bip.zone; saveCar(); return bipZonePanel(); }
     if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
     if (d.errpkg) { CAR.err = (CAR.err || []).concat({ id: "E" + Date.now(), t: Date.now() }); saveCar(); tone("warn"); buzz(80); flash("ok"); $("bipRes").innerHTML = `<div class="bip-card warn"><b>Pacote com erro contado</b><span class="muted small">Coloque no <b>banco da frente</b>. Depois de carregar, confira em Carregar → "Pacotes com erro".</span></div>`; return bipCount(); }
     if (d.errfix) return openErr();

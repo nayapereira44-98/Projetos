@@ -208,7 +208,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 /* bipar */
 #bip { position: fixed; inset: 0; z-index: 2000; background: #000; color: #fff; }
 #bip video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.bip-frame { position: absolute; left: 10%; right: 10%; top: 18%; height: 34%; border: 3px solid rgba(255,255,255,.9); border-radius: 20px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); }
+.bip-frame { position: absolute; left: 10%; right: 10%; top: 14%; height: 26%; border: 3px solid rgba(255,255,255,.9); border-radius: 20px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); }
 #bip.f-ok .bip-frame { animation: fok .6s; } #bip.f-err .bip-frame { animation: ferr .8s; }
 @keyframes fok { 0% { border-color: #16a34a; background: rgba(22,163,74,.3); } }
 @keyframes ferr { 0% { border-color: #dc2626; background: rgba(220,38,38,.3); } }
@@ -220,6 +220,16 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 .bip-card { background: var(--surface); color: var(--ink); border-radius: 18px; padding: 14px; display: grid; gap: 8px; border-left: 8px solid var(--ok); }
 .bip-card.warn { border-left-color: var(--warn); } .bip-card.err { border-left-color: var(--bad); }
 .bip-card .big { font-size: 2.3rem; font-weight: 800; line-height: 1; }
+.bzones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bzones button { min-height: 72px; flex-direction: column; gap: 2px; background: rgba(255,255,255,.92); color: #111827; border: 2px solid transparent; }
+.bzones button b { font-size: 1.05rem; }
+.bzones button span { font-size: .8rem; font-weight: 500; color: #6b7280; }
+.bzones button.on { background: #2563eb; color: #fff; border-color: #fff; }
+.bzones button.on span { color: #dbeafe; }
+.bip-last { background: #fff; color: #111827; border-radius: 14px; padding: 10px 12px; border-left: 6px solid #16a34a; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+.bip-last.warn { border-left-color: #d97706; }
+.bip-last b, .bip-last .small { grid-column: 1; }
+.bip-last button { grid-column: 2; grid-row: 1 / span 2; min-height: 40px; }
 .bip-hint { text-align: center; font-weight: 600; text-shadow: 0 1px 3px #000; }
 
 #toast { position: fixed; left: 16px; right: 16px; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 3000; background: var(--ink); color: var(--surface); padding: 12px 14px; border-radius: 12px; text-align: center; font-weight: 600; max-width: 600px; margin: 0 auto; }
@@ -283,7 +293,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261110e"></script>
+<script src="app.js?v=20261110f"></script>
 <script type="module" src="sync.js?v=20261110d"></script>
 </body>
 </html>
