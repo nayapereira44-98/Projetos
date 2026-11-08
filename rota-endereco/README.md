@@ -55,3 +55,10 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 ## GPS e navegação (10/11)
 - O **GPS do app** fica sempre ligado no mapa: o ponto azul é você e a **linha verde** é o caminho pelas ruas até a próxima parada (OSRM). A linha é refeita quando você anda 60 m ou a parada muda.
 - Para a navegação com voz, o app **sugere o Google Maps** (padrão). No cartão da próxima parada, "navegar com Google Maps · trocar" deixa escolher Waze ou Apple Maps. A escolha fica salva (`rc3:nav`), e o app escolhido aparece em destaque na folha da parada.
+
+## Várias rotas em andamento (10/11)
+- **"+ Nova rota"** (no Início, no Histórico e no fim do Início com rota aberta) pausa a rota aberta e começa outra do zero. A rota pausada fica guardada inteira: planilha, entregas, anotações e **o carregamento do carro** (inclusive bipado sem planilha e pacotes com erro).
+- **Rotas em andamento**: a lista aparece no Início e no Histórico; tocar abre a rota. "Finalizar rota" fecha só a rota aberta e abre a próxima em andamento.
+- **Mapa**: mostra todas as rotas em andamento juntas, cada uma com uma cor. Em "Todas rotas ▾", no topo do mapa, dá para escolher quais aparecem. Tocar numa parada de outra rota abre essa rota.
+- Rota da equipe: entrar numa rota compartilhada abre uma nova rota em andamento, sem fechar a sua.
+- Dados: `rc3:slots` (lista de {id, R, car: {pk, err, cur}}) e `rc3:active`; `rc3:route` e `rc3:car` continuam com a rota aberta.

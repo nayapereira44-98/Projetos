@@ -157,7 +157,8 @@ async function join(btn) {
     const r = snap.data();
     if (!(r.members || []).includes(user.uid)) await updateDoc(ref, { members: arrayUnion(user.uid), [`names.${user.uid}`]: user.name, [`emails.${user.uid}`]: user.email });
     const cur = A().R;
-    if (cur && cur.pkgs?.length && cur.shared !== id) A().archiveCurrent();
+    // Entrar numa rota da equipe abre uma nova "rota em andamento"; a que estava aberta fica guardada.
+    if (cur && cur.pkgs?.length && cur.shared !== id) A().newSlot();
     A().setRoute({ id, name: r.name, created: r.created || Date.now(), file: "", pkgs: r.pkgs || [], order: r.order || [], st: {}, notes: {}, loaded: {}, zph: {}, shared: id });
     last.route = sig(A().R); last.st = {}; last.notes = {};
     attach(id);
@@ -559,5 +560,5 @@ window.RCSync = { openLogin, logout, share, invite: openRouteTeam, teamRoutes, j
   openTeam, openNotif, inviteEmail, inviteWhats, copyText, cancelInvite, removeMember, acceptInvite, declineInvite, callToRoute, openRouteTeam,
   community, openProfile, saveProfile, openPerson, addFriend, openFriends, delMsg, newTip, tipPick, saveTip, tipFilter,
   get notifCount() { return inv.got.length; }, get teamCount() { return inv.team.length; }, get user() { return user; }, get routeId() { return routeId; } };
-const boot = () => { if (!A()) return setTimeout(boot, 50); A().remote = remote; A().user = user; A().onSave = push; A().onSaveCar = pushCar; checkAttach(); A().render(); };
+const boot = () => { if (!A()) return setTimeout(boot, 50); A().remote = remote; A().user = user; A().onSave = push; A().onSaveCar = pushCar; A().onSwitch = () => { const R = A().R; if (!R?.shared) detach(); else checkAttach(); }; checkAttach(); A().render(); };
 boot();
