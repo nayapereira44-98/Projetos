@@ -86,7 +86,8 @@
   // por parada. loaded: pacotes já colocados no carro. H: rotas finalizadas (histórico).
   let R = store.get("rc3:route", null), H = store.get("rc3:hist", []);
   let A = [], byKey = new Map(), byTn = new Map(), stops = [];
-  const save = () => { store.set("rc3:route", R); try { window.RCApp?.onSave?.(); } catch {} };
+  let SLOTS = null, activeSlot = null; // várias rotas em andamento (ver "rotas em andamento" mais abaixo)
+  const save = () => { store.set("rc3:route", R); persistSlots(); try { window.RCApp?.onSave?.(); } catch {} };
   const saveH = () => store.set("rc3:hist", H);
   const pst = p => R?.st?.[p.tn]?.s || null;
   const resolved = p => !!pst(p);
@@ -169,8 +170,10 @@
       stops: stops.map(a => ({ n: a.n, label: a.label, cep: cepOf(a), note: R.notes[a.key] || "", pkgs: a.pkgs.map(p => ({ tn: p.tn, s: p.shopeeStop ?? null, at: p.at || "", c: compl(p), st: R.st[p.tn] || null })) })),
     });
     H = H.slice(0, 80); saveH();
-    R.pkgs.forEach(p => { const k = carKey(p.tn); if (k) delete CAR.pk[k]; }); saveCar();
-    R = null; save(); derive();
+    CAR.pk = {}; CAR.err = []; CAR.cur = 0;
+    R = null;
+    if (SLOTS && SLOTS.length > 1) { const old = activeSlot; SLOTS = SLOTS.filter(x => x.id !== old); activeSlot = SLOTS[0].id; const sl = SLOTS[0]; R = sl.R || null; CAR.pk = sl.car?.pk || {}; CAR.err = sl.car?.err || []; CAR.cur = sl.car?.cur || 0; fitted = false; }
+    store.set("rc3:car", CAR); save(); derive();
   }
 
   // ---------- folha (detalhe que sobe de baixo) ----------
@@ -348,7 +351,51 @@
   const zonesFor = lay => (lay.pass ? [ZP] : []).concat([ZMD, ZME, ZFD, ZFE]);
   let CAR = store.get("rc3:car", null) || { pk: {}, zph: {}, cur: 0 };
   if (!CAR.zones) CAR.zones = [ZMD, ZME, ZFD, ZFE];
-  const saveCar = () => { store.set("rc3:car", CAR); try { window.RCApp?.onSaveCar?.(); } catch {} };
+  const saveCar = () => { store.set("rc3:car", CAR); persistSlots(); try { window.RCApp?.onSaveCar?.(); } catch {} };
+  // ---------- rotas em andamento ----------
+  // Cada rota em andamento guarda a própria rota (planilha, entregas, anotações) e o próprio carregamento do carro.
+  // Dá para pausar uma, começar outra ("+ Adicionar nova rota") e voltar quando quiser. O carro (tipo e disposição)
+  // é o mesmo para todas.
+  function persistSlots() {
+    if (!SLOTS) return;
+    const sl = SLOTS.find(x => x.id === activeSlot); if (!sl) return;
+    sl.R = R; sl.car = { pk: CAR.pk || {}, err: CAR.err || [], cur: CAR.cur || 0 };
+    store.set("rc3:slots", SLOTS); store.set("rc3:active", activeSlot);
+  }
+  function initSlots() {
+    SLOTS = store.get("rc3:slots", null); activeSlot = store.get("rc3:active", null);
+    if (!SLOTS || !SLOTS.length) { SLOTS = [{ id: "s" + Date.now(), created: Date.now(), R, car: { pk: CAR.pk || {}, err: CAR.err || [], cur: CAR.cur || 0 } }]; activeSlot = SLOTS[0].id; }
+    if (!SLOTS.some(x => x.id === activeSlot)) activeSlot = SLOTS[0].id;
+    const sl = SLOTS.find(x => x.id === activeSlot);
+    R = sl.R || null; CAR.pk = sl.car?.pk || {}; CAR.err = sl.car?.err || []; CAR.cur = sl.car?.cur || 0;
+    persistSlots();
+  }
+  const slotName = sl => sl.R?.name || (Object.keys(sl.car?.pk || {}).length || (sl.car?.err || []).length ? `Carregamento sem planilha` : "Nova rota");
+  const slotInfo = sl => {
+    const pk = sl.R?.pkgs || [], ok = pk.filter(p => sl.R.st?.[p.tn]?.s === "ok").length, car = Object.keys(sl.car?.pk || {}).length + (sl.car?.err || []).length;
+    return [pk.length ? `${ok}/${pk.length} entregues` : "", car ? `${car} no carro` : "", !pk.length && !car ? "vazia" : ""].filter(Boolean).join(" · ");
+  };
+  function switchSlot(id) {
+    if (id === activeSlot) return;
+    persistSlots();
+    const sl = SLOTS.find(x => x.id === id); if (!sl) return;
+    activeSlot = id; R = sl.R || null; CAR.pk = sl.car?.pk || {}; CAR.err = sl.car?.err || []; CAR.cur = sl.car?.cur || 0;
+    store.set("rc3:route", R); store.set("rc3:car", CAR); persistSlots();
+    fitted = false; if (R) R.geom = R.geom || null;
+    derive(); render(); try { window.RCApp?.onSwitch?.(); } catch {}
+    toast("Rota aberta: " + slotName(sl));
+  }
+  function newSlot() {
+    persistSlots();
+    const sl = { id: "s" + Date.now(), created: Date.now(), R: null, car: { pk: {}, err: [], cur: 0 } };
+    SLOTS.push(sl); switchSlot(sl.id);
+    go("inicio"); toast("Nova rota criada. A outra ficou guardada com o carregamento.");
+  }
+  function slotsCard(extra) {
+    if (!SLOTS) return "";
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Rotas em andamento (${SLOTS.length})</h3><button type="button" class="pri sm" data-slotnew="1">+ Nova rota</button></div>
+      <div class="list">${SLOTS.map(sl => `<button type="button" class="stop${sl.id === activeSlot ? " isnext" : ""}" data-slot="${esc(sl.id)}"><span class="num sm ${sl.id === activeSlot ? "" : "idle"}">${SLOTS.indexOf(sl) + 1}</span><span><span class="addr">${esc(slotName(sl))}</span><br><span class="muted small">${sl.id === activeSlot ? "aberta agora · " : ""}${esc(slotInfo(sl))}</span></span>${sl.id === activeSlot ? `<span class="chip acc">aberta</span>` : ICON.chev}</button>`).join("")}</div>${extra || ""}</div>`;
+  }
   const layOf = () => LAYOUTS.find(l => l.id === CAR.lay) || null;
   // Troca a disposição sem perder onde os pacotes já estão (pelo nome da parte).
   function setLayout(id) {
@@ -477,7 +524,7 @@
   function route() {
     tab = location.hash.slice(1);
     if (!TABS.includes(tab)) tab = "inicio";
-    if (!R && (tab === "mapa" || tab === "paradas")) tab = "inicio";
+    if (!R && (tab === "paradas" || (tab === "mapa" && !(SLOTS || []).some(x => x.R?.pkgs?.length)))) tab = "inicio";
     TABS.forEach(t => ($("v-" + t).hidden = t !== tab));
     document.querySelectorAll("nav.tabs a").forEach(a => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     $("top").hidden = tab === "mapa";
@@ -553,7 +600,8 @@
   function renderHome() {
     const v = $("v-inicio");
     if (!R) {
-      v.innerHTML = `<div class="hello"><h1>Olá! 👋</h1><p class="muted">O que você quer fazer?</p></div>
+      const showSlots = SLOTS && (SLOTS.length > 1 || Object.keys(CAR.pk || {}).length || (CAR.err || []).length);
+      v.innerHTML = `${showSlots ? slotsCard() : ""}<div class="hello"><h1>Olá! 👋</h1><p class="muted">O que você quer fazer${SLOTS && SLOTS.length > 1 ? " nesta nova rota" : ""}?</p></div>
         <div class="actions">
           ${act(ICON.file, "Importar planilha da Shopee", "Excel (.xlsx) exportado do app", `data-pick="file"`)}
           ${act(ICON.box, "Carregar o veículo", Object.keys(CAR.pk).length ? `${Object.keys(CAR.pk).length} pacotes no carro` : "Bipe no galpão: o app diz onde colocar", `data-go="carregar"`)}
@@ -564,7 +612,7 @@
       return;
     }
     const c = counts(), nx = nextStop();
-    v.innerHTML = `<div class="card">
+    v.innerHTML = `${SLOTS && SLOTS.length > 1 ? slotsCard() : ""}<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="word-break:break-all">${esc(R.name)}</h2><button type="button" class="ghost sm" data-rename="1">Renomear</button></div><span class="muted small" style="margin-top:-8px">${ddmm(R.created)}</span>
         <div class="bar"><i style="width:${(c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1)}%"></i></div>
         <div class="stats"><div class="stat"><b>${c.sDone}/${c.sAll}</b><span>paradas</span></div><div class="stat"><b>${c.ok}/${c.pk}</b><span>entregues</span></div><div class="stat"><b>${c.fail}</b><span>não entregues</span></div></div>
@@ -578,6 +626,7 @@
         ${act(ICON.clock, "Histórico de rotas", `${H.length} finalizada${H.length === 1 ? "" : "s"}`, `data-go="historico"`)}
         ${teamAct()}
       </div>${accountLine()}
+      ${SLOTS && SLOTS.length === 1 ? `<button type="button" class="full" data-slotnew="1">+ Adicionar nova rota (pausar esta)</button>` : ""}
       <button type="button" class="ghost full danger" data-finish="1">Finalizar rota e guardar no histórico</button>`;
   }
 
@@ -663,7 +712,7 @@
 
   function renderHist() {
     const v = $("v-historico");
-    v.innerHTML = `<h2>Histórico de rotas</h2>` + (H.length ? `<div class="list">${H.map((h, i) => {
+    v.innerHTML = slotsCard() + `<h2>Histórico de rotas</h2>` + (H.length ? `<div class="list">${H.map((h, i) => {
       const pk = h.stops.flatMap(s => s.pkgs), ok = pk.filter(p => p.st?.s === "ok").length, fail = pk.filter(p => p.st?.s === "fail").length, notes = h.stops.filter(s => s.note || s.pkgs.some(p => p.st?.s === "fail")).length;
       return `<button type="button" class="stop" data-hist="${i}"><span class="num sm idle">${ddmm(h.created).slice(0, 2)}</span><span><span class="addr">${esc(h.name)}</span><br><span class="muted small">${ddmm(h.created)} · ${h.stops.length} paradas · ${ok}/${pk.length} entregues${fail ? ` · ${fail} não entregues` : ""}${notes ? ` · ${notes} com anotação` : ""}</span></span>${ICON.chev}</button>`;
     }).join("")}</div>` : `<div class="empty">Nenhuma rota finalizada ainda.<br>Quando terminar o dia, toque em “Finalizar rota” no Início.</div>`);
@@ -730,9 +779,36 @@
   function pinIcon(a, isNext) {
     const st = stateOf(a), left = a.pkgs.filter(p => !resolved(p)).length;
     const cls = isNext ? "next" : st === "idle" ? (otherClaim(a) ? "other" : "") : st;
+    const multi = SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1;
     const s = isNext ? 40 : 30;
     const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : ""}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
+  }
+  // Outras rotas em andamento no mapa: todas, ou só as escolhidas. Cada uma com uma cor; tocar abre aquela rota.
+  const SLOT_COLORS = ["#2563eb", "#ea580c", "#7c3aed", "#0d9488", "#db2777", "#65a30d"];
+  let mapSel = store.get("rc3:mapsel", null), otherLayer = null;
+  const slotColor = id => SLOT_COLORS[Math.max(0, (SLOTS || []).findIndex(x => x.id === id)) % SLOT_COLORS.length];
+  const slotShown = id => !mapSel || mapSel.includes(id);
+  function openMapSel() {
+    openSheet(`<h2>Rotas no mapa</h2><p class="muted small">Escolha quais rotas aparecem. A rota aberta é a que você entrega agora.</p>
+      <button type="button" class="full ${!mapSel ? "pri" : ""}" data-mapsel="all">Todas as rotas</button>
+      <div class="list">${SLOTS.filter(x => x.R?.pkgs?.length).map(sl => `<button type="button" class="stop" data-mapsel="${esc(sl.id)}"><span class="num sm" style="background:${slotColor(sl.id)}">${slotShown(sl.id) ? "✓" : ""}</span><span><span class="addr">${esc(slotName(sl))}</span><br><span class="muted small">${sl.id === activeSlot ? "aberta agora · " : ""}${esc(slotInfo(sl))}</span></span><span></span></button>`).join("")}</div>`, "mapsel");
+  }
+  function drawOtherRoutes() {
+    otherLayer?.remove(); otherLayer = null;
+    if (!map || !SLOTS || SLOTS.length < 2) return;
+    otherLayer = L.layerGroup().addTo(map);
+    SLOTS.filter(sl => sl.id !== activeSlot && sl.R?.pkgs?.length && slotShown(sl.id)).forEach(sl => {
+      const As = Core.buildAddresses(sl.R.pkgs), byK = new Map(As.map(a => [a.key, a]));
+      const ord = (sl.R.order || []).map(k => byK.get(k)).filter(Boolean);
+      As.forEach(a => { if (!ord.includes(a)) ord.push(a); });
+      const col = slotColor(sl.id);
+      ord.forEach((a, i) => {
+        const left = a.pkgs.filter(p => !sl.R.st?.[p.tn]).length; if (!left) return;
+        const m = L.marker([a.lat, a.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="position:relative;background:${col};border-color:#fff;color:#fff">${i + 1}${left > 1 ? `<span class="n2">${left}</span>` : ""}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), zIndexOffset: 200 }).addTo(otherLayer);
+        m.on("click", () => { switchSlot(sl.id); setTimeout(() => openStop(a.key, "view"), 50); });
+      });
+    });
   }
   function renderMap() {
     const nx = nextStop(), c = counts();
@@ -741,8 +817,11 @@
       <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
       : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
+    if (SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1) $("mapTop").innerHTML += ` · <button type="button" class="ghost sm" data-mapselopen="1" style="min-height:0;padding:0 4px">${mapSel ? mapSel.length : "Todas"} rotas ▾</button>`;
     if (!map) return;
     layer.clearLayers();
+    drawOtherRoutes();
+    if (R && !slotShown(activeSlot)) { lineL?.remove(); return; }
     stops.forEach(a => {
       const m = L.marker([a.lat, a.lng], { icon: pinIcon(a, a === nx), zIndexOffset: a === nx ? 1000 : done(a) ? 0 : 500 }).addTo(layer);
       m.on("click", () => openStop(a.key));
@@ -954,6 +1033,10 @@
       if (bip && bip.mode === "carregar" && bip.cur) { const k = carKey(bip.cur) || bip.cur; putInCar(k, +d.zpick, false); bip.again = false; tone("ok"); return bipShow(); }
       return openZone(+d.zpick);
     }
+    if (d.slot) return switchSlot(d.slot);
+    if (d.slotnew) return newSlot();
+    if (d.mapsel) { const id = d.mapsel; mapSel = id === "all" ? null : (mapSel || SLOTS.map(x => x.id)); if (id !== "all") { mapSel = mapSel.includes(id) ? mapSel.filter(x => x !== id) : mapSel.concat(id); if (!mapSel.length || mapSel.length === SLOTS.length) mapSel = null; } store.set("rc3:mapsel", mapSel); renderMap(); return openMapSel(); }
+    if (d.mapselopen) return openMapSel();
     if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
     if (d.navset) return openNavPick();
     if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
@@ -990,15 +1073,18 @@
     setTimeout(() => { if (t.dataset.armed) { delete t.dataset.armed; t.innerHTML = old; } }, 3000);
   }
 
+  initSlots();
+
   // ---------- ponte com sync.js (rota em equipe) ----------
   window.RCApp = {
     get R() { return R; }, get CAR() { return CAR; },
-    setRoute(r) { R = r; store.set("rc3:route", R); derive(); render(); },
+    setRoute(r) { R = r; store.set("rc3:route", R); persistSlots(); derive(); render(); },
+    newSlot() { newSlot(); },
     saveLocal() { store.set("rc3:route", R); },
     archiveCurrent() { archive(); },
     render() { render(); }, renderTop() { derive(); renderTop(); },
     toast, openSheet, closeSheet, go, zName, normTn,
-    user: null, remote: { claims: {}, car: {}, presence: {}, team: null }, onSave: null, onSaveCar: null,
+    user: null, remote: { claims: {}, car: {}, presence: {}, team: null }, onSave: null, onSaveCar: null, onSwitch: null,
   };
 
   // Login obrigatório (sync.js libera a tela). Se a conexão com o login não vier em 10 s (sem internet), quem já
