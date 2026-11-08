@@ -46,3 +46,8 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 - **Perfil público** (`profiles/{uid}`): apelido (padrão "Entregador XXXX"), cidade, veículo e "sobre você". Nas dicas todo mundo aparece pelo apelido.
 - **Amigos**: tocando no apelido, aparece o perfil e "Adicionar como amigo". Quando a pessoa aceita (no 🔔), vocês veem o nome verdadeiro um do outro (🤝) e podem se chamar para rotas. Amigos e equipe são a mesma lista.
 - Firestore: as dicas ficam em `chat/{id}` → {uid, alias, text, place, cat, t}. Mesmas regras do chat (até 500 caracteres; só apaga quem escreveu).
+
+## Ajustes do carregamento e do mapa (10/11)
+- **Volumoso** agora é só uma marca: o pacote fica na parte onde você colocou. No mapa, a parada com volumoso ainda por entregar ganha um **ponto amarelo** em cima, e a localização mostra "· volumoso".
+- **Pacote com erro (não leu)**: botão no Bipar de carregar. Ele conta o pacote no **banco da frente**, mesmo que você não use o banco do passageiro. Depois, em Carregar → "⚠️ N pacotes com erro · conferir agora", você digita o final do código ou toca na lista do que falta bipar da rota, escolhe a parte do carro no desenho (e marca Volumoso, se for) e o pacote fica conferido. "Não era pacote" tira 1 da contagem.
+- **Mapa**: a quantidade de pacotes aparece sempre em cima da parada (inclusive na próxima e com o mapa afastado).

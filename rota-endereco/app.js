@@ -376,7 +376,7 @@
   };
   const pkgPlace = p => {
     const c = carOf(p);
-    if (c) return zName(c.z) + (c.v ? " · volumoso, embaixo" : "");
+    if (c) return zName(c.z) + (c.v ? " · volumoso" : "");
     const rc = window.RCApp?.remote?.car?.[normTn(p.tn)];
     return rc && rc.uid !== me() ? `carro de ${rc.name}: ${rc.z}${rc.v ? " · volumoso" : ""}` : null;
   };
@@ -403,7 +403,6 @@
   // Sem rota, continua na parte atual até ela encher e passa para a próxima. Volumoso: fundo, embaixo.
   function suggestZone(code, vol) {
     const n = CAR.zones.length, r = rankOf(code);
-    if (vol) { const f = fundoIdx(); return r != null ? f[r < 0.5 ? 0 : 1] : f.reduce((b, i) => (zCount(i) < zCount(b) ? i : b), f[0]); }
     if (r != null) return Math.min(n - 1, Math.floor(r * n));
     const cap = R ? Math.ceil(R.pkgs.length / n) : CAR.cap || 20;
     for (let k = 0; k < n; k++) { const i = (CAR.cur + k) % n; if (zCount(i) < cap) return i; }
@@ -605,6 +604,31 @@
     lq.addEventListener("input", () => { listQ = lq.value; const pos = lq.selectionStart; renderParadas(); const n = $("lq"); n.focus(); try { n.setSelectionRange(pos, pos); } catch {} });
   }
 
+  // Pacotes com erro (o QR não leu): ficam contados no banco da frente. Depois de carregar, a pessoa confere um a um:
+  // digita o final do código ou escolhe na lista do que falta bipar, e escolhe a parte do carro.
+  let errCur = { code: "", v: false, unknown: false };
+  function openErr(hits) {
+    const n = (CAR.err || []).length;
+    const missing = R ? R.pkgs.filter(p => !resolved(p) && zoneOfPkg(p) == null) : [];
+    const list = hits || missing;
+    openSheet(`<div class="sheet-h"><span class="num part">${n}</span><div><div class="addr">Pacotes com erro</div><div class="muted small">No banco da frente, esperando conferir</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+      ${n ? `<p class="muted small">Pegue um desses pacotes, digite o final do código da etiqueta ou toque nele na lista abaixo.</p>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input type="search" id="errQ" placeholder="Final do código (ex.: 1640T)" autocapitalize="characters" autocomplete="off"><button type="button" class="pri" data-errfind="1">Buscar</button></div>
+      ${R ? `<h3>${hits ? "Achei estes" : `Da rota, ainda sem lugar no carro (${missing.length})`}</h3><div class="list">${list.slice(0, 60).map(p => { const a = byTn.get(p.tn); return `<button type="button" class="stop" data-errpick="${esc(normTn(p.tn))}"><span class="num sm idle">${a?.n ?? "?"}</span><span><span class="addr">Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</span><br><span class="muted small">${esc(a?.label || "")}</span></span><span></span></button>`; }).join("") || `<p class="muted small">Nenhum.</p>`}</div>` : `<p class="muted small">Sem planilha ainda: digite o código completo.</p>`}
+      <button type="button" class="ghost full sm" data-errdrop="1">Não era pacote: tirar 1 da contagem</button>` : `<p class="muted">Nenhum pacote com erro. ✓</p>`}`, "err");
+    setTimeout(() => $("errQ")?.addEventListener("keydown", e => { if (e.key === "Enter") document.querySelector("[data-errfind]")?.click(); }), 0);
+  }
+  function openErrZone(code, unknown) {
+    if (errCur.code !== code) errCur = { code, v: false, unknown: !!unknown };
+    const p = R?.pkgs.find(x => normTn(x.tn) === code), a = p && byTn.get(p.tn);
+    const sug = suggestZone(code);
+    openSheet(`<h2>Onde vai este pacote?</h2>
+      ${a ? `<div style="display:flex;align-items:center;gap:10px"><span class="num sm">${a.n}</span><span><b>${esc(a.label)}</b><br><span class="muted small">Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</span></span></div>` : `<p class="muted small">${tnHtml(code)}${unknown ? " · não achei na rota (guardo assim mesmo)" : ""}</p>`}
+      <p class="muted small">Sugestão: <b>${esc(zName(sug))}</b>. Toque na parte onde você colocou.</p>
+      <div style="display:grid;justify-items:center">${carSvg(sug, { pick: true }).replace(/data-zpick=/g, "data-errsave=")}</div>
+      <button type="button" class="full ${errCur.v ? "pri" : ""}" data-errvol="1">${errCur.v ? "✓ Volumoso" : "Marcar como volumoso"}</button>
+      <button type="button" class="ghost full" data-errfix="1">Voltar</button>`, "errz");
+  }
   function renderCarregar() {
     const v = $("v-carregar");
     // Passo 1 e 2: o carro e como ele está hoje (dois toques).
@@ -620,16 +644,17 @@
       return;
     }
     const lay = layOf();
-    const n = Object.keys(CAR.pk).length;
+    const n = Object.keys(CAR.pk).length + (CAR.err || []).length;
     const inRoute = R ? R.pkgs.filter(p => !resolved(p)) : [];
     const missing = inRoute.filter(p => zoneOfPkg(p) == null);
     const outside = R ? Object.keys(CAR.pk).filter(k => !R.pkgs.some(p => normTn(p.tn) === k || k.includes(normTn(p.tn)))) : [];
     const vol = Object.values(CAR.pk).filter(x => x.v).length;
     v.innerHTML = `<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><h2>Carregar o veículo</h2><span class="muted small">${esc(CAR_TYPES.find(c => c.id === CAR.car)?.name || "")} · ${esc(lay.name)}</span></div><button type="button" class="ghost sm" data-carreset="1">Trocar</button></div>
-        <p class="muted small">Bipe cada pacote: o app mostra a parte do carro. Essa posição vale até a entrega. Caixa grande? Toque em <b>Volumoso</b>: vai no fundo, embaixo.</p>
+        <p class="muted small">Bipe cada pacote: o app mostra a parte do carro. Essa posição vale até a entrega. Caixa grande? Marque <b>Volumoso</b> (fica onde você colocar). QR não leu? Toque em <b>Pacote com erro</b>: ele fica contado no banco da frente para você conferir depois.</p>
         <button type="button" class="pri full" data-bip="carregar">${ICON.scan} Bipar para carregar</button>
         <div class="muted small">${n} pacote${n === 1 ? "" : "s"} no carro${vol ? ` · ${vol} volumoso${vol > 1 ? "s" : ""}` : ""}${R ? ` · ${inRoute.length - missing.length} de ${inRoute.length} da rota` : ""}</div></div>
+      ${(CAR.err || []).length ? `<button type="button" class="full errbar" data-errfix="1">⚠️ ${CAR.err.length} pacote${CAR.err.length > 1 ? "s" : ""} com erro no banco da frente · conferir agora</button>` : ""}
       <div class="card" style="justify-items:center"><p class="muted small" style="justify-self:start">Toque numa parte para ver os pacotes dela.</p>${carSvg(-1, { counts: true, pick: true })}</div>
       ${R && missing.length ? `<details class="card"><summary><b>Faltam bipar ${missing.length} pacote${missing.length > 1 ? "s" : ""} da rota</b></summary><div class="list" style="margin-top:8px">${missing.map(p => { const a = byTn.get(p.tn); return `<div class="small">Parada ${a?.n ?? "?"} · Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</div>`; }).join("")}</div></details>` : ""}
       ${R && outside.length ? `<details class="card"><summary><b>${outside.length} bipado${outside.length > 1 ? "s" : ""} que não estão na rota</b></summary><p class="muted small">Pode ser de outra planilha que você ainda vai somar.</p><div class="list" style="margin-top:8px">${outside.map(k => `<div class="small">${tnHtml(k)} · ${esc(zName(CAR.pk[k].z))}</div>`).join("")}</div></details>` : ""}
@@ -678,7 +703,8 @@
     const st = stateOf(a), left = a.pkgs.filter(p => !resolved(p)).length;
     const cls = isNext ? "next" : st === "idle" ? (otherClaim(a) ? "other" : "") : st;
     const s = isNext ? 40 : 30;
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative">${st === "ok" ? "✓" : a.n}${left > 1 && !isNext ? `<span class="n2">${left}</span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
+    const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
   function renderMap() {
     const nx = nextStop(), c = counts();
@@ -770,6 +796,7 @@
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume?.(); } catch {}
     bip = { ac, mode, last: {}, stream: null, stop: false, rot: 0, cur: null };
     $("bip").hidden = false;
+    $("bipErr").hidden = mode !== "carregar";
     $("bipMode").textContent = mode === "carregar" ? "Carregar o veículo: bipe e coloque onde o app indicar" : "Consultar pacote";
     $("bipRes").innerHTML = `<div class="bip-hint">Aponte a câmera para a etiqueta</div>`;
     bipCount();
@@ -815,8 +842,10 @@
   function bipCount() {
     if (!bip) return;
     if (bip.mode === "carregar") {
+      const ne = (CAR.err || []).length;
+      $("bipErr").hidden = false; $("bipErr").textContent = `Pacote com erro (não leu)${ne ? " · " + ne : ""}`;
       const n = Object.keys(CAR.pk).length, inR = R ? R.pkgs.filter(p => !resolved(p)) : [];
-      $("bipCount").textContent = R ? `${inR.filter(p => zoneOfPkg(p) != null).length} de ${inR.length} no carro` : `${n} no carro`;
+      $("bipCount").textContent = (R ? `${inR.filter(p => zoneOfPkg(p) != null).length} de ${inR.length} no carro` : `${n} no carro`) + (ne ? ` · ${ne} com erro` : "");
     } else if (R) $("bipCount").textContent = `${R.pkgs.filter(p => pst(p) === "ok").length} de ${R.pkgs.length} entregues`;
   }
   function flash(k) { $("bip").classList.remove("f-ok", "f-err"); void $("bip").offsetWidth; $("bip").classList.add(k === "err" ? "f-err" : "f-ok"); }
@@ -850,9 +879,9 @@
       const c = CAR.pk[k];
       $("bipRes").innerHTML = `<div class="bip-card ${bip.again ? "warn" : ""}">
         <div class="muted small">${bip.again ? "Este pacote já está em" : "Coloque em"}</div>
-        <div class="bigz">${esc(zName(z))}</div><div class="muted small">${esc(zHint(z))}${c?.v ? " · <b>embaixo</b> (volumoso)" : ""}</div>
+        <div class="bigz">${esc(zName(z))}</div><div class="muted small">${esc(zHint(z))}${c?.v ? " · <b>volumoso</b>" : ""}</div>
         <div class="bipgrid">${carSvg(z, { pick: true, small: true })}<div>${a ? `<b>${esc(a.label)}</b><br><span class="muted small">${ofN}</span><br>` : `<span class="muted small">Ainda sem rota: o endereço aparece quando você importar a planilha.</span><br>`}<span class="small">${tnHtml(code)}</span><br><span class="muted small">Toque no desenho para trocar a parte.</span></div></div>
-        <button type="button" class="full ${c?.v ? "pri" : ""}" data-vol="1">${c?.v ? "✓ Volumoso · fundo, embaixo" : "Volumoso (caixa grande)"}</button></div>`;
+        <button type="button" class="full ${c?.v ? "pri" : ""}" data-vol="1">${c?.v ? "✓ Volumoso (toque para tirar)" : "Marcar como volumoso"}</button></div>`;
       return bipCount();
     }
     $("bipRes").innerHTML = `<div class="bip-card ${s ? "warn" : ""}">
@@ -868,7 +897,7 @@
 
   // ---------- toques ----------
   document.addEventListener("click", async e => {
-    const t = e.target.closest("button, a[data-go], [data-pick], [data-zpick]");
+    const t = e.target.closest("button, a[data-go], [data-pick], [data-zpick], [data-errsave]");
     if (!t) return;
     const d = t.dataset;
     if (d.sync) { if (!window.RCSync) return toast("Conectando… tente de novo em alguns segundos."); return window.RCSync[d.sync]?.(t); }
@@ -894,7 +923,14 @@
       if (bip && bip.mode === "carregar" && bip.cur) { const k = carKey(bip.cur) || bip.cur; putInCar(k, +d.zpick, false); bip.again = false; tone("ok"); return bipShow(); }
       return openZone(+d.zpick);
     }
-    if (d.vol) { const k = carKey(bip.cur) || bip.cur, v = !CAR.pk[k]?.v; putInCar(k, suggestZone(k, v), v); bip.again = false; tone("ok"); return bipShow(); }
+    if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
+    if (d.errpkg) { CAR.err = (CAR.err || []).concat({ id: "E" + Date.now(), t: Date.now() }); saveCar(); tone("warn"); buzz(80); flash("ok"); $("bipRes").innerHTML = `<div class="bip-card warn"><b>Pacote com erro contado</b><span class="muted small">Coloque no <b>banco da frente</b>. Depois de carregar, confira em Carregar → "Pacotes com erro".</span></div>`; return bipCount(); }
+    if (d.errfix) return openErr();
+    if (d.errpick) return openErrZone(d.errpick);
+    if (d.errfind) { const q = normTn($("errQ")?.value || ""); if (q.length < 4) return toast("Digite pelo menos 4 letras ou números do código."); const hits = (R?.pkgs || []).filter(p => normTn(p.tn).endsWith(q) || normTn(p.tn).includes(q)); if (hits.length === 1) return openErrZone(normTn(hits[0].tn)); if (!hits.length) return openErrZone(q.startsWith("BR") ? q : q, true); return openErr(hits); }
+    if (d.errsave != null) { const code = errCur.code; putInCar(code, +d.errsave, errCur.v); CAR.err = (CAR.err || []).slice(1); saveCar(); toast("Pacote conferido ✓"); return (CAR.err.length ? openErr() : (closeSheet(), render())); }
+    if (d.errvol) { errCur.v = !errCur.v; return openErrZone(errCur.code, errCur.unknown); }
+    if (d.errdrop) { CAR.err = (CAR.err || []).slice(1); saveCar(); closeSheet(); render(); return toast("Um pacote com erro foi tirado da contagem"); }
     if (d.zopen != null) return openZone(+d.zopen);
     if (d.cartype != null) { CAR.car = d.cartype || null; if (!d.cartype) CAR.lay = null; saveCar(); return renderCarregar(); }
     if (d.lay) { setLayout(d.lay); render(); return toast("Pronto. Pode bipar."); }
