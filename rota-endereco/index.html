@@ -44,6 +44,16 @@ button:active, .btn:active { transform: scale(.98); }
 .top-r { display: flex; align-items: center; gap: 8px; }
 .bell { position: relative; width: 40px; min-height: 40px; padding: 0; border-radius: 50%; border: 0; background: var(--soft); }
 .bell span { position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--bad); color: #fff; font-size: .7rem; display: grid; place-items: center; padding: 0 4px; }
+.comm-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.comm-hint { margin-top: -6px; }
+.chat { display: flex; flex-direction: column; gap: 8px; height: calc(100vh - 330px - env(safe-area-inset-bottom, 0px)); min-height: 240px; overflow-y: auto; padding: 4px 2px; -webkit-overflow-scrolling: touch; }
+.msg { align-self: flex-start; max-width: 82%; background: var(--surface); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 8px 12px; display: grid; gap: 2px; }
+.msg.me { align-self: flex-end; background: var(--accent-soft); border-color: transparent; border-radius: 14px 14px 4px 14px; }
+.msg-who { background: none; border: 0; padding: 0; min-height: 0; font-size: .78rem; font-weight: 700; color: var(--accent); justify-content: flex-start; }
+.msg-t { white-space: pre-wrap; word-break: break-word; }
+.msg-h { font-size: .7rem; color: var(--muted); }
+.linkbtn { background: none; border: 0; padding: 0; min-height: 0; font-size: .7rem; color: var(--muted); text-decoration: underline; font-weight: 500; }
+.chat-in { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .acct { width: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 body.locked > header, body.locked > section.view, body.locked > nav.tabs { display: none !important; }
 #gate { display: none; }
@@ -238,6 +248,9 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <!-- Histórico -->
 <section class="view" id="v-historico" hidden></section>
 
+<!-- Comunidade -->
+<section class="view" id="v-comunidade" hidden></section>
+
 <nav class="tabs" id="tabs">
   <a href="#inicio" data-tab="inicio"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
   <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
@@ -261,7 +274,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261109e"></script>
-<script type="module" src="sync.js?v=20261109e"></script>
+<script src="app.js?v=20261109f"></script>
+<script type="module" src="sync.js?v=20261109f"></script>
 </body>
 </html>

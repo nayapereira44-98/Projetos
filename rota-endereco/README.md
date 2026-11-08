@@ -40,3 +40,9 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
   - **pelo WhatsApp**: vai uma mensagem pronta, "Tenha a Rota Certa junto comigo…", com o link `?convite=ID`. Quem cria a conta ou entra por esse link já fica na equipe.
 - **Chamar alguém para esta rota**: nem toda rota é compartilhada. Na rota aberta, você chama alguém da equipe, a pessoa recebe a notificação e escolhe "Entrar na rota" ou "Agora não".
 - Firestore: `emails/{email}` → {uid, name} serve para achar quem já tem conta (só leitura de um documento por vez). `invites/{id}` → {type: team|route, from, fromName, fromEmail, toEmail, toUid, toName, routeId, routeName, status}. A equipe é o conjunto de convites de equipe aceitos, nos dois sentidos.
+
+## Comunidade (09/11)
+- Fica no Início ("Comunidade") e no menu da conta. É um chat geral entre os entregadores do app, com as últimas 80 mensagens ao vivo, "N online agora" e um intervalo de 3 s entre mensagens. Cada pessoa pode apagar as próprias mensagens.
+- **Perfil público** (`profiles/{uid}`): apelido (padrão "Entregador XXXX"), cidade, veículo e "sobre você". No chat todo mundo aparece pelo apelido.
+- **Amigos**: tocando no apelido, aparece o perfil e "Adicionar como amigo". Quando a pessoa aceita (no 🔔), vocês veem o nome verdadeiro um do outro (🤝 no chat) e podem se chamar para rotas. Amigos e equipe são a mesma lista ("Amigos e equipe").
+- Firestore: `chat/{id}` → {uid, alias, text, t}; `profiles/{uid}`. As regras deixam ler para quem está logado, escrever só no próprio perfil e só nas próprias mensagens (até 500 caracteres).
