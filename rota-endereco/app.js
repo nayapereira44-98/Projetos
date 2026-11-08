@@ -86,7 +86,7 @@
   // por parada. loaded: pacotes já colocados no carro. H: rotas finalizadas (histórico).
   let R = store.get("rc3:route", null), H = store.get("rc3:hist", []);
   let A = [], byKey = new Map(), byTn = new Map(), stops = [];
-  const save = () => store.set("rc3:route", R);
+  const save = () => { store.set("rc3:route", R); try { window.RCApp?.onSave?.(); } catch {} };
   const saveH = () => store.set("rc3:hist", H);
   const pst = p => R?.st?.[p.tn]?.s || null;
   const resolved = p => !!pst(p);
@@ -108,7 +108,12 @@
     stops = known.map(k => byKey.get(k)).concat(A.filter(a => !set.has(a.key)));
     stops.forEach((a, i) => (a.n = i + 1));
   }
-  const nextStop = () => stops.find(a => !done(a));
+  // Rota em equipe: parada que outra pessoa pegou ("Pego esta") sai da sua sequência.
+  const me = () => window.RCApp?.user?.uid || null;
+  const claimOf = a => window.RCApp?.remote?.claims?.[a.key] || null;
+  const otherClaim = a => { const c = claimOf(a); return c && c.uid !== me() ? c : null; };
+  const nextStop = () => stops.find(a => !done(a) && !otherClaim(a)) || stops.find(a => !done(a));
+  const byTxt = s => (s?.byName && s.by !== me() ? " · " + s.byName : "");
   const shopeeTxt = a => (a.shopeeStops?.length ? a.shopeeStops.join(" · ") : "");
   const cepOf = a => { const c = String(a.pkgs.find(p => p.cep)?.cep || "").replace(/\D/g, ""); return c.length === 8 ? c.slice(0, 5) + "-" + c.slice(5) : ""; };
   const compl = p => String(p.address || "").split(",").slice(2).join(",").trim();
@@ -261,7 +266,7 @@
       const s = R.st[p.tn];
       const right = sh.mode === "issue"
         ? `<div class="seg" style="grid-auto-columns:auto"><button type="button" class="${(sh.sel[p.tn] || s?.s || "ok") === "ok" ? "on" : ""}" data-psel="${esc(p.tn)}|ok">Entregue</button><button type="button" class="${(sh.sel[p.tn] || s?.s) === "fail" ? "on" : ""}" data-psel="${esc(p.tn)}|fail">Não</button></div>`
-        : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : `<span class="chip warn">não bipado</span>`;
+        : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}${esc(byTxt(s))}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : `<span class="chip warn">não bipado</span>`;
       return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${right}</div>`;
     }).join("");
     const nav = `<div class="row3"><a class="btn sm" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn sm" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>`;
@@ -280,6 +285,7 @@
     }
     openSheet(`<div class="sheet-h"><span class="num ${st === "idle" ? "" : st}">${a.n}</span><div><div class="addr">${esc(a.label)}</div><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${shopeeTxt(a) ? `<span class="chip">Shopee ${esc(shopeeTxt(a))}</span>` : ""}${zt ? `<span class="chip acc">No carro: ${esc(zt)}</span>` : ""}</div>
+      ${R.shared && window.RCApp?.user && !done(a) ? (() => { const c = claimOf(a), mine = c && c.uid === me(); return `<button type="button" class="sm ${mine ? "pri" : ""}" data-sync="claim" data-key="${esc(key)}">${!c ? "Pego esta parada" : mine ? "✓ Você pegou esta · soltar" : `${esc(c.name)} pegou esta · pegar para mim`}</button>`; })() : ""}
       ${nav}<div class="pkgs">${pk}</div>${act}`, "stop");
   }
   function markAll(key, s, reason) {
@@ -342,7 +348,7 @@
   const zonesFor = lay => (lay.pass ? [ZP] : []).concat([ZMD, ZME, ZFD, ZFE]);
   let CAR = store.get("rc3:car", null) || { pk: {}, zph: {}, cur: 0 };
   if (!CAR.zones) CAR.zones = [ZMD, ZME, ZFD, ZFE];
-  const saveCar = () => store.set("rc3:car", CAR);
+  const saveCar = () => { store.set("rc3:car", CAR); try { window.RCApp?.onSaveCar?.(); } catch {} };
   const layOf = () => LAYOUTS.find(l => l.id === CAR.lay) || null;
   // Troca a disposição sem perder onde os pacotes já estão (pelo nome da parte).
   function setLayout(id) {
@@ -368,7 +374,12 @@
     if (n.startsWith("Meio")) return lay?.seat === "down" ? "banco traseiro rebatido" : CAR.car === "util" ? "meio do baú" : "no banco traseiro";
     return CAR.car === "util" ? "fundo do baú" : "no porta-malas";
   };
-  const pkgPlace = p => { const c = carOf(p); return c ? zName(c.z) + (c.v ? " · volumoso, embaixo" : "") : null; };
+  const pkgPlace = p => {
+    const c = carOf(p);
+    if (c) return zName(c.z) + (c.v ? " · volumoso, embaixo" : "");
+    const rc = window.RCApp?.remote?.car?.[normTn(p.tn)];
+    return rc && rc.uid !== me() ? `carro de ${rc.name}: ${rc.z}${rc.v ? " · volumoso" : ""}` : null;
+  };
   const zChip = i => `<span class="chip acc">${esc(zName(i))}</span>`;
   // Partes do carro dos pacotes que ainda faltam entregar nesta parada.
   function zonesOf(a) {
@@ -485,7 +496,8 @@
     if (!R) { $("tTitle").textContent = "Rota Certa"; $("tSub").textContent = "Rotas pelo endereço"; $("tProg").hidden = true; $("tAction").hidden = true; return; }
     const c = counts();
     $("tTitle").textContent = R.name;
-    $("tSub").textContent = `${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes`;
+    const pr = window.RCApp?.remote?.presence || {}, on = R.shared ? Object.values(pr).filter(x => Date.now() - x.t < 150000).length : 0;
+    $("tSub").textContent = `${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes${on > 1 ? ` · ${on} online` : ""}`;
     $("tProg").hidden = false; $("tBar").style.width = (c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1) + "%";
     $("tAction").hidden = true;
   }
@@ -499,6 +511,18 @@
     if (sheetOn === "stop" && sh) openStop(sh.key);
   }
 
+  const ICON_TEAM = `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg>`;
+  function teamAct() {
+    const u = window.RCApp?.user;
+    if (!u) return act(ICON_TEAM, "Rota em equipe", "Entre para convidar alguém e ver tudo ao vivo", `data-sync="openLogin"`);
+    const t = window.RCApp?.remote?.team;
+    const inv = R ? act(ICON_TEAM, R.shared ? "Equipe da rota" : "Convidar alguém para esta rota", R.shared && t ? (t.members || []).map(id => t.names?.[id] || "?").join(", ") + " · convidar" : "Os dois veem e atualizam a mesma rota", `data-sync="share"`) : "";
+    return inv + act(ICON_TEAM, "Rotas da equipe", "Rotas que compartilharam com você", `data-sync="teamRoutes"`);
+  }
+  function accountLine() {
+    const u = window.RCApp?.user;
+    return u ? `<p class="muted small" style="text-align:center">Conectada como <b>${esc(u.name)}</b> (${esc(u.email)}) · <button type="button" class="ghost sm" data-sync="logout" style="min-height:0;padding:0 4px">Sair</button></p>` : "";
+  }
   function act(icon, title, sub, attrs) { return `<button type="button" class="act" ${attrs}><span class="ic">${icon}</span><span><b>${title}</b><span class="muted">${sub}</span></span>${ICON.chev}</button>`; }
   function renderHome() {
     const v = $("v-inicio");
@@ -509,7 +533,8 @@
           ${act(ICON.box, "Carregar o veículo", Object.keys(CAR.pk).length ? `${Object.keys(CAR.pk).length} pacotes no carro` : "Bipe no galpão: o app diz onde colocar", `data-go="carregar"`)}
           ${act(ICON.pin, "Adicionar parada manual", "Digite o endereço", `data-manual="1"`)}
           ${act(ICON.clock, "Histórico de rotas", `${H.length} rota${H.length === 1 ? "" : "s"} finalizada${H.length === 1 ? "" : "s"}`, `data-go="historico"`)}
-        </div>`;
+          ${teamAct()}
+        </div>${accountLine()}`;
       return;
     }
     const c = counts(), nx = nextStop();
@@ -525,7 +550,8 @@
         ${act(ICON.file, "Somar outra planilha", "Pacotes novos entram no fim da rota", `data-pick="file"`)}
         ${act(ICON.pin, "Adicionar parada manual", "Digite o endereço", `data-manual="1"`)}
         ${act(ICON.clock, "Histórico de rotas", `${H.length} finalizada${H.length === 1 ? "" : "s"}`, `data-go="historico"`)}
-      </div>
+        ${teamAct()}
+      </div>${accountLine()}
       <button type="button" class="ghost full danger" data-finish="1">Finalizar rota e guardar no histórico</button>`;
   }
 
@@ -543,7 +569,7 @@
       <div class="list">${rows.map(a => {
         const st = stateOf(a), fails = a.pkgs.filter(p => pst(p) === "fail").length, oks = a.pkgs.filter(p => pst(p) === "ok").length;
         return `<button type="button" class="stop${a === nx ? " isnext" : ""}" data-stop="${esc(a.key)}"><span class="num ${st === "idle" ? (a === nx ? "" : "idle") : st}">${a.n}</span>
-          <span><span class="addr">${esc(a.label)}</span><br><span class="muted small">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}${shopeeTxt(a) ? " · Shopee " + esc(shopeeTxt(a)) : ""}${zonesTxt(a) ? " · " + esc(zonesTxt(a)) : ""}</span>
+          <span><span class="addr">${esc(a.label)}</span><br><span class="muted small">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}${shopeeTxt(a) ? " · Shopee " + esc(shopeeTxt(a)) : ""}${zonesTxt(a) ? " · " + esc(zonesTxt(a)) : ""}${claimOf(a) ? ` · <b>${claimOf(a).uid === me() ? "sua" : "com " + esc(claimOf(a).name)}</b>` : ""}</span>
           ${R.notes[a.key] ? `<br><span class="small">📝 ${esc(R.notes[a.key])}</span>` : ""}</span>
           <span class="r">${st === "ok" ? `<span class="chip ok">${ICON.check}</span>` : fails ? `<span class="chip bad">${oks}/${a.pkgs.length}</span>` : ""}</span></button>`;
       }).join("") || `<div class="empty">${listFilter === "notas" ? "Nenhuma anotação ainda.<br>Use “Problema ou entrega parcial” na parada." : listFilter === "feitas" ? "Nenhuma parada feita ainda." : "Tudo feito ✓"}</div>`}</div>
@@ -623,7 +649,7 @@
   let follow = false;
   function pinIcon(a, isNext) {
     const st = stateOf(a), left = a.pkgs.filter(p => !resolved(p)).length;
-    const cls = isNext ? "next" : st === "idle" ? "" : st;
+    const cls = isNext ? "next" : st === "idle" ? (otherClaim(a) ? "other" : "") : st;
     const s = isNext ? 40 : 30;
     return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative">${st === "ok" ? "✓" : a.n}${left > 1 && !isNext ? `<span class="n2">${left}</span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
@@ -818,6 +844,7 @@
     const t = e.target.closest("button, a[data-go], [data-pick], [data-zpick]");
     if (!t) return;
     const d = t.dataset;
+    if (d.sync) { if (!window.RCSync) return toast("Conectando… tente de novo em alguns segundos."); return window.RCSync[d.sync]?.(t); }
     if (d.go) { if (d.filter) listFilter = d.filter; e.preventDefault(); return go(d.go); }
     if (d.pick === "file") return $("file").click();
     if (d.close) return closeSheet();
@@ -866,6 +893,17 @@
     t.dataset.armed = "1"; const old = t.innerHTML; t.textContent = "Toque de novo para confirmar";
     setTimeout(() => { if (t.dataset.armed) { delete t.dataset.armed; t.innerHTML = old; } }, 3000);
   }
+
+  // ---------- ponte com sync.js (rota em equipe) ----------
+  window.RCApp = {
+    get R() { return R; }, get CAR() { return CAR; },
+    setRoute(r) { R = r; store.set("rc3:route", R); derive(); render(); },
+    saveLocal() { store.set("rc3:route", R); },
+    archiveCurrent() { archive(); },
+    render() { render(); }, renderTop() { derive(); renderTop(); },
+    toast, openSheet, closeSheet, go, zName, normTn,
+    user: null, remote: { claims: {}, car: {}, presence: {}, team: null }, onSave: null, onSaveCar: null,
+  };
 
   // ---------- início ----------
   if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
