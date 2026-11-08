@@ -261,7 +261,7 @@
       const s = R.st[p.tn];
       const right = sh.mode === "issue"
         ? `<div class="seg" style="grid-auto-columns:auto"><button type="button" class="${(sh.sel[p.tn] || s?.s || "ok") === "ok" ? "on" : ""}" data-psel="${esc(p.tn)}|ok">Entregue</button><button type="button" class="${(sh.sel[p.tn] || s?.s) === "fail" ? "on" : ""}" data-psel="${esc(p.tn)}|fail">Não</button></div>`
-        : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}</span>` : zoneOfPkg(p) != null ? zChip(zoneOfPkg(p)) : `<span class="chip warn">não bipado</span>`;
+        : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : `<span class="chip warn">não bipado</span>`;
       return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${right}</div>`;
     }).join("");
     const nav = `<div class="row3"><a class="btn sm" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn sm" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>`;
@@ -327,9 +327,30 @@
   // No galpão você bipa cada pacote e o app sugere a parte do carro. Essa é a posição oficial do pacote: ela fica
   // guardada pelo código (mesmo sem planilha) e vale até a entrega. Quando a planilha da rota entra, o app só junta
   // o endereço e a ordem; a posição no carro não muda.
-  const DEF_ZONES = ["Frente Esquerda", "Frente Direita", "Meio Esquerda", "Meio Direita", "Fundo Esquerda", "Fundo Direita"];
-  let CAR = store.get("rc3:car", null) || { zones: DEF_ZONES.slice(), pk: {}, zph: {}, cur: 0 };
+  // Antes de carregar, dois toques: o carro e como ele está hoje (banco traseiro levantado ou rebatido; com ou sem
+  // o banco do passageiro). As partes ficam: Banco do passageiro (opcional), Meio Direita, Meio Esquerda (banco
+  // traseiro), Fundo Direita, Fundo Esquerda (porta-malas). A ordem da lista é a ordem da entrega: as primeiras
+  // entregas vão no banco do passageiro / meio, as últimas no fundo. Volumoso vai no fundo, embaixo.
+  const CAR_TYPES = [{ id: "suv", name: "SUV ou Hatch", hint: "porta-malas junto do banco traseiro" }, { id: "sedan", name: "Sedan", hint: "porta-malas separado" }, { id: "util", name: "Utilitário", hint: "Fiorino, Kangoo, Partner…" }];
+  const LAYOUTS = [
+    { id: "up", seat: "up", pass: false, name: "Banco traseiro levantado" },
+    { id: "up+p", seat: "up", pass: true, name: "Banco levantado + banco do passageiro" },
+    { id: "down", seat: "down", pass: false, name: "Banco traseiro rebatido" },
+    { id: "down+p", seat: "down", pass: true, name: "Banco rebatido + banco do passageiro" },
+  ];
+  const ZP = "Banco do passageiro", ZMD = "Meio Direita", ZME = "Meio Esquerda", ZFD = "Fundo Direita", ZFE = "Fundo Esquerda";
+  const zonesFor = lay => (lay.pass ? [ZP] : []).concat([ZMD, ZME, ZFD, ZFE]);
+  let CAR = store.get("rc3:car", null) || { pk: {}, zph: {}, cur: 0 };
+  if (!CAR.zones) CAR.zones = [ZMD, ZME, ZFD, ZFE];
   const saveCar = () => store.set("rc3:car", CAR);
+  const layOf = () => LAYOUTS.find(l => l.id === CAR.lay) || null;
+  // Troca a disposição sem perder onde os pacotes já estão (pelo nome da parte).
+  function setLayout(id) {
+    const lay = LAYOUTS.find(l => l.id === id); if (!lay) return;
+    const old = CAR.zones, nz = zonesFor(lay);
+    Object.values(CAR.pk).forEach(x => { const i = nz.indexOf(old[x.z]); x.z = i >= 0 ? i : nz.indexOf(ZMD); });
+    CAR.lay = id; CAR.zones = nz; CAR.cur = 0; saveCar();
+  }
   const normTn = t => String(t || "").toUpperCase().replace(/\s+/g, "");
   // Código lido na etiqueta: o "BR…" quando houver; senão o texto inteiro.
   const codeOf = text => { const T = normTn(text); return (T.match(/BR[0-9A-Z]{10,16}/) || [T])[0]; };
@@ -338,37 +359,67 @@
     if (CAR.pk[T]) return T;
     return Object.keys(CAR.pk).find(k => k.includes(T) || T.includes(k)) || null;
   }
-  const zoneOfPkg = p => { const k = carKey(p.tn); return k ? CAR.pk[k].z : null; };
+  const carOf = p => { const k = carKey(p.tn); return k ? CAR.pk[k] : null; };
+  const zoneOfPkg = p => carOf(p)?.z ?? null;
   const zName = i => CAR.zones[i] ?? "?";
-  const zCls = i => "z" + ((i % 3) + 1);
-  const zChip = i => `<span class="zone ${zCls(i)}">${esc(zName(i))}</span>`;
+  const zHint = i => {
+    const n = zName(i), lay = layOf();
+    if (n === ZP) return "no banco do passageiro";
+    if (n.startsWith("Meio")) return lay?.seat === "down" ? "banco traseiro rebatido" : CAR.car === "util" ? "meio do baú" : "no banco traseiro";
+    return CAR.car === "util" ? "fundo do baú" : "no porta-malas";
+  };
+  const pkgPlace = p => { const c = carOf(p); return c ? zName(c.z) + (c.v ? " · volumoso, embaixo" : "") : null; };
+  const zChip = i => `<span class="chip acc">${esc(zName(i))}</span>`;
   // Partes do carro dos pacotes que ainda faltam entregar nesta parada.
   function zonesOf(a) {
-    const zs = [...new Set(a.pkgs.filter(p => !resolved(p)).map(zoneOfPkg).filter(z => z != null))];
-    return zs.length ? zs : [...new Set(a.pkgs.map(zoneOfPkg).filter(z => z != null))];
+    const l = a.pkgs.filter(p => !resolved(p)), src = l.length ? l : a.pkgs;
+    return [...new Set(src.map(pkgPlace).filter(Boolean))];
   }
-  const zonesTxt = a => zonesOf(a).map(zName).join(", ");
+  const zonesTxt = a => zonesOf(a).join(", ");
   const zCount = i => Object.values(CAR.pk).filter(x => x.z === i).length;
-  // Sugestão: com a rota já importada, pela ordem de entrega (as primeiras entregas na primeira parte da lista, que
-  // é a Frente). Sem rota, continua na parte atual até ela encher e passa para a próxima.
-  function suggestZone(code) {
-    const n = CAR.zones.length;
-    if (R && stops.length) {
-      const p = R.pkgs.find(x => normTn(x.tn) === code || code.includes(normTn(x.tn)));
-      const a = p && byTn.get(p.tn);
-      if (a) {
-        const total = stops.reduce((t, s) => t + s.pkgs.length, 0);
-        let acc = 0; for (const s of stops) { if (s === a) break; acc += s.pkgs.length; }
-        return Math.min(n - 1, Math.floor(((acc + a.pkgs.length / 2) / Math.max(1, total)) * n));
-      }
-    }
+  const fundoIdx = () => [CAR.zones.indexOf(ZFD), CAR.zones.indexOf(ZFE)].filter(i => i >= 0);
+  // Posição do pacote na ordem de entrega (0 = primeira entrega, 1 = última); null sem rota.
+  function rankOf(code) {
+    if (!R || !stops.length) return null;
+    const p = R.pkgs.find(x => normTn(x.tn) === code || code.includes(normTn(x.tn)));
+    const a = p && byTn.get(p.tn);
+    if (!a) return null;
+    const total = stops.reduce((t, s) => t + s.pkgs.length, 0);
+    let acc = 0; for (const s of stops) { if (s === a) break; acc += s.pkgs.length; }
+    return (acc + a.pkgs.length / 2) / Math.max(1, total);
+  }
+  // Sugestão: com a rota, pela ordem de entrega (primeiras entregas no começo da lista: passageiro e meio).
+  // Sem rota, continua na parte atual até ela encher e passa para a próxima. Volumoso: fundo, embaixo.
+  function suggestZone(code, vol) {
+    const n = CAR.zones.length, r = rankOf(code);
+    if (vol) { const f = fundoIdx(); return r != null ? f[r < 0.5 ? 0 : 1] : f.reduce((b, i) => (zCount(i) < zCount(b) ? i : b), f[0]); }
+    if (r != null) return Math.min(n - 1, Math.floor(r * n));
     const cap = R ? Math.ceil(R.pkgs.length / n) : CAR.cap || 20;
     for (let k = 0; k < n; k++) { const i = (CAR.cur + k) % n; if (zCount(i) < cap) return i; }
     return CAR.cur % n;
   }
-  function putInCar(code, z) {
-    CAR.pk[code] = { z, t: Date.now() };
-    CAR.cur = z; saveCar();
+  function putInCar(code, z, vol) {
+    CAR.pk[code] = { z, t: Date.now(), v: !!vol };
+    if (!vol) CAR.cur = z;
+    saveCar();
+  }
+  // Desenho do carro visto de cima (frente para cima). Tocar numa parte escolhe/abre aquela parte.
+  function carSvg(hl, opts = {}) {
+    const lay = opts.lay || layOf() || { pass: true, seat: "up" };
+    const zs = opts.zones || zonesFor(lay);
+    const box = (name, x, y, w, h, short) => {
+      const i = zs.indexOf(name), on = i >= 0, sel = on && i === hl;
+      const cnt = on && opts.counts ? zCount(CAR.zones.indexOf(name)) : null;
+      return `<g ${on && opts.pick ? `data-zpick="${CAR.zones.indexOf(name)}"` : ""} class="cz${on ? "" : " off"}${sel ? " sel" : ""}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/><text x="${x + w / 2}" y="${y + h / 2 - (cnt != null ? 4 : -4)}">${short}</text>${cnt != null ? `<text class="n" x="${x + w / 2}" y="${y + h / 2 + 14}">${cnt}</text>` : ""}</g>`;
+    };
+    return `<svg class="carsvg${opts.small ? " sm" : ""}" viewBox="0 0 200 300" role="img" aria-label="Carro visto de cima">
+      <rect class="body" x="8" y="6" width="184" height="288" rx="46"/>
+      <path class="glass" d="M40 34 Q100 18 160 34" />
+      <g class="cz off"><rect x="30" y="44" width="64" height="58" rx="10"/><text x="62" y="77">Motorista</text></g>
+      ${box(ZP, 106, 44, 64, 58, "Passageiro")}
+      ${box(ZME, 30, 116, 66, 74, "Meio E")}${box(ZMD, 104, 116, 66, 74, "Meio D")}
+      ${box(ZFE, 30, 202, 66, 80, "Fundo E")}${box(ZFD, 104, 202, 66, 80, "Fundo D")}
+    </svg>`;
   }
   // Foto de uma parte do carro (opcional): uma por parte, não por pacote.
   const idb = (() => {
@@ -403,16 +454,10 @@
     openSheet(`<div class="sheet-h"><span class="num sm idle">${i + 1}</span><div><div class="addr">${esc(zName(i))}</div><div class="muted small">${items.length} pacote${items.length === 1 ? "" : "s"}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
       <div id="zImg"></div>
       <button type="button" class="sm" data-zcam="${i}">${CAR.zph?.[i] ? "Trocar a foto desta parte" : "Tirar foto desta parte (opcional)"}</button>
-      <div class="list">${items.map(({ k, p, a }) => `<div class="pkg"><div class="sp"><small>${a ? "Parada" : "Shopee"}</small><b>${a ? a.n : p?.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(k)}</div><div class="meta">${a ? esc(a.label) + (p.shopeeStop != null ? " · Shopee " + p.shopeeStop : "") : "Ainda sem rota"}</div></div>${p && resolved(p) ? `<span class="chip ok">entregue</span>` : ""}</div>`).join("") || `<p class="muted">Nenhum pacote nesta parte.</p>`}</div>`, "zone");
+      <div class="list">${items.map(({ k, p, a }) => `<div class="pkg"><div class="sp"><small>${a ? "Parada" : "Shopee"}</small><b>${a ? a.n : p?.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(k)}</div><div class="meta">${a ? esc(a.label) + (p.shopeeStop != null ? " · Shopee " + p.shopeeStop : "") : "Ainda sem rota"}</div></div>${CAR.pk[k].v ? `<span class="chip warn">volumoso</span>` : ""}${p && resolved(p) ? `<span class="chip ok">entregue</span>` : ""}</div>`).join("") || `<p class="muted">Nenhum pacote nesta parte.</p>`}</div>`, "zone");
     if (CAR.zph?.[i]) { const b = await idb.get(CAR.zph[i]); if (b && $("zImg")) $("zImg").innerHTML = `<img src="${URL.createObjectURL(b)}" style="width:100%;border-radius:12px" alt="Foto: ${esc(zName(i))}">`; }
   }
-  function openZoneEdit() {
-    openSheet(`<h2>Partes do carro</h2><p class="muted small">Uma por linha, na ordem: as primeiras recebem as primeiras entregas (perto de você).</p>
-      <textarea id="zEdit" style="min-height:220px">${esc(CAR.zones.join("\n"))}</textarea>
-      <label class="f">Pacotes por parte, antes de ter a planilha<input type="number" id="zCap" inputmode="numeric" value="${CAR.cap || 20}"></label>
-      <button type="button" class="pri full" data-zsave="1">Salvar</button>
-      <button type="button" class="ghost full" data-zreset="1">Voltar ao padrão (6 partes)</button>`, "zedit");
-  }
+
 
 
   // ---------- telas ----------
@@ -509,21 +554,33 @@
 
   function renderCarregar() {
     const v = $("v-carregar");
+    // Passo 1 e 2: o carro e como ele está hoje (dois toques).
+    if (!CAR.car || !CAR.lay) {
+      if (!CAR.car) {
+        v.innerHTML = `<div class="hello"><h1>Seu carro</h1><p class="muted">Antes de carregar: qual é o tipo do carro?</p></div>
+          <div class="actions">${CAR_TYPES.map(c => `<button type="button" class="act" data-cartype="${c.id}"><span class="ic">${ICON.box}</span><span><b>${c.name}</b><span class="muted">${c.hint}</span></span>${ICON.chev}</button>`).join("")}</div>`;
+        return;
+      }
+      const opts = CAR.car === "util" ? LAYOUTS.filter(l => l.seat === "up") : LAYOUTS;
+      v.innerHTML = `<div class="hello"><h1>Como está o carro hoje?</h1><p class="muted">${esc(CAR_TYPES.find(c => c.id === CAR.car)?.name || "")} · <button type="button" class="ghost sm" data-cartype="">trocar</button></p></div>
+        <div class="laygrid">${opts.map(l => `<button type="button" class="layopt" data-lay="${l.id}">${carSvg(-1, { lay: l, small: true })}<b>${CAR.car === "util" ? (l.pass ? "Baú + banco do passageiro" : "Só o baú") : l.name}</b><span class="muted small">${zonesFor(l).length} partes</span></button>`).join("")}</div>`;
+      return;
+    }
+    const lay = layOf();
     const n = Object.keys(CAR.pk).length;
     const inRoute = R ? R.pkgs.filter(p => !resolved(p)) : [];
     const missing = inRoute.filter(p => zoneOfPkg(p) == null);
     const outside = R ? Object.keys(CAR.pk).filter(k => !R.pkgs.some(p => normTn(p.tn) === k || k.includes(normTn(p.tn)))) : [];
-    v.innerHTML = `<div class="card"><h2>Carregar o veículo</h2>
-        <p class="muted small">No galpão, bipe cada pacote: o app diz em que parte do carro colocar. Essa posição vale até a entrega. Se ainda não tiver a planilha, tudo bem: quando você importar, o app junta o endereço e a ordem, e a posição no carro continua a mesma.</p>
+    const vol = Object.values(CAR.pk).filter(x => x.v).length;
+    v.innerHTML = `<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><h2>Carregar o veículo</h2><span class="muted small">${esc(CAR_TYPES.find(c => c.id === CAR.car)?.name || "")} · ${esc(lay.name)}</span></div><button type="button" class="ghost sm" data-carreset="1">Trocar</button></div>
+        <p class="muted small">Bipe cada pacote: o app mostra a parte do carro. Essa posição vale até a entrega. Caixa grande? Toque em <b>Volumoso</b>: vai no fundo, embaixo.</p>
         <button type="button" class="pri full" data-bip="carregar">${ICON.scan} Bipar para carregar</button>
-        <div class="muted small">${n} pacote${n === 1 ? "" : "s"} no carro${R ? ` · ${inRoute.length - missing.length} de ${inRoute.length} da rota` : ""}</div></div>
-      <div class="zgrid">${CAR.zones.map((z, i) => {
-        const c = zCount(i);
-        return `<button type="button" class="ztile" data-zopen="${i}"><b>${esc(z)}</b><span>${c} pacote${c === 1 ? "" : "s"}</span></button>`;
-      }).join("")}</div>
+        <div class="muted small">${n} pacote${n === 1 ? "" : "s"} no carro${vol ? ` · ${vol} volumoso${vol > 1 ? "s" : ""}` : ""}${R ? ` · ${inRoute.length - missing.length} de ${inRoute.length} da rota` : ""}</div></div>
+      <div class="card" style="justify-items:center"><p class="muted small" style="justify-self:start">Toque numa parte para ver os pacotes dela.</p>${carSvg(-1, { counts: true, pick: true })}</div>
       ${R && missing.length ? `<details class="card"><summary><b>Faltam bipar ${missing.length} pacote${missing.length > 1 ? "s" : ""} da rota</b></summary><div class="list" style="margin-top:8px">${missing.map(p => { const a = byTn.get(p.tn); return `<div class="small">Parada ${a?.n ?? "?"} · Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</div>`; }).join("")}</div></details>` : ""}
       ${R && outside.length ? `<details class="card"><summary><b>${outside.length} bipado${outside.length > 1 ? "s" : ""} que não estão na rota</b></summary><p class="muted small">Pode ser de outra planilha que você ainda vai somar.</p><div class="list" style="margin-top:8px">${outside.map(k => `<div class="small">${tnHtml(k)} · ${esc(zName(CAR.pk[k].z))}</div>`).join("")}</div></details>` : ""}
-      <div class="row2"><button type="button" class="sm" data-zedit="1">Editar as partes</button><button type="button" class="sm danger" data-carclear="1">Esvaziar o carro</button></div>`;
+      <button type="button" class="ghost full danger" data-carclear="1">Esvaziar o carro</button>`;
   }
 
   function renderHist() {
@@ -653,6 +710,7 @@
   }
   async function openBip(mode) {
     if (mode !== "carregar" && !R?.pkgs?.length) return toast("Importe a planilha ou adicione paradas antes de bipar.");
+    if (mode === "carregar" && !CAR.lay) { go("carregar"); return toast("Primeiro escolha o carro e como ele está (dois toques)."); }
     if (!window.ZXing) return toast("O leitor não carregou. Confira a internet.");
     closeSheet();
     let ac = null;
@@ -724,7 +782,7 @@
       tone(k ? "warn" : "ok"); buzz(60); flash("ok");
       return bipShow();
     }
-    if (!p) { tone("err"); buzz([200, 80, 200]); flash("err"); $("bipRes").innerHTML = `<div class="bip-card err"><b>Este pacote não está na rota</b><span class="mono small">${esc(text)}</span>${carKey(code) ? `<span>No carro: <b>${esc(zName(CAR.pk[carKey(code)].z))}</b></span>` : ""}</div>`; return; }
+    if (!p) { tone("err"); buzz([200, 80, 200]); flash("err"); $("bipRes").innerHTML = `<div class="bip-card err"><b>Este pacote não está na rota</b><span class="mono small">${esc(text)}</span>${carKey(code) ? `<span>No carro: <b>${esc(zName(CAR.pk[carKey(code)].z))}${CAR.pk[carKey(code)].v ? " · volumoso" : ""}</b></span>` : ""}</div>`; return; }
     bip.cur = normTn(p.tn);
     tone(resolved(p) ? "warn" : "ok"); buzz(60); flash("ok");
     bipShow();
@@ -734,19 +792,21 @@
     derive();
     const code = bip.cur, p = findPkg(code), a = p && byTn.get(p.tn), s = p ? R.st[p.tn] : null;
     const k = carKey(code), z = k ? CAR.pk[k].z : null;
+    const ofN = a ? `Parada ${a.n} · Shopee ${p.shopeeStop ?? "s/n"} · pacote ${a.pkgs.indexOf(p) + 1} de ${a.pkgs.length}` : "";
     if (bip.mode === "carregar") {
+      const c = CAR.pk[k];
       $("bipRes").innerHTML = `<div class="bip-card ${bip.again ? "warn" : ""}">
-        <div class="muted small">${bip.again ? "Este pacote já tem lugar no carro" : "Coloque em"}</div>
-        <div class="big" style="font-size:2rem">${esc(zName(z))}</div>
-        ${a ? `<div style="display:flex;align-items:center;gap:10px"><span class="num sm">${a.n}</span><span><b>${esc(a.label)}</b><br><span class="muted small">Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</span></span></div>` : `<div class="muted small">${tnHtml(code)} · ainda sem rota: o endereço aparece quando você importar a planilha.</div>`}
-        <div class="muted small">Trocar a parte:</div>
-        <div class="zpick">${CAR.zones.map((n, i) => `<button type="button" class="${i === z ? "on" : ""}" data-zset="${i}">${esc(n)}</button>`).join("")}</div></div>`;
+        <div class="muted small">${bip.again ? "Este pacote já está em" : "Coloque em"}</div>
+        <div class="bigz">${esc(zName(z))}</div><div class="muted small">${esc(zHint(z))}${c?.v ? " · <b>embaixo</b> (volumoso)" : ""}</div>
+        <div class="bipgrid">${carSvg(z, { pick: true, small: true })}<div>${a ? `<b>${esc(a.label)}</b><br><span class="muted small">${ofN}</span><br>` : `<span class="muted small">Ainda sem rota: o endereço aparece quando você importar a planilha.</span><br>`}<span class="small">${tnHtml(code)}</span><br><span class="muted small">Toque no desenho para trocar a parte.</span></div></div>
+        <button type="button" class="full ${c?.v ? "pri" : ""}" data-vol="1">${c?.v ? "✓ Volumoso · fundo, embaixo" : "Volumoso (caixa grande)"}</button></div>`;
       return bipCount();
     }
     $("bipRes").innerHTML = `<div class="bip-card ${s ? "warn" : ""}">
       <div style="display:flex;align-items:center;gap:12px"><span class="num">${a.n}</span><div><div class="big">${p.shopeeStop ?? "s/n"}</div><div class="muted small">Parada Shopee</div></div></div>
       <b>${esc(a.label)}</b>
-      <div>Localização no carro: <b>${z != null ? esc(zName(z)) : "não bipado no carregamento"}</b></div>
+      <div class="muted small">${ofN}</div>
+      <div>Localização no carro: <b>${pkgPlace(p) ? esc(pkgPlace(p)) : "não bipado no carregamento"}</b></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">${s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "entregue às " + hhmm(s.t) : esc(s.r || "não entregue")}</span>` : ""}${a.pkgs.length > 1 ? `<span class="chip">${a.pkgs.length} pacotes nesta parada</span>` : ""}</div>
       ${s ? `<button type="button" data-pundo="${esc(p.tn)}">Desfazer</button>` : `<div class="row2"><button type="button" class="pri" data-pok="${esc(p.tn)}">Entreguei este</button><button type="button" data-bipstop="${esc(a.key)}">Ver a parada</button></div>`}
     </div>`;
@@ -755,7 +815,7 @@
 
   // ---------- toques ----------
   document.addEventListener("click", async e => {
-    const t = e.target.closest("button, a[data-go], [data-pick]");
+    const t = e.target.closest("button, a[data-go], [data-pick], [data-zpick]");
     if (!t) return;
     const d = t.dataset;
     if (d.go) { if (d.filter) listFilter = d.filter; e.preventDefault(); return go(d.go); }
@@ -776,11 +836,15 @@
     if (d.undo) { const a = byKey.get(d.undo); a.pkgs.forEach(p => delete R.st[p.tn]); delete R.notes[d.undo]; save(); render(); return toast("Desfeito"); }
     if (d.pok) { R.st[d.pok] = { s: "ok", t: Date.now(), r: "" }; save(); tone("ok"); return bipShow(); }
     if (d.pundo) { delete R.st[d.pundo]; save(); return bipShow(); }
-    if (d.zset != null) { const k = carKey(bip.cur) || bip.cur; putInCar(k, +d.zset); bip.again = false; tone("ok"); return bipShow(); }
+    if (d.zpick != null) {
+      if (bip && bip.mode === "carregar" && bip.cur) { const k = carKey(bip.cur) || bip.cur; putInCar(k, +d.zpick, false); bip.again = false; tone("ok"); return bipShow(); }
+      return openZone(+d.zpick);
+    }
+    if (d.vol) { const k = carKey(bip.cur) || bip.cur, v = !CAR.pk[k]?.v; putInCar(k, suggestZone(k, v), v); bip.again = false; tone("ok"); return bipShow(); }
     if (d.zopen != null) return openZone(+d.zopen);
-    if (d.zedit) return openZoneEdit();
-    if (d.zsave) { const z = $("zEdit").value.split("\n").map(x => x.trim()).filter(Boolean); if (!z.length) return toast("Escreva pelo menos uma parte."); CAR.zones = z; CAR.cap = Math.max(1, +$("zCap").value || 20); Object.values(CAR.pk).forEach(x => { if (x.z >= z.length) x.z = z.length - 1; }); saveCar(); closeSheet(); render(); return toast("Partes do carro salvas"); }
-    if (d.zreset) { CAR.zones = DEF_ZONES.slice(); saveCar(); closeSheet(); render(); return toast("Voltou ao padrão"); }
+    if (d.cartype != null) { CAR.car = d.cartype || null; if (!d.cartype) CAR.lay = null; saveCar(); return renderCarregar(); }
+    if (d.lay) { setLayout(d.lay); render(); return toast("Pronto. Pode bipar."); }
+    if (d.carreset) { CAR.lay = null; CAR.car = null; saveCar(); return renderCarregar(); }
     if (d.carclear) return twoTap(t, () => { CAR.pk = {}; CAR.cur = 0; saveCar(); render(); toast("Carro vazio"); });
     if (d.rename) { openSheet(`<h2>Nome da rota</h2><input type="text" id="rName" value="${esc(R.name)}"><button type="button" class="pri full" data-renamesave="1">Salvar</button>`, "rename"); setTimeout(() => $("rName")?.select(), 50); return; }
     if (d.renamesave) { const v = $("rName").value.trim(); R.name = v || routeName(R.pkgs); R.customName = !!v; save(); closeSheet(); render(); return toast("Nome salvo"); }
