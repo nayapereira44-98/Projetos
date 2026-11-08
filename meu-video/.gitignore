@@ -1,0 +1,21 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Fotos e vídeos da entrevistada não vão para o Git
+public/foto-tela.png
+public/foto-ref.jpg
+public/*.mp4
+public/*.mov
+public/legendas.json
+
+# vídeo das crianças (ICA): mídia bruta fica fora do Git
+public/ica/bruto.mp4
+public/ica/voz.wav
+
+public/ica/bastidores.mp4
+public/ica/voz_bastidores.wav
