@@ -509,7 +509,7 @@
     if (!u) return window.RCSync.openLogin();
     openSheet(`<div class="sheet-h"><span class="num">${esc((u.name || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(u.name)}</div><div class="muted small">${esc(u.email)}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
       ${R ? `<button type="button" class="pri full" data-sync="share">Chamar alguém para esta rota</button>` : ""}
-      <button type="button" class="full" data-go="comunidade">Comunidade</button>
+      <button type="button" class="full" data-go="comunidade">Dicas da comunidade</button>
       <button type="button" class="full" data-sync="openTeam">Amigos e equipe</button>
       <button type="button" class="full" data-sync="openProfile">Meu perfil</button>
       <button type="button" class="full" data-sync="teamRoutes">Rotas compartilhadas comigo</button>
@@ -542,7 +542,7 @@
     const t = window.RCApp?.remote?.team, n = window.RCSync?.teamCount || 0, nt = window.RCSync?.notifCount || 0;
     const call = R ? act(ICON_TEAM, "Chamar alguém para esta rota", R.shared && t && (t.members || []).length > 1 ? "Nesta rota: " + (t.members || []).map(id => t.names?.[id] || "?").join(", ") : "Só você nesta rota", `data-sync="share"`) : "";
     return (nt ? `<button type="button" class="pri full" data-sync="openNotif">🔔 ${nt} convite${nt > 1 ? "s" : ""} para você</button>` : "")
-      + call + act(ICON_TEAM, "Comunidade", "Chat com entregadores do app", `data-go="comunidade"`)
+      + call + act(ICON_TEAM, "Dicas da comunidade", "Dicas de condomínios, endereços e rotas", `data-go="comunidade"`)
       + act(ICON_TEAM, "Amigos e equipe", n ? `${n} pessoa${n > 1 ? "s" : ""} · convidar mais` : "Convide quem entrega com você", `data-sync="openTeam"`)
       + act(ICON_TEAM, "Rotas compartilhadas comigo", "Rotas em que você foi chamada", `data-sync="teamRoutes"`);
   }

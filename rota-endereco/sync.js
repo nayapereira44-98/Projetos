@@ -425,7 +425,7 @@ async function callToRoute(btn) {
 }
 
 // ---------- Comunidade ----------
-// Perfil público com apelido (profiles/{uid}) e um chat geral (chat/{id}). No chat todo mundo aparece pelo apelido;
+// Perfil público com apelido (profiles/{uid}) e o canal de dicas (chat/{id}). Nas dicas todo mundo aparece pelo apelido;
 // o nome verdadeiro só aparece para quem é seu amigo (alguém que você adicionou e aceitou, ou que te adicionou e
 // você aceitou: os mesmos convites da equipe). Do chat dá para tocar no apelido e mandar pedido de amizade.
 const comm = { msgs: [], profiles: new Map(), unsub: null, el: null, online: 0, me: null, lastSend: 0 };
@@ -445,19 +445,32 @@ async function profileOf(uid) {
   if (comm.profiles.has(uid)) return comm.profiles.get(uid);
   try { const s = await getDoc(doc(db, "profiles", uid)); const p = s.exists() ? s.data() : { alias: defAlias(uid) }; comm.profiles.set(uid, p); return p; } catch { return { alias: defAlias(uid) }; }
 }
+// Canal de dicas: cada dica tem categoria, lugar (opcional) e texto. Usa a coleção "chat" (mesmas regras).
+const CATS = [
+  { id: "cond", ic: "🏢", name: "Condomínios e portarias" },
+  { id: "end", ic: "📍", name: "Endereços difíceis" },
+  { id: "rota", ic: "🛣️", name: "Rota e trânsito" },
+  { id: "carro", ic: "🚗", name: "Carro e carregamento" },
+  { id: "app", ic: "📱", name: "App da Shopee" },
+  { id: "geral", ic: "💡", name: "Geral" },
+];
+const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length - 1];
+let tipCat = "all", tipQ = "";
 async function community(el) {
   if (!user) return openLogin();
   comm.el = el;
   if (!comm.me) await loadMyProfile();
-  el.innerHTML = `<div class="comm-top"><div><h2>Comunidade</h2><span class="muted small" id="cmOnline">entregadores do Rota Certa</span></div>
-      <div class="top-r"><button type="button" class="sm" data-sync="openFriends">Amigos ${inv.team.length ? `(${inv.team.length})` : ""}</button><button type="button" class="sm" data-sync="openProfile">Meu perfil</button></div></div>
-    <p class="muted small comm-hint">Aqui você aparece como <b>${esc(comm.me?.alias || defAlias(user.uid))}</b>. Seu nome só aparece para quem é seu amigo.</p>
-    <div class="chat" id="cmList"><p class="muted small" style="text-align:center">Carregando…</p></div>
-    <form class="chat-in" id="cmForm"><input type="text" id="cmText" maxlength="500" placeholder="Escreva para a comunidade…" autocomplete="off"><button type="submit" class="pri sm">Enviar</button></form>`;
-  $("cmForm").onsubmit = e => { e.preventDefault(); sendMsg(); };
+  el.innerHTML = `<div class="comm-top"><div><h2>Dicas da comunidade</h2><span class="muted small" id="cmOnline">entregadores do Rota Certa</span></div>
+      <div class="top-r"><button type="button" class="sm" data-sync="openFriends">Amigos${inv.team.length ? ` (${inv.team.length})` : ""}</button><button type="button" class="sm" data-sync="openProfile">Meu perfil</button></div></div>
+    <button type="button" class="pri full" data-sync="newTip">+ Deixar uma dica</button>
+    <div class="tipcats"><button type="button" class="${tipCat === "all" ? "on" : ""}" data-sync="tipFilter" data-cat="all">Todas</button>${CATS.map(c => `<button type="button" class="${tipCat === c.id ? "on" : ""}" data-sync="tipFilter" data-cat="${c.id}">${c.ic} ${c.name}</button>`).join("")}</div>
+    <input type="search" id="tipQ" value="${esc(tipQ)}" placeholder="Buscar: rua, bairro, condomínio…" autocomplete="off">
+    <div class="list" id="cmList"><p class="muted small" style="text-align:center">Carregando…</p></div>
+    <p class="muted small">Você aparece como <b>${esc(comm.me?.alias || defAlias(user.uid))}</b>. Seu nome só aparece para amigos.</p>`;
+  $("tipQ").oninput = () => { tipQ = $("tipQ").value; drawChat(); };
   if (!comm.unsub) {
-    comm.unsub = onSnapshot(query(collection(db, "chat"), orderBy("t", "desc"), qlimit(80)), s => {
-      comm.msgs = s.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
+    comm.unsub = onSnapshot(query(collection(db, "chat"), orderBy("t", "desc"), qlimit(200)), s => {
+      comm.msgs = s.docs.map(d => ({ id: d.id, ...d.data() }));
       drawChat();
     }, e => { if ($("cmList")) $("cmList").innerHTML = `<p class="muted small">${esc(errMsg(e))}</p>`; });
   } else drawChat();
@@ -466,29 +479,45 @@ async function community(el) {
 async function countOnline() {
   try {
     const s = await getDocs(query(collection(db, "profiles"), where("lastSeen", ">", Date.now() - 150000)));
-    comm.online = s.size;
     if ($("cmOnline")) $("cmOnline").textContent = `${s.size} online agora`;
   } catch {}
 }
 setInterval(() => { if (comm.el && !document.hidden && $("cmOnline")) countOnline(); }, 60000);
 function drawChat() {
   const box = $("cmList"); if (!box) return;
-  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  box.innerHTML = comm.msgs.length ? comm.msgs.map(m => {
-    const mine = m.uid === user?.uid, fr = friendOf(m.uid);
-    const who = mine ? "Você" : fr ? `${fr.name} · ${m.alias}` : m.alias;
-    return `<div class="msg${mine ? " me" : ""}"><button type="button" class="msg-who" data-sync="openPerson" data-uid="${esc(m.uid)}">${esc(who)}${fr && !mine ? " 🤝" : ""}</button>
-      <div class="msg-t">${esc(m.text)}</div><span class="msg-h">${new Date(m.t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${mine ? ` · <button type="button" class="linkbtn" data-sync="delMsg" data-id="${esc(m.id)}">apagar</button>` : ""}</span></div>`;
-  }).join("") : `<p class="muted small" style="text-align:center">Ninguém escreveu ainda. Puxe o assunto! 👋</p>`;
-  if (nearBottom || !box.dataset.once) { box.scrollTop = box.scrollHeight; box.dataset.once = "1"; }
+  const nrm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const q = nrm(tipQ.trim());
+  const list = comm.msgs.filter(m => (tipCat === "all" || (m.cat || "geral") === tipCat) && (!q || nrm(m.text + " " + (m.place || "")).includes(q)));
+  box.innerHTML = list.length ? list.map(m => {
+    const mine = m.uid === user?.uid, fr = friendOf(m.uid), c = catOf(m.cat);
+    const who = mine ? "Você" : fr ? `${fr.name} 🤝` : m.alias;
+    return `<div class="tip"><div class="tip-h"><span class="chip">${c.ic} ${esc(c.name)}</span>${m.place ? `<span class="chip acc">📍 ${esc(m.place)}</span>` : ""}</div>
+      <div class="msg-t">${esc(m.text)}</div>
+      <div class="tip-f"><button type="button" class="msg-who" data-sync="openPerson" data-uid="${esc(m.uid)}">${esc(who)}</button><span class="msg-h">${new Date(m.t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}${mine ? ` · <button type="button" class="linkbtn" data-sync="delMsg" data-id="${esc(m.id)}">apagar</button>` : ""}</span></div></div>`;
+  }).join("") : `<p class="muted small" style="text-align:center">${q || tipCat !== "all" ? "Nenhuma dica com esse filtro." : "Nenhuma dica ainda. Deixe a primeira! 💡"}</p>`;
 }
-async function sendMsg() {
-  const i = $("cmText"), text = (i?.value || "").trim();
-  if (!text) return;
-  if (Date.now() - comm.lastSend < 3000) return A().toast("Espere um pouquinho entre as mensagens.");
-  comm.lastSend = Date.now(); i.value = "";
-  try { await setDoc(doc(collection(db, "chat")), { uid: user.uid, alias: comm.me?.alias || defAlias(user.uid), text, t: Date.now() }); }
-  catch (e) { A().toast(errMsg(e)); i.value = text; }
+function tipFilter(btn) { tipCat = btn.dataset.cat; if (comm.el) community(comm.el); }
+let tipNew = { cat: "geral" };
+function newTip() {
+  show(`<h2>Deixar uma dica</h2>
+    <div class="tipcats wrap">${CATS.map(c => `<button type="button" class="${tipNew.cat === c.id ? "on" : ""}" data-sync="tipPick" data-cat="${c.id}">${c.ic} ${c.name}</button>`).join("")}</div>
+    <label class="f">Onde (opcional)<input type="text" id="tpPlace" maxlength="60" placeholder="ex.: Cond. Solar do Cambuí, Campinas"></label>
+    <label class="f">Sua dica<textarea id="tpText" maxlength="500" placeholder="ex.: portaria só recebe até 18h; interfone 102 é a zeladoria"></textarea></label>
+    <button type="button" class="pri full" data-sync="saveTip">Publicar dica</button>`, "tip");
+}
+function tipPick(btn) {
+  tipNew.cat = btn.dataset.cat;
+  document.querySelectorAll('[data-sync="tipPick"]').forEach(b => b.classList.toggle("on", b.dataset.cat === tipNew.cat));
+}
+async function saveTip() {
+  const text = ($("tpText")?.value || "").trim(), place = ($("tpPlace")?.value || "").trim();
+  if (text.length < 5) return A().toast("Escreva a dica.");
+  if (Date.now() - comm.lastSend < 3000) return;
+  comm.lastSend = Date.now();
+  try {
+    await setDoc(doc(collection(db, "chat")), { uid: user.uid, alias: comm.me?.alias || defAlias(user.uid), text, place, cat: tipNew.cat, t: Date.now() });
+    A().closeSheet(); A().toast("Dica publicada 💡");
+  } catch (e) { A().toast(errMsg(e)); }
 }
 async function delMsg(btn) { try { await deleteDoc(doc(db, "chat", btn.dataset.id)); } catch (e) { A().toast(errMsg(e)); } }
 function openProfile() {
@@ -528,7 +557,7 @@ function openFriends() { openTeam(); }
 
 window.RCSync = { openLogin, logout, share, invite: openRouteTeam, teamRoutes, join, claim, push, pushCar, remote,
   openTeam, openNotif, inviteEmail, inviteWhats, copyText, cancelInvite, removeMember, acceptInvite, declineInvite, callToRoute, openRouteTeam,
-  community, openProfile, saveProfile, openPerson, addFriend, openFriends, delMsg,
+  community, openProfile, saveProfile, openPerson, addFriend, openFriends, delMsg, newTip, tipPick, saveTip, tipFilter,
   get notifCount() { return inv.got.length; }, get teamCount() { return inv.team.length; }, get user() { return user; }, get routeId() { return routeId; } };
 const boot = () => { if (!A()) return setTimeout(boot, 50); A().remote = remote; A().user = user; A().onSave = push; A().onSaveCar = pushCar; checkAttach(); A().render(); };
 boot();
