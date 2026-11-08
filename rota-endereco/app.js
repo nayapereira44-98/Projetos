@@ -269,7 +269,7 @@
         : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}${esc(byTxt(s))}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : `<span class="chip warn">não bipado</span>`;
       return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${right}</div>`;
     }).join("");
-    const nav = `<div class="row3"><a class="btn sm" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn sm" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>`;
+    const nav = `<div class="row3"><a class="btn sm ${navPref === "gmaps" ? "pri" : ""}" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn sm ${navPref === "waze" ? "pri" : ""}" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm ${navPref === "apple" ? "pri" : ""}" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>`;
     let act;
     if (sh.mode === "issue") {
       act = `<div><p class="small muted" style="margin-bottom:6px">Motivo dos não entregues</p><div class="reasons">${REASONS.map(r => `<button type="button" class="${sh.reason === r ? "on" : ""}" data-reason="${esc(r)}">${r}</button>`).join("")}</div></div>
@@ -684,6 +684,34 @@
   // Leaflet + OpenStreetMap (sem chave). Cada parada é um número; tocar abre todos os pacotes dela.
   // A linha segue as ruas (OSRM) das próximas paradas; sem resposta do servidor, liga as paradas em linha reta.
   let map = null, layer = null, lineL = null, meM = null, watch = null, fitted = false, geomBusy = false;
+  // Navegação: o GPS do app fica sempre ativo no mapa (você e o caminho até a próxima parada). Para a navegação com
+  // voz, o app sugere o Google Maps; dá para trocar por Waze ou Apple Maps.
+  const NAVS = { gmaps: { name: "Google Maps", link: a => Core.links.gmaps(a) }, waze: { name: "Waze", link: a => Core.links.waze(a) }, apple: { name: "Apple Maps", link: a => Core.links.apple(a) } };
+  let navPref = store.get("rc3:nav", "gmaps");
+  const navOf = () => NAVS[navPref] || NAVS.gmaps;
+  let toNextL = null, toNextAt = 0, toNextFrom = null, toNextKey = null;
+  // Caminho pelas ruas de onde você está até a próxima parada (atualiza quando você anda 60 m ou a parada muda).
+  async function drawToNext() {
+    const nx = nextStop();
+    if (!map || !here || !nx) { toNextL?.remove(); toNextL = null; return; }
+    const moved = !toNextFrom || Core.hav(toNextFrom, here) > 60;
+    if (!moved && toNextKey === nx.key && toNextL) return;
+    if (Date.now() - toNextAt < 8000 && toNextKey === nx.key) return;
+    toNextAt = Date.now(); toNextFrom = { ...here }; toNextKey = nx.key;
+    let pts = [[here.lat, here.lng], [nx.lat, nx.lng]];
+    try {
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+      const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${here.lng.toFixed(6)},${here.lat.toFixed(6)};${nx.lng.toFixed(6)},${nx.lat.toFixed(6)}?overview=full&geometries=geojson`, { signal: ctl.signal })).json();
+      clearTimeout(tm);
+      if (j.code === "Ok") pts = j.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    } catch {}
+    toNextL?.remove();
+    toNextL = L.polyline(pts, { color: "#16a34a", weight: 6, opacity: 0.85 }).addTo(map);
+  }
+  function openNavPick() {
+    openSheet(`<h2>Navegar com</h2><p class="muted small">O GPS do app fica sempre ligado no mapa. Para a navegação com voz, abrimos o app que você escolher.</p>
+      ${Object.entries(NAVS).map(([k, v]) => `<button type="button" class="full ${navPref === k ? "pri" : ""}" data-navpick="${k}">${v.name}${k === "gmaps" ? " (sugerido)" : ""}</button>`).join("")}`, "nav");
+  }
   function ensureMap() {
     if (map || !R) return;
     if (!window.L) { $("map").innerHTML = `<div class="empty" style="padding-top:40vh">O mapa não carregou. Confira a internet.<br><a class="btn sm" href="#paradas" style="margin-top:12px">Ver a lista de paradas</a></div>`; return; }
@@ -710,7 +738,8 @@
     const nx = nextStop(), c = counts();
     $("mapTop").innerHTML = R ? `<b>${esc(R.name)}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
     $("mNext").innerHTML = nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
-      <div class="row2"><a class="btn pri" href="${Core.links.waze(nx)}" target="_blank" rel="noopener">Navegar (Waze)</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>`
+      <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
+      <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
       : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
     if (!map) return;
     layer.clearLayers();
@@ -719,6 +748,7 @@
       m.on("click", () => openStop(a.key));
     });
     drawLine();
+    drawToNext();
     if (!fitted && stops.length) { fitted = true; fitAll(); }
   }
   function fitAll() {
@@ -759,6 +789,7 @@
       if (!meM) meM = L.marker([here.lat, here.lng], { icon: L.divIcon({ className: "", html: `<div class="me"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 2000, interactive: false }).addTo(map);
       else meM.setLatLng([here.lat, here.lng]);
       if (follow) map.setView([here.lat, here.lng], Math.max(map.getZoom(), 16));
+      drawToNext();
     }, err => { if (err.code === 1) { watch = null; toast("Sem permissão de localização. Libere nos ajustes do iPhone para ver onde você está."); } }, { enableHighAccuracy: true, maximumAge: 5000 });
   }
   $("mLocate").addEventListener("click", () => { startGps(); follow = true; if (here && map) map.setView([here.lat, here.lng], 17); else toast("Procurando sua localização…"); });
@@ -923,6 +954,8 @@
       if (bip && bip.mode === "carregar" && bip.cur) { const k = carKey(bip.cur) || bip.cur; putInCar(k, +d.zpick, false); bip.again = false; tone("ok"); return bipShow(); }
       return openZone(+d.zpick);
     }
+    if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
+    if (d.navset) return openNavPick();
     if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
     if (d.errpkg) { CAR.err = (CAR.err || []).concat({ id: "E" + Date.now(), t: Date.now() }); saveCar(); tone("warn"); buzz(80); flash("ok"); $("bipRes").innerHTML = `<div class="bip-card warn"><b>Pacote com erro contado</b><span class="muted small">Coloque no <b>banco da frente</b>. Depois de carregar, confira em Carregar → "Pacotes com erro".</span></div>`; return bipCount(); }
     if (d.errfix) return openErr();

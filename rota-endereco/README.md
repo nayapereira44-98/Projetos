@@ -51,3 +51,7 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 - **Volumoso** agora é só uma marca: o pacote fica na parte onde você colocou. No mapa, a parada com volumoso ainda por entregar ganha um **ponto amarelo** em cima, e a localização mostra "· volumoso".
 - **Pacote com erro (não leu)**: botão no Bipar de carregar. Ele conta o pacote no **banco da frente**, mesmo que você não use o banco do passageiro. Depois, em Carregar → "⚠️ N pacotes com erro · conferir agora", você digita o final do código ou toca na lista do que falta bipar da rota, escolhe a parte do carro no desenho (e marca Volumoso, se for) e o pacote fica conferido. "Não era pacote" tira 1 da contagem.
 - **Mapa**: a quantidade de pacotes aparece sempre em cima da parada (inclusive na próxima e com o mapa afastado).
+
+## GPS e navegação (10/11)
+- O **GPS do app** fica sempre ligado no mapa: o ponto azul é você e a **linha verde** é o caminho pelas ruas até a próxima parada (OSRM). A linha é refeita quando você anda 60 m ou a parada muda.
+- Para a navegação com voz, o app **sugere o Google Maps** (padrão). No cartão da próxima parada, "navegar com Google Maps · trocar" deixa escolher Waze ou Apple Maps. A escolha fica salva (`rc3:nav`), e o app escolhido aparece em destaque na folha da parada.
