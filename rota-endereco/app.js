@@ -922,6 +922,16 @@
     user: null, remote: { claims: {}, car: {}, presence: {}, team: null }, onSave: null, onSaveCar: null,
   };
 
+  // Login obrigatório (sync.js libera a tela). Se a conexão com o login não vier em 10 s (sem internet), quem já
+  // entrou antes neste celular segue usando o app; os dados ficam no celular e sobem quando a internet voltar.
+  setTimeout(() => {
+    if (!document.body.classList.contains("locked")) return;
+    if (window.RCSync) return;
+    let last = null; try { last = JSON.parse(localStorage.getItem("rc3:lastUser")); } catch {}
+    if (last) { document.body.classList.remove("locked"); window.RCApp.user = last; render(); toast("Sem internet: usando o app offline."); }
+    else if ($("gateMsg")) $("gateMsg").innerHTML = `Sem conexão para entrar. Confira a internet e <a href="" onclick="location.reload()">tente de novo</a>.`;
+  }, 10000);
+
   // ---------- início ----------
   if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
   route();

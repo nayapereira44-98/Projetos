@@ -44,35 +44,58 @@ const last = { route: "", st: {}, notes: {}, car: {} };
 const remote = { claims: {}, car: {}, presence: {}, team: null };
 
 // ---------- login ----------
+// Login obrigatório: sem conta, só a tela de entrada aparece.
+function lock(on) {
+  document.body.classList.toggle("locked", on);
+  if (on) renderGate(); else { $("gate").innerHTML = ""; }
+}
 onAuthStateChanged(auth, u => {
   user = u ? { uid: u.uid, email: (u.email || "").toLowerCase(), name: nameOf(u) } : null;
+  try { if (user) localStorage.setItem("rc3:lastUser", JSON.stringify(user)); else localStorage.removeItem("rc3:lastUser"); } catch {}
+  lock(!user);
   if (!A()) return;
   A().user = user;
   if (!user) detach();
   else checkAttach();
   A().render();
 });
-function openLogin() {
-  A().openSheet(`<h2>Entrar</h2><p class="muted small">Com login você convida outra pessoa para a sua rota e tudo atualiza ao vivo para os dois.</p>
+const loginForm = () => `
     <button type="button" class="full" id="lgGoogle"><b>G</b>&nbsp; Entrar com Google</button>
     <div class="muted small" style="text-align:center">ou</div>
     <input type="text" id="lgEmail" placeholder="E-mail" autocomplete="email" inputmode="email" autocapitalize="off">
     <input type="text" id="lgPass" placeholder="Senha (mínimo 6)" autocomplete="current-password" style="-webkit-text-security:disc">
-    <input type="text" id="lgName" placeholder="Seu nome (só para criar conta)" autocomplete="given-name" hidden>
+    <input type="text" id="lgName" placeholder="Seu nome (para criar conta)" autocomplete="given-name" hidden>
     <div class="row2"><button type="button" class="pri" id="lgIn">Entrar</button><button type="button" id="lgNew">Criar conta</button></div>
     <button type="button" class="ghost full sm" id="lgForgot">Esqueci a senha</button>
-    <p class="small" id="lgMsg" style="color:var(--bad)"></p>`, "login");
-  const msg = t => ($("lgMsg").textContent = t);
-  $("lgGoogle").onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); A().closeSheet(); A().toast("Conectada ✓"); } catch (e) { msg(errMsg(e)); } };
-  $("lgIn").onclick = async () => { try { await signInWithEmailAndPassword(auth, $("lgEmail").value.trim(), $("lgPass").value); A().closeSheet(); A().toast("Conectada ✓"); } catch (e) { msg(errMsg(e)); } };
+    <p class="small" id="lgMsg" style="color:var(--bad)"></p>`;
+function renderGate() {
+  $("gate").innerHTML = `<div class="gate-box"><div class="gate-logo">📦</div><h1>Rota Certa</h1><p class="muted">Rotas pelo endereço, carregamento do carro e entregas em equipe.</p>${loginForm()}</div>`;
+  bindLogin();
+}
+function openLogin() {
+  if (!user) return renderGate();
+  A().openSheet(`<h2>Entrar</h2>${loginForm()}`, "login");
+  bindLogin();
+}
+function bindLogin() {
+  const msg = t => { if ($("lgMsg")) $("lgMsg").textContent = t; };
+  const ok = t => { A()?.closeSheet(); A()?.toast(t); };
+  $("lgGoogle").onclick = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); ok("Conectada ✓"); } catch (e) { msg(errMsg(e)); } };
+  $("lgIn").onclick = async () => { msg(""); try { await signInWithEmailAndPassword(auth, $("lgEmail").value.trim(), $("lgPass").value); ok("Conectada ✓"); } catch (e) { msg(errMsg(e)); } };
+  $("lgPass").onkeydown = e => { if (e.key === "Enter") $("lgIn").click(); };
   $("lgNew").onclick = async () => {
     if ($("lgName").hidden) { $("lgName").hidden = false; $("lgName").focus(); return msg("Digite seu nome e toque de novo em Criar conta."); }
+    // Lê tudo antes: quando a conta é criada, a tela de entrada some.
+    const email = $("lgEmail").value.trim(), pass = $("lgPass").value, nm = $("lgName").value.trim();
+    if (!nm) return msg("Digite seu nome.");
     try {
-      const c = await createUserWithEmailAndPassword(auth, $("lgEmail").value.trim(), $("lgPass").value);
-      const nm = $("lgName").value.trim(); if (nm) await updateProfile(c.user, { displayName: nm });
-      user = { uid: c.user.uid, email: (c.user.email || "").toLowerCase(), name: nm || nameOf(c.user) }; A().user = user;
-      A().closeSheet(); A().toast("Conta criada ✓"); checkAttach(); A().render();
-    } catch (e) { msg(errMsg(e)); }
+      const c = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(c.user, { displayName: nm });
+      user = { uid: c.user.uid, email: (c.user.email || "").toLowerCase(), name: nm.split(" ")[0] };
+      try { localStorage.setItem("rc3:lastUser", JSON.stringify(user)); } catch {}
+      if (A()) { A().user = user; checkAttach(); A().render(); }
+      ok("Conta criada ✓");
+    } catch (e) { if ($("lgMsg")) msg(errMsg(e)); else A()?.toast(errMsg(e)); }
   };
   $("lgForgot").onclick = async () => { const e = $("lgEmail").value.trim(); if (!e) return msg("Digite seu e-mail acima."); try { await sendPasswordResetEmail(auth, e); msg("Enviamos um e-mail para trocar a senha."); } catch (er) { msg(errMsg(er)); } };
 }

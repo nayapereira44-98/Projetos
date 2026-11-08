@@ -24,7 +24,7 @@ Refeito do zero para ser limpo e prático, no estilo do Spoke. A versão anterio
 Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fotos do carro no IndexedDB `rc3`.
 
 ## Rota em equipe (Firebase, 09/11)
-- O login é com Google ou com e-mail e senha (Firebase Authentication). O app continua funcionando sem login. A conta só serve para a equipe.
+- **O login é obrigatório**: quem abre o link vê só a tela "Rota Certa", com Entrar com Google ou com e-mail e senha, Criar conta (com nome) e Esqueci a senha. O app aparece depois de entrar, e a sessão fica salva no celular. Sem internet, quem já entrou antes naquele celular continua usando o app offline. O botão no topo (a inicial do nome) abre Convidar, Rotas da equipe e Sair.
 - **Convidar**: no Início, "Convidar alguém para esta rota" sobe a rota para o Firestore e convida pelo e-mail. A outra pessoa entra no mesmo link, faz login com esse e-mail e abre em "Rotas da equipe".
 - **Ao vivo para todos**: entregas (com o nome de quem entregou), não entregues, anotações, a ordem e a planilha somada.
 - **Pego esta parada**: a parada sai da sequência de quem não pegou, aparece apagada no mapa dessa pessoa e mostra "com Bia" na lista.
