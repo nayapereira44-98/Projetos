@@ -62,3 +62,7 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 - **Mapa**: mostra todas as rotas em andamento juntas, cada uma com uma cor. Em "Todas rotas ▾", no topo do mapa, dá para escolher quais aparecem. Tocar numa parada de outra rota abre essa rota.
 - Rota da equipe: entrar numa rota compartilhada abre uma nova rota em andamento, sem fechar a sua.
 - Dados: `rc3:slots` (lista de {id, R, car: {pk, err, cur}}) e `rc3:active`; `rc3:route` e `rc3:car` continuam com a rota aberta.
+
+## Nome da rota antes da planilha (10/11)
+- Toda rota em andamento pode ser renomeada a qualquer momento. No Início, use "Dar nome à rota" ou "Renomear", mesmo antes de subir a planilha (por exemplo, "Rota da manhã").
+- Quando a planilha entra, a AT aparece ao lado do nome: "Rota da manhã · AT20261106C9V3G". Esse nome aparece no topo, no mapa, na lista de rotas em andamento e no histórico. Se você apagar o nome, fica só a AT.
