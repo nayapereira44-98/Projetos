@@ -220,6 +220,9 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 .bip-card { background: var(--surface); color: var(--ink); border-radius: 18px; padding: 14px; display: grid; gap: 8px; border-left: 8px solid var(--ok); }
 .bip-card.warn { border-left-color: var(--warn); } .bip-card.err { border-left-color: var(--bad); }
 .bip-card .big { font-size: 2.3rem; font-weight: 800; line-height: 1; }
+.ck-act { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.ck-act button, .ck-row button { min-height: 32px; padding: 0 10px; font-size: .8rem; }
+.ck-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .bzones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .bzones button { min-height: 72px; flex-direction: column; gap: 2px; background: rgba(255,255,255,.92); color: #111827; border: 2px solid transparent; }
 .bzones button b { font-size: 1.05rem; }
@@ -293,7 +296,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261110f"></script>
+<script src="app.js?v=20261110g"></script>
 <script type="module" src="sync.js?v=20261110d"></script>
 </body>
 </html>

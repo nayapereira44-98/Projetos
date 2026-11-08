@@ -525,7 +525,7 @@
     openSheet(`<div class="sheet-h"><span class="num sm idle">${i + 1}</span><div><div class="addr">${esc(zName(i))}</div><div class="muted small">${items.length} pacote${items.length === 1 ? "" : "s"}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
       <div id="zImg"></div>
       <button type="button" class="sm" data-zcam="${i}">${CAR.zph?.[i] ? "Trocar a foto desta parte" : "Tirar foto desta parte (opcional)"}</button>
-      <div class="list">${items.map(({ k, p, a }) => `<div class="pkg"><div class="sp"><small>${a ? "Parada" : "Shopee"}</small><b>${a ? a.n : p?.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(k)}</div><div class="meta">${a ? esc(a.label) + (p.shopeeStop != null ? " · Shopee " + p.shopeeStop : "") : "Ainda sem rota"}</div></div>${CAR.pk[k].v ? `<span class="chip warn">volumoso</span>` : ""}${p && resolved(p) ? `<span class="chip ok">entregue</span>` : ""}</div>`).join("") || `<p class="muted">Nenhum pacote nesta parte.</p>`}</div>`, "zone");
+      <div class="list">${items.map(({ k, p, a }) => `<div class="pkg"><div class="sp"><small>${a ? "Parada" : "Shopee"}</small><b>${a ? a.n : p?.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(k)}</div><div class="meta">${a ? esc(a.label) + (p.shopeeStop != null ? " · Shopee " + p.shopeeStop : "") : "Ainda sem rota"}</div></div><div class="ck-act">${CAR.pk[k].v ? `<span class="chip warn">volumoso</span>` : ""}${p && resolved(p) ? `<span class="chip ok">entregue</span>` : ""}<button type="button" class="sm" data-ckedit="${esc(k)}">Editar</button><button type="button" class="sm danger" data-ckdel="${esc(k)}">Apagar</button></div></div>`).join("") || `<p class="muted">Nenhum pacote nesta parte.</p>`}</div>`, "zone");
     if (CAR.zph?.[i]) { const b = await idb.get(CAR.zph[i]); if (b && $("zImg")) $("zImg").innerHTML = `<img src="${URL.createObjectURL(b)}" style="width:100%;border-radius:12px" alt="Foto: ${esc(zName(i))}">`; }
   }
 
@@ -720,7 +720,7 @@
       ${(CAR.err || []).length ? `<button type="button" class="full errbar" data-errfix="1">⚠️ ${CAR.err.length} pacote${CAR.err.length > 1 ? "s" : ""} com erro no banco da frente · conferir agora</button>` : ""}
       <div class="card" style="justify-items:center"><p class="muted small" style="justify-self:start">Toque numa parte para ver os pacotes dela.</p>${carSvg(-1, { counts: true, pick: true })}</div>
       ${R && missing.length ? `<details class="card"><summary><b>Faltam bipar ${missing.length} pacote${missing.length > 1 ? "s" : ""} da rota</b></summary><div class="list" style="margin-top:8px">${missing.map(p => { const a = byTn.get(p.tn); return `<div class="small">Parada ${a?.n ?? "?"} · Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</div>`; }).join("")}</div></details>` : ""}
-      ${R && outside.length ? `<details class="card"><summary><b>${outside.length} bipado${outside.length > 1 ? "s" : ""} que não estão na rota</b></summary><p class="muted small">Pode ser de outra planilha que você ainda vai somar.</p><div class="list" style="margin-top:8px">${outside.map(k => `<div class="small">${tnHtml(k)} · ${esc(zName(CAR.pk[k].z))}</div>`).join("")}</div></details>` : ""}
+      ${R && outside.length ? `<details class="card"><summary><b>${outside.length} bipado${outside.length > 1 ? "s" : ""} que não estão na rota</b></summary><p class="muted small">Pode ser de outra planilha que você ainda vai somar.</p><div class="list" style="margin-top:8px">${outside.map(k => `<div class="small ck-row">${tnHtml(k)} · ${esc(zName(CAR.pk[k].z))} <button type="button" class="sm" data-ckedit="${esc(k)}">Editar</button><button type="button" class="sm danger" data-ckdel="${esc(k)}">Apagar</button></div>`).join("")}</div></details>` : ""}
       <button type="button" class="ghost full danger" data-carclear="1">Esvaziar o carro</button>`;
   }
 
@@ -1058,6 +1058,10 @@
     if (d.mapselopen) return openMapSel();
     if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
     if (d.navset) return openNavPick();
+    // Código bipado errado: editar ou apagar do carro.
+    if (d.ckdel) return twoTap(t, () => { const z = CAR.pk[d.ckdel]?.z; delete CAR.pk[d.ckdel]; saveCar(); toast("Apagado do carro"); if (sheetOn === "zone" && z != null) openZone(z); else { closeSheet(); render(); } });
+    if (d.ckedit) { const k = d.ckedit; openSheet(`<h2>Editar código</h2><p class="muted small">Corrija o código do pacote (ex.: BR264026571640T).</p><input type="text" id="ckNew" value="${esc(k)}" autocapitalize="characters" autocomplete="off"><button type="button" class="pri full" data-cksave="${esc(k)}">Salvar</button><button type="button" class="ghost full" data-close="1">Cancelar</button>`, "ckedit"); return; }
+    if (d.cksave) { const old = d.cksave, nw = codeOf($("ckNew")?.value || ""); if (nw.length < 6) return toast("Código muito curto."); const v = CAR.pk[old]; if (!v) return closeSheet(); delete CAR.pk[old]; CAR.pk[nw] = v; saveCar(); toast("Código corrigido"); return openZone(v.z); }
     if (d.bzone != null) { bip.zone = +d.bzone; CAR.cur = bip.zone; saveCar(); return bipZonePanel(); }
     if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
     if (d.errpkg) { CAR.err = (CAR.err || []).concat({ id: "E" + Date.now(), t: Date.now() }); saveCar(); tone("warn"); buzz(80); flash("ok"); $("bipRes").innerHTML = `<div class="bip-card warn"><b>Pacote com erro contado</b><span class="muted small">Coloque no <b>banco da frente</b>. Depois de carregar, confira em Carregar → "Pacotes com erro".</span></div>`; return bipCount(); }
