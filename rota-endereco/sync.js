@@ -4,7 +4,7 @@
 // compartilhada. Conversa com o app pelo objeto window.RCApp (definido em app.js).
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, doc, collection, setDoc, updateDoc, getDoc, getDocs, onSnapshot, query, where, arrayUnion, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, doc, collection, setDoc, updateDoc, getDoc, getDocs, onSnapshot, query, where, arrayUnion, writeBatch, deleteDoc, orderBy, limit as qlimit } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZmOGNKUmrW1kSILCJTM9usYaLbQeNb98",
@@ -294,9 +294,10 @@ function listenInvites() {
     team.delete(user.uid);
     inv.team = [...team.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
     const fresh = inv.got.filter(x => !before.has(x.id));
-    if (fresh.length && A()) A().toast(fresh[0].type === "route" ? `${fresh[0].fromName} te chamou para uma rota 🔔` : `${fresh[0].fromName} te convidou para a equipe 🔔`);
+    if (fresh.length && A()) A().toast(fresh[0].type === "route" ? `${fresh[0].fromName} te chamou para uma rota 🔔` : `${fresh[0].fromName} quer te adicionar 🔔`);
     A()?.render();
     if (sheetIs("team") || sheetIs("notif") || sheetIs("rteam")) reopen();
+    try { drawChat(); } catch {}
   };
   const sub = (q, m) => invUnsubs.push(onSnapshot(q, s => { m.clear(); s.forEach(d => m.set(d.id, { id: d.id, ...d.data() })); rebuild(); }, () => {}));
   if (user.email) sub(query(col, where("toEmail", "==", user.email)), maps.a);
@@ -311,10 +312,10 @@ const show = (html, kind) => { openKind = kind; A().openSheet(html, kind); };
 // Tela da equipe.
 function openTeam() {
   if (!user) return openLogin();
-  show(`<div class="sheet-h"><span class="num">${inv.team.length}</span><div><div class="addr">Minha equipe</div><div class="muted small">Pessoas que fazem entregas com você</div></div><button type="button" class="x" data-close="1">✕</button></div>
+  show(`<div class="sheet-h"><span class="num">${inv.team.length}</span><div><div class="addr">Amigos e equipe</div><div class="muted small">Quem você adicionou e aceitou</div></div><button type="button" class="x" data-close="1">✕</button></div>
     ${inv.got.length ? `<button type="button" class="pri full" data-sync="openNotif">🔔 ${inv.got.length} convite${inv.got.length > 1 ? "s" : ""} para você</button>` : ""}
-    <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${esc(m.email || "")}</span></span><button type="button" class="ghost sm danger" data-sync="removeMember" data-id="${esc(m.inv)}">Remover</button></div>`).join("") || `<p class="muted">Ninguém na equipe ainda.</p>`}</div>
-    <h3>Convidar para a equipe</h3>
+    <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${esc(m.email || "")}</span></span><button type="button" class="ghost sm danger" data-sync="removeMember" data-id="${esc(m.inv)}">Remover</button></div>`).join("") || `<p class="muted">Ninguém ainda. Convide abaixo ou adicione pessoas pela Comunidade.</p>`}</div>
+    <h3>Convidar alguém</h3>
     <label class="f">E-mail da pessoa (se ela já usa o app)<input type="text" id="tmEmail" placeholder="email@exemplo.com" inputmode="email" autocapitalize="off"></label>
     <button type="button" class="pri full" data-sync="inviteEmail">Convidar pelo e-mail</button>
     <button type="button" class="full" data-sync="inviteWhats" style="background:#25d366;border-color:#25d366;color:#fff">Convidar pelo WhatsApp</button>
@@ -361,7 +362,7 @@ async function removeMember(btn) {
 // Notificações: convites para a equipe e para rotas.
 function openNotif() {
   show(`<h2>Convites</h2>${inv.got.length ? `<div class="list">${inv.got.map(x => `<div class="card flat" style="padding:12px;gap:8px">
-      <b>${x.type === "route" ? `🚚 ${esc(x.fromName)} te chamou para a rota ${esc(x.routeName || "")}` : `👥 ${esc(x.fromName)} te convidou para a equipe`}</b>
+      <b>${x.type === "route" ? `🚚 ${esc(x.fromName)} te chamou para a rota ${esc(x.routeName || "")}` : `👥 ${esc(x.fromName)} quer te adicionar como amigo/equipe`}</b>
       <span class="muted small">${x.type === "route" ? "Se aceitar, vocês veem e atualizam a mesma rota." : "Na equipe, vocês podem se chamar para rotas quando quiserem."}</span>
       <div class="row2"><button type="button" class="pri" data-sync="acceptInvite" data-id="${esc(x.id)}">${x.type === "route" ? "Entrar na rota" : "Aceitar"}</button><button type="button" data-sync="declineInvite" data-id="${esc(x.id)}">${x.type === "route" ? "Agora não" : "Recusar"}</button></div></div>`).join("")}</div>` : `<p class="muted">Nenhum convite agora.</p>`}`, "notif");
 }
@@ -423,8 +424,111 @@ async function callToRoute(btn) {
   } catch (er) { A().toast(errMsg(er)); }
 }
 
+// ---------- Comunidade ----------
+// Perfil público com apelido (profiles/{uid}) e um chat geral (chat/{id}). No chat todo mundo aparece pelo apelido;
+// o nome verdadeiro só aparece para quem é seu amigo (alguém que você adicionou e aceitou, ou que te adicionou e
+// você aceitou: os mesmos convites da equipe). Do chat dá para tocar no apelido e mandar pedido de amizade.
+const comm = { msgs: [], profiles: new Map(), unsub: null, el: null, online: 0, me: null, lastSend: 0 };
+const defAlias = uid => "Entregador " + uid.slice(0, 4).toUpperCase();
+const friendOf = uid => inv.team.find(m => m.uid === uid) || null;
+async function loadMyProfile() {
+  if (!user) return null;
+  try {
+    const s = await getDoc(doc(db, "profiles", user.uid));
+    comm.me = s.exists() ? s.data() : { alias: defAlias(user.uid), city: "", vehicle: "", bio: "" };
+    if (!s.exists()) await setDoc(doc(db, "profiles", user.uid), { ...comm.me, lastSeen: Date.now(), created: Date.now() });
+  } catch { comm.me = comm.me || { alias: defAlias(user.uid) }; }
+  return comm.me;
+}
+setInterval(() => { if (user && !document.hidden) updateDoc(doc(db, "profiles", user.uid), { lastSeen: Date.now() }).catch(() => {}); }, 60000);
+async function profileOf(uid) {
+  if (comm.profiles.has(uid)) return comm.profiles.get(uid);
+  try { const s = await getDoc(doc(db, "profiles", uid)); const p = s.exists() ? s.data() : { alias: defAlias(uid) }; comm.profiles.set(uid, p); return p; } catch { return { alias: defAlias(uid) }; }
+}
+async function community(el) {
+  if (!user) return openLogin();
+  comm.el = el;
+  if (!comm.me) await loadMyProfile();
+  el.innerHTML = `<div class="comm-top"><div><h2>Comunidade</h2><span class="muted small" id="cmOnline">entregadores do Rota Certa</span></div>
+      <div class="top-r"><button type="button" class="sm" data-sync="openFriends">Amigos ${inv.team.length ? `(${inv.team.length})` : ""}</button><button type="button" class="sm" data-sync="openProfile">Meu perfil</button></div></div>
+    <p class="muted small comm-hint">Aqui você aparece como <b>${esc(comm.me?.alias || defAlias(user.uid))}</b>. Seu nome só aparece para quem é seu amigo.</p>
+    <div class="chat" id="cmList"><p class="muted small" style="text-align:center">Carregando…</p></div>
+    <form class="chat-in" id="cmForm"><input type="text" id="cmText" maxlength="500" placeholder="Escreva para a comunidade…" autocomplete="off"><button type="submit" class="pri sm">Enviar</button></form>`;
+  $("cmForm").onsubmit = e => { e.preventDefault(); sendMsg(); };
+  if (!comm.unsub) {
+    comm.unsub = onSnapshot(query(collection(db, "chat"), orderBy("t", "desc"), qlimit(80)), s => {
+      comm.msgs = s.docs.map(d => ({ id: d.id, ...d.data() })).reverse();
+      drawChat();
+    }, e => { if ($("cmList")) $("cmList").innerHTML = `<p class="muted small">${esc(errMsg(e))}</p>`; });
+  } else drawChat();
+  countOnline();
+}
+async function countOnline() {
+  try {
+    const s = await getDocs(query(collection(db, "profiles"), where("lastSeen", ">", Date.now() - 150000)));
+    comm.online = s.size;
+    if ($("cmOnline")) $("cmOnline").textContent = `${s.size} online agora`;
+  } catch {}
+}
+setInterval(() => { if (comm.el && !document.hidden && $("cmOnline")) countOnline(); }, 60000);
+function drawChat() {
+  const box = $("cmList"); if (!box) return;
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.innerHTML = comm.msgs.length ? comm.msgs.map(m => {
+    const mine = m.uid === user?.uid, fr = friendOf(m.uid);
+    const who = mine ? "Você" : fr ? `${fr.name} · ${m.alias}` : m.alias;
+    return `<div class="msg${mine ? " me" : ""}"><button type="button" class="msg-who" data-sync="openPerson" data-uid="${esc(m.uid)}">${esc(who)}${fr && !mine ? " 🤝" : ""}</button>
+      <div class="msg-t">${esc(m.text)}</div><span class="msg-h">${new Date(m.t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${mine ? ` · <button type="button" class="linkbtn" data-sync="delMsg" data-id="${esc(m.id)}">apagar</button>` : ""}</span></div>`;
+  }).join("") : `<p class="muted small" style="text-align:center">Ninguém escreveu ainda. Puxe o assunto! 👋</p>`;
+  if (nearBottom || !box.dataset.once) { box.scrollTop = box.scrollHeight; box.dataset.once = "1"; }
+}
+async function sendMsg() {
+  const i = $("cmText"), text = (i?.value || "").trim();
+  if (!text) return;
+  if (Date.now() - comm.lastSend < 3000) return A().toast("Espere um pouquinho entre as mensagens.");
+  comm.lastSend = Date.now(); i.value = "";
+  try { await setDoc(doc(collection(db, "chat")), { uid: user.uid, alias: comm.me?.alias || defAlias(user.uid), text, t: Date.now() }); }
+  catch (e) { A().toast(errMsg(e)); i.value = text; }
+}
+async function delMsg(btn) { try { await deleteDoc(doc(db, "chat", btn.dataset.id)); } catch (e) { A().toast(errMsg(e)); } }
+function openProfile() {
+  const p = comm.me || {};
+  show(`<h2>Meu perfil</h2><p class="muted small">É o que a comunidade vê. Seu nome e e-mail só aparecem para amigos.</p>
+    <label class="f">Apelido<input type="text" id="pfAlias" maxlength="30" value="${esc(p.alias || "")}"></label>
+    <label class="f">Cidade<input type="text" id="pfCity" maxlength="40" value="${esc(p.city || "")}" placeholder="ex.: Campinas"></label>
+    <label class="f">Veículo<input type="text" id="pfVeh" maxlength="40" value="${esc(p.vehicle || "")}" placeholder="ex.: VW Tera"></label>
+    <label class="f">Sobre você<textarea id="pfBio" maxlength="200" placeholder="ex.: entrego Shopee e Mercado Livre na região do Cambuí">${esc(p.bio || "")}</textarea></label>
+    <button type="button" class="pri full" data-sync="saveProfile">Salvar</button>`, "profile");
+}
+async function saveProfile() {
+  const v = id => ($(id)?.value || "").trim();
+  const p = { alias: v("pfAlias") || defAlias(user.uid), city: v("pfCity"), vehicle: v("pfVeh"), bio: v("pfBio"), lastSeen: Date.now() };
+  try { await setDoc(doc(db, "profiles", user.uid), p, { merge: true }); comm.me = { ...comm.me, ...p }; A().closeSheet(); A().toast("Perfil salvo"); if (comm.el) community(comm.el); }
+  catch (e) { A().toast(errMsg(e)); }
+}
+async function openPerson(btn) {
+  const uid = btn.dataset.uid; if (!uid) return;
+  if (uid === user.uid) return openProfile();
+  const p = await profileOf(uid), fr = friendOf(uid);
+  const asked = inv.sent.some(x => x.toUid === uid && x.type === "team");
+  const askedMe = inv.got.find(x => x.from === uid && x.type === "team");
+  show(`<div class="sheet-h"><span class="num">${esc((fr?.name || p.alias || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(fr ? fr.name : p.alias)}</div><div class="muted small">${esc(fr ? p.alias + " · " + (fr.email || "") : "apelido na comunidade")}</div></div><button type="button" class="x" data-close="1">✕</button></div>
+    ${[p.city && "📍 " + p.city, p.vehicle && "🚗 " + p.vehicle].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join(" ")}
+    ${p.bio ? `<p>${esc(p.bio)}</p>` : ""}
+    ${fr ? `<p class="muted small">🤝 Vocês são amigos.</p>` : askedMe ? `<button type="button" class="pri full" data-sync="acceptInvite" data-id="${esc(askedMe.id)}">Aceitar pedido de amizade</button>` : asked ? `<p class="muted small">Pedido de amizade enviado. Esperando aceitar.</p>` : `<button type="button" class="pri full" data-sync="addFriend" data-uid="${esc(uid)}">Adicionar como amigo</button><p class="muted small">Quando a pessoa aceitar, vocês veem o nome um do outro e podem se chamar para rotas.</p>`}`, "person");
+}
+async function addFriend(btn) {
+  const uid = btn.dataset.uid, p = await profileOf(uid);
+  try {
+    await setDoc(doc(collection(db, "invites")), { type: "team", from: user.uid, fromName: user.name, fromEmail: user.email, toEmail: null, toUid: uid, toName: p.alias || null, status: "pending", created: Date.now() });
+    A().toast("Pedido de amizade enviado"); A().closeSheet();
+  } catch (e) { A().toast(errMsg(e)); }
+}
+function openFriends() { openTeam(); }
+
 window.RCSync = { openLogin, logout, share, invite: openRouteTeam, teamRoutes, join, claim, push, pushCar, remote,
   openTeam, openNotif, inviteEmail, inviteWhats, copyText, cancelInvite, removeMember, acceptInvite, declineInvite, callToRoute, openRouteTeam,
+  community, openProfile, saveProfile, openPerson, addFriend, openFriends, delMsg,
   get notifCount() { return inv.got.length; }, get teamCount() { return inv.team.length; }, get user() { return user; }, get routeId() { return routeId; } };
 const boot = () => { if (!A()) return setTimeout(boot, 50); A().remote = remote; A().user = user; A().onSave = push; A().onSaveCar = pushCar; checkAttach(); A().render(); };
 boot();
