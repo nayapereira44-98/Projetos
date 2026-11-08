@@ -1,5 +1,7 @@
 # Rota Certa (v3, 08/11)
 
+O nome da rota é a AT da planilha (ex.: AT20261106C9V3G). No Início, "Renomear" troca o nome.
+
 Refeito do zero para ser limpo e prático, no estilo do Spoke. A versão anterior (v2) está em `../rota-certa-v2/`, em espera.
 
 ## Telas
@@ -7,7 +9,8 @@ Refeito do zero para ser limpo e prático, no estilo do Spoke. A versão anterio
 - **Mapa** (Leaflet + OpenStreetMap, sem chave): cada parada é um número na ordem da rota; a próxima fica maior, em azul; as feitas ficam verdes com ✓; as parciais ficam laranja; as não entregues, vermelhas. Tocar no número abre a parada com todos os pacotes (parada Shopee + código BR + complemento). A linha segue as ruas (OSRM) e, sem resposta, liga as paradas em linha reta. Embaixo fica o cartão da próxima parada, com "Navegar (Waze)" e "Entreguei".
 - **Bipar** (botão do meio): câmera aberta. Mostra o número da parada na rota, a parada Shopee, o endereço, a parte do carro e se já foi entregue, com "Entreguei este".
 - **Paradas**: Pendentes, Feitas e **Anotações**. Busca por parada, rua ou final do BR. "Copiar pendências" gera o texto para conferir no app da Shopee em casa.
-- **Carregar**: de trás para frente, como no Spoke. O card "Agora" mostra o pacote que vai em seguida (parada Shopee, código, endereço) e a parte do carro: **Fundo** (últimas paradas), **Meio** e **Frente** (primeiras paradas). "Bipar para carregar" marca no carro e diz onde colocar. É opcional tirar uma foto de cada parte do carro.
+- **Carregar** (funciona até sem planilha): no galpão, você bipa o pacote e o app sugere a parte do carro (Frente Esquerda, Frente Direita, Meio…, Fundo…; dá para editar). Essa parte vira a **posição oficial** do pacote e fica guardada pelo código. Para trocar, toque em outra parte. Sem planilha, o app enche uma parte de cada vez (20 pacotes por parte, ajustável); com a planilha, sugere pela ordem de entrega (primeiras entregas na Frente). Quando a planilha entra, o app cruza o código com o endereço e a ordem, e a posição não muda. Tocar numa parte mostra os pacotes dela e permite uma foto opcional da parte. A tela também mostra o que da rota ainda falta bipar e o que foi bipado fora da rota.
+- **Na entrega**: a próxima parada, a folha da parada e o Bipar mostram **"Localização no carro: Frente Esquerda"**.
 - **Histórico**: rotas finalizadas com entregues, não entregues e anotações, mais "Copiar resumo".
 
 ## Parada: entregar ou anotar

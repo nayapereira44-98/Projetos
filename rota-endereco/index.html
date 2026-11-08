@@ -144,6 +144,13 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 .zone { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; border-radius: 10px; padding: 6px 10px; }
 .z1 { background: #eef2ff; color: #3730a3; } .z2 { background: #ecfeff; color: #0e7490; } .z3 { background: #f0fdf4; color: #15803d; }
 @media (prefers-color-scheme: dark) { .z1 { background: #232a4d; color: #b4c0ff; } .z2 { background: #12343a; color: #8de1ee; } .z3 { background: #15301f; color: #8ee0a8; } }
+.zgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ztile { min-height: 76px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 10px 14px; text-align: left; }
+.ztile b { font-size: 1rem; } .ztile span { font-size: .82rem; font-weight: 500; opacity: .8; }
+.incar { display: inline-block; margin-top: 4px; background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 3px 8px; font-size: .86rem; }
+.zpick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.zpick button { min-height: 40px; font-size: .86rem; padding: 0 8px; }
+.zpick button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .lrow { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; background: none; border-left: 0; border-right: 0; border-top: 0; border-radius: 0; font-weight: 400; min-height: 58px; width: 100%; }
 .lrow .ck { width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--line); display: grid; place-items: center; }
 .lrow.done .ck { background: var(--ok); border-color: var(--ok); color: #fff; }
@@ -224,6 +231,6 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261108a"></script>
+<script src="app.js?v=20261108b"></script>
 </body>
 </html>
