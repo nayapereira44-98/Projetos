@@ -166,7 +166,7 @@
     if (!R || !R.pkgs.length) return;
     derive();
     H.unshift({
-      id: R.id, name: R.name, created: R.created, finished: Date.now(),
+      id: R.id, name: routeTitle(), created: R.created, finished: Date.now(),
       stops: stops.map(a => ({ n: a.n, label: a.label, cep: cepOf(a), note: R.notes[a.key] || "", pkgs: a.pkgs.map(p => ({ tn: p.tn, s: p.shopeeStop ?? null, at: p.at || "", c: compl(p), st: R.st[p.tn] || null })) })),
     });
     H = H.slice(0, 80); saveH();
@@ -370,7 +370,21 @@
     R = sl.R || null; CAR.pk = sl.car?.pk || {}; CAR.err = sl.car?.err || []; CAR.cur = sl.car?.cur || 0;
     persistSlots();
   }
-  const slotName = sl => sl.R?.name || (Object.keys(sl.car?.pk || {}).length || (sl.car?.err || []).length ? `Carregamento sem planilha` : "Nova rota");
+  // Nome da rota: o que você der (dá para renomear antes da planilha) e, quando a planilha entra, a AT ao lado.
+  const slotName = sl => {
+    const at = sl.R?.name || "";
+    if (sl.name) return at && at !== sl.name ? `${sl.name} · ${at}` : sl.name;
+    return at || (Object.keys(sl.car?.pk || {}).length || (sl.car?.err || []).length ? `Carregamento sem planilha` : "Nova rota");
+  };
+  const curSlot = () => (SLOTS || []).find(x => x.id === activeSlot) || null;
+  const routeTitle = () => (curSlot() ? slotName(curSlot()) : R?.name || "Rota Certa");
+  function openRename() {
+    const sl = curSlot();
+    openSheet(`<h2>Nome da rota</h2><p class="muted small">Dê um nome para não se perder (ex.: "Rota da manhã", "Cambuí"). Quando você subir a planilha, a AT aparece ao lado do nome.</p>
+      <input type="text" id="rName" maxlength="40" value="${esc(sl?.name || "")}" placeholder="${esc(R?.name || "Nome da rota")}">
+      <button type="button" class="pri full" data-renamesave="1">Salvar</button>`, "rename");
+    setTimeout(() => $("rName")?.focus(), 50);
+  }
   const slotInfo = sl => {
     const pk = sl.R?.pkgs || [], ok = pk.filter(p => sl.R.st?.[p.tn]?.s === "ok").length, car = Object.keys(sl.car?.pk || {}).length + (sl.car?.err || []).length;
     return [pk.length ? `${ok}/${pk.length} entregues` : "", car ? `${car} no carro` : "", !pk.length && !car ? "vazia" : ""].filter(Boolean).join(" · ");
@@ -563,9 +577,9 @@
   });
   function renderTop() {
     acctBtn();
-    if (!R) { $("tTitle").textContent = "Rota Certa"; $("tSub").textContent = "Rotas pelo endereço"; $("tProg").hidden = true; return; }
+    if (!R) { $("tTitle").textContent = curSlot()?.name || "Rota Certa"; $("tSub").textContent = "Rotas pelo endereço"; $("tProg").hidden = true; return; }
     const c = counts();
-    $("tTitle").textContent = R.name;
+    $("tTitle").textContent = routeTitle();
     const pr = window.RCApp?.remote?.presence || {}, on = R.shared ? Object.values(pr).filter(x => Date.now() - x.t < 150000).length : 0;
     $("tSub").textContent = `${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes${on > 1 ? ` · ${on} online` : ""}`;
     $("tProg").hidden = false; $("tBar").style.width = (c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1) + "%";
@@ -601,7 +615,7 @@
     const v = $("v-inicio");
     if (!R) {
       const showSlots = SLOTS && (SLOTS.length > 1 || Object.keys(CAR.pk || {}).length || (CAR.err || []).length);
-      v.innerHTML = `${showSlots ? slotsCard() : ""}<div class="hello"><h1>Olá! 👋</h1><p class="muted">O que você quer fazer${SLOTS && SLOTS.length > 1 ? " nesta nova rota" : ""}?</p></div>
+      v.innerHTML = `${showSlots ? slotsCard() : ""}<div class="hello">${curSlot()?.name || (SLOTS && SLOTS.length > 1) ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 style="font-size:1.4rem">${esc(slotName(curSlot()))}</h1><button type="button" class="ghost sm" data-rename="1">Renomear</button></div>` : `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1>Olá! 👋</h1><button type="button" class="ghost sm" data-rename="1">Dar nome à rota</button></div>`}<p class="muted">O que você quer fazer${SLOTS && SLOTS.length > 1 ? " nesta rota" : ""}?</p></div>
         <div class="actions">
           ${act(ICON.file, "Importar planilha da Shopee", "Excel (.xlsx) exportado do app", `data-pick="file"`)}
           ${act(ICON.box, "Carregar o veículo", Object.keys(CAR.pk).length ? `${Object.keys(CAR.pk).length} pacotes no carro` : "Bipe no galpão: o app diz onde colocar", `data-go="carregar"`)}
@@ -613,7 +627,7 @@
     }
     const c = counts(), nx = nextStop();
     v.innerHTML = `${SLOTS && SLOTS.length > 1 ? slotsCard() : ""}<div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="word-break:break-all">${esc(R.name)}</h2><button type="button" class="ghost sm" data-rename="1">Renomear</button></div><span class="muted small" style="margin-top:-8px">${ddmm(R.created)}</span>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="word-break:break-word">${esc(routeTitle())}</h2><button type="button" class="ghost sm" data-rename="1">Renomear</button></div><span class="muted small" style="margin-top:-8px">${ddmm(R.created)}</span>
         <div class="bar"><i style="width:${(c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1)}%"></i></div>
         <div class="stats"><div class="stat"><b>${c.sDone}/${c.sAll}</b><span>paradas</span></div><div class="stat"><b>${c.ok}/${c.pk}</b><span>entregues</span></div><div class="stat"><b>${c.fail}</b><span>não entregues</span></div></div>
         ${nx ? `<button type="button" class="pri full" data-go="mapa">Continuar · parada ${nx.n}</button>` : `<p class="muted">Todas as paradas resolvidas. Finalize a rota quando terminar.</p>`}
@@ -812,7 +826,7 @@
   }
   function renderMap() {
     const nx = nextStop(), c = counts();
-    $("mapTop").innerHTML = R ? `<b>${esc(R.name)}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
+    $("mapTop").innerHTML = R ? `<b>${esc(routeTitle())}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
     $("mNext").innerHTML = nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
       <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
@@ -1052,8 +1066,8 @@
     if (d.lay) { setLayout(d.lay); render(); return toast("Pronto. Pode bipar."); }
     if (d.carreset) { CAR.lay = null; CAR.car = null; saveCar(); return renderCarregar(); }
     if (d.carclear) return twoTap(t, () => { CAR.pk = {}; CAR.cur = 0; saveCar(); render(); toast("Carro vazio"); });
-    if (d.rename) { openSheet(`<h2>Nome da rota</h2><input type="text" id="rName" value="${esc(R.name)}"><button type="button" class="pri full" data-renamesave="1">Salvar</button>`, "rename"); setTimeout(() => $("rName")?.select(), 50); return; }
-    if (d.renamesave) { const v = $("rName").value.trim(); R.name = v || routeName(R.pkgs); R.customName = !!v; save(); closeSheet(); render(); return toast("Nome salvo"); }
+    if (d.rename) return openRename();
+    if (d.renamesave) { const v = $("rName").value.trim(), sl = curSlot(); if (sl) sl.name = v || null; persistSlots(); closeSheet(); render(); return toast(v ? "Nome salvo" : "Nome removido"); }
     if (d.zcam != null) { zoneCamFor = +d.zcam; return $("zoneCam").click(); }
     if (d.filter) { listFilter = d.filter; listQ = ""; return renderParadas(); }
     if (d.copy === "pend") return copy(pendText(stops, R.name));
