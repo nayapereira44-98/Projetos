@@ -254,6 +254,36 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 
 #toast { position: fixed; left: 16px; right: 16px; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 3000; background: var(--ink); color: var(--surface); padding: 12px 14px; border-radius: 12px; text-align: center; font-weight: 600; max-width: 600px; margin: 0 auto; }
 .hide-input { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+
+/* ajustes de uso no celular e acessibilidade (12/11): só tamanho, contraste e foco; nada muda de lugar nem de cor com significado */
+:root { --muted: #5b6472; }
+@media (prefers-color-scheme: dark) { :root { --muted: #9ca3af; } }
+.chip.ok { color: #15803d; }
+@media (prefers-color-scheme: dark) { .chip.ok { color: var(--ok); } }
+/* alvos de toque de pelo menos 44 px */
+.sm, .zpick button, .seg button, .reasons button, .tipcats button { min-height: 44px; }
+.bell, .acct, .sheet-h .x { width: 44px; height: 44px; min-height: 44px; }
+.ck-act button, .ck-row button { min-height: 40px; }
+.next [data-navset] { min-height: 44px !important; }
+/* botões pequenos dentro do texto (Sair, ATs, puxador do cartão): área de toque maior, sem mudar o visual */
+.ghost.sm, .next-grab, .linkbtn, .msg-who { position: relative; }
+.ghost.sm[style*="min-height:0"]::after, .linkbtn::after, .msg-who::after { content: ""; position: absolute; inset: -11px -6px; }
+.next-grab::after { content: ""; position: absolute; left: -24px; right: -24px; top: -12px; bottom: 0; }
+/* letras pequenas um pouco maiores para ler ao sol */
+nav.tabs a, nav.tabs button { font-size: .75rem; }
+.pkg .sp small { font-size: .68rem; }
+.msg-h, .linkbtn { font-size: .75rem; }
+/* folha: cabe na parte visível do Safari e não arrasta a página de trás */
+.sheet { max-height: 88dvh; overscroll-behavior: contain; }
+.sheet-h > div, .stop > span, .act > span { min-width: 0; }
+.addr { overflow-wrap: anywhere; }
+/* foco visível para teclado e leitores de tela */
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+nav.tabs .bipbtn:focus-visible { outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  button:active, .btn:active { transform: none; }
+}
 </style>
 </head>
 <body class="locked">
@@ -292,7 +322,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <!-- Comunidade -->
 <section class="view" id="v-comunidade" hidden></section>
 
-<nav class="tabs" id="tabs">
+<nav class="tabs" id="tabs" aria-label="Telas">
   <a href="#inicio" data-tab="inicio"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</a>
   <a href="#mapa" data-tab="mapa"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Mapa</a>
   <button type="button" class="bipbtn" data-bip="consulta"><span class="c"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"/></svg></span>Bipar</button>
@@ -301,21 +331,21 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 </nav>
 
 <div id="bip" hidden>
-  <video id="bipVideo" playsinline muted autoplay></video>
+  <video id="bipVideo" playsinline muted autoplay aria-label="Câmera para bipar"></video>
   <div class="bip-frame"></div>
   <div class="bip-top"><button type="button" class="sm" id="bipClose">Fechar</button><span id="bipCount"></span></div>
   <div class="bip-mode" id="bipMode"></div>
   <div class="bip-bottom"><div id="bipRes"></div><button type="button" class="full" id="bipErr" data-errpkg="1" hidden>Pacote com erro (não leu)</button></div>
 </div>
-<div id="sheetBg" class="sheet-bg" hidden><div class="sheet" id="sheet"></div></div>
-<div id="toast" hidden></div>
-<input id="file" class="hide-input" type="file" accept=".xlsx">
-<input id="zoneCam" class="hide-input" type="file" accept="image/*" capture="environment">
+<div id="sheetBg" class="sheet-bg" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<input id="file" class="hide-input" type="file" accept=".xlsx" aria-label="Planilha da Shopee">
+<input id="zoneCam" class="hide-input" type="file" accept="image/*" capture="environment" aria-label="Foto da parte do carro">
 
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261112b"></script>
-<script type="module" src="sync.js?v=20261110d"></script>
+<script src="app.js?v=20261112c"></script>
+<script type="module" src="sync.js?v=20261112c"></script>
 </body>
 </html>

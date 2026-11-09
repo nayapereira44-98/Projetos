@@ -62,9 +62,9 @@ onAuthStateChanged(auth, u => {
 const loginForm = () => `
     <button type="button" class="full" id="lgGoogle"><b>G</b>&nbsp; Entrar com Google</button>
     <div class="muted small" style="text-align:center">ou</div>
-    <input type="text" id="lgEmail" placeholder="E-mail" autocomplete="email" inputmode="email" autocapitalize="off">
-    <input type="text" id="lgPass" placeholder="Senha (mínimo 6)" autocomplete="current-password" style="-webkit-text-security:disc">
-    <input type="text" id="lgName" placeholder="Seu nome (para criar conta)" autocomplete="given-name" hidden>
+    <input type="text" id="lgEmail" aria-label="E-mail" placeholder="E-mail" autocomplete="email" inputmode="email" autocapitalize="off">
+    <input type="text" id="lgPass" aria-label="Senha" placeholder="Senha (mínimo 6)" autocomplete="current-password" style="-webkit-text-security:disc">
+    <input type="text" id="lgName" aria-label="Seu nome" placeholder="Seu nome (para criar conta)" autocomplete="given-name" hidden>
     <div class="row2"><button type="button" class="pri" id="lgIn">Entrar</button><button type="button" id="lgNew">Criar conta</button></div>
     <button type="button" class="ghost full sm" id="lgForgot">Esqueci a senha</button>
     <p class="small" id="lgMsg" style="color:var(--bad)"></p>`;
@@ -313,7 +313,7 @@ const show = (html, kind) => { openKind = kind; A().openSheet(html, kind); };
 // Tela da equipe.
 function openTeam() {
   if (!user) return openLogin();
-  show(`<div class="sheet-h"><span class="num">${inv.team.length}</span><div><div class="addr">Amigos e equipe</div><div class="muted small">Quem você adicionou e aceitou</div></div><button type="button" class="x" data-close="1">✕</button></div>
+  show(`<div class="sheet-h"><span class="num">${inv.team.length}</span><div><div class="addr">Amigos e equipe</div><div class="muted small">Quem você adicionou e aceitou</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">✕</button></div>
     ${inv.got.length ? `<button type="button" class="pri full" data-sync="openNotif">🔔 ${inv.got.length} convite${inv.got.length > 1 ? "s" : ""} para você</button>` : ""}
     <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${esc(m.email || "")}</span></span><button type="button" class="ghost sm danger" data-sync="removeMember" data-id="${esc(m.inv)}">Remover</button></div>`).join("") || `<p class="muted">Ninguém ainda. Convide abaixo ou adicione pessoas pela Comunidade.</p>`}</div>
     <h3>Convidar alguém</h3>
@@ -407,7 +407,7 @@ async function openRouteTeam() {
   const online = uid => remote.presence[uid] && now - remote.presence[uid].t < 150000;
   const inRoute = uid => (t.members || []).includes(uid);
   const called = uid => inv.sent.some(x => x.type === "route" && x.routeId === R.shared && x.toUid === uid);
-  show(`<div class="sheet-h"><span class="num">${(t.members || [user.uid]).length}</span><div><div class="addr">Equipe desta rota</div><div class="muted small">${esc(R.name)}</div></div><button type="button" class="x" data-close="1">✕</button></div>
+  show(`<div class="sheet-h"><span class="num">${(t.members || [user.uid]).length}</span><div><div class="addr">Equipe desta rota</div><div class="muted small">${esc(R.name)}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">✕</button></div>
     ${R.shared ? `<div class="list">${(t.members || []).map(uid => `<div class="small">${online(uid) ? "🟢" : "⚪"} <b>${esc(t.names?.[uid] || "?")}</b>${uid === user.uid ? " (você)" : ""} · ${online(uid) ? "online" : "offline"}</div>`).join("")}</div>` : `<p class="muted small">Esta rota ainda é só sua. Chame alguém da equipe para fazer junto.</p>`}
     <h3>Chamar da minha equipe</h3>
     <div class="list">${inv.team.map(m => `<div class="pkg" style="grid-template-columns:auto 1fr auto"><span class="num sm idle">${esc((m.name || "?")[0].toUpperCase())}</span><span><b>${esc(m.name || "")}</b><br><span class="muted small">${inRoute(m.uid) ? "já está na rota" : called(m.uid) ? "chamado, esperando aceitar" : esc(m.email || "")}</span></span>${inRoute(m.uid) || called(m.uid) ? "" : `<button type="button" class="pri sm" data-sync="callToRoute" data-uid="${esc(m.uid)}">Chamar</button>`}</div>`).join("") || `<p class="muted small">Sua equipe está vazia.</p>`}</div>
@@ -465,7 +465,7 @@ async function community(el) {
       <div class="top-r"><button type="button" class="sm" data-sync="openFriends">Amigos${inv.team.length ? ` (${inv.team.length})` : ""}</button><button type="button" class="sm" data-sync="openProfile">Meu perfil</button></div></div>
     <button type="button" class="pri full" data-sync="newTip">+ Deixar uma dica</button>
     <div class="tipcats"><button type="button" class="${tipCat === "all" ? "on" : ""}" data-sync="tipFilter" data-cat="all">Todas</button>${CATS.map(c => `<button type="button" class="${tipCat === c.id ? "on" : ""}" data-sync="tipFilter" data-cat="${c.id}">${c.ic} ${c.name}</button>`).join("")}</div>
-    <input type="search" id="tipQ" value="${esc(tipQ)}" placeholder="Buscar: rua, bairro, condomínio…" autocomplete="off">
+    <input type="search" id="tipQ" aria-label="Buscar dicas" value="${esc(tipQ)}" placeholder="Buscar: rua, bairro, condomínio…" autocomplete="off">
     <div class="list" id="cmList"><p class="muted small" style="text-align:center">Carregando…</p></div>
     <p class="muted small">Você aparece como <b>${esc(comm.me?.alias || defAlias(user.uid))}</b>. Seu nome só aparece para amigos.</p>`;
   $("tipQ").oninput = () => { tipQ = $("tipQ").value; drawChat(); };
@@ -542,7 +542,7 @@ async function openPerson(btn) {
   const p = await profileOf(uid), fr = friendOf(uid);
   const asked = inv.sent.some(x => x.toUid === uid && x.type === "team");
   const askedMe = inv.got.find(x => x.from === uid && x.type === "team");
-  show(`<div class="sheet-h"><span class="num">${esc((fr?.name || p.alias || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(fr ? fr.name : p.alias)}</div><div class="muted small">${esc(fr ? p.alias + " · " + (fr.email || "") : "apelido na comunidade")}</div></div><button type="button" class="x" data-close="1">✕</button></div>
+  show(`<div class="sheet-h"><span class="num">${esc((fr?.name || p.alias || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(fr ? fr.name : p.alias)}</div><div class="muted small">${esc(fr ? p.alias + " · " + (fr.email || "") : "apelido na comunidade")}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">✕</button></div>
     ${[p.city && "📍 " + p.city, p.vehicle && "🚗 " + p.vehicle].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join(" ")}
     ${p.bio ? `<p>${esc(p.bio)}</p>` : ""}
     ${fr ? `<p class="muted small">🤝 Vocês são amigos.</p>` : askedMe ? `<button type="button" class="pri full" data-sync="acceptInvite" data-id="${esc(askedMe.id)}">Aceitar pedido de amizade</button>` : asked ? `<p class="muted small">Pedido de amizade enviado. Esperando aceitar.</p>` : `<button type="button" class="pri full" data-sync="addFriend" data-uid="${esc(uid)}">Adicionar como amigo</button><p class="muted small">Quando a pessoa aceitar, vocês veem o nome um do outro e podem se chamar para rotas.</p>`}`, "person");
