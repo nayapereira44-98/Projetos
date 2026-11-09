@@ -107,6 +107,13 @@ nav.tabs .bipbtn { color: var(--ink); }
 .next { position: absolute; left: 12px; right: 12px; bottom: calc(82px + env(safe-area-inset-bottom, 0px)); z-index: 500; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 14px; display: grid; gap: 10px; }
 .next-h { display: grid; grid-template-columns: 46px 1fr; gap: 12px; align-items: center; text-align: left; background: none; border: 0; padding: 0; min-height: 0; font-weight: 400; color: var(--ink); }
 .next-h .muted { font-size: .82rem; }
+.next-grab { background: none; border: 0; min-height: 0; padding: 0 0 2px; margin: -8px auto -4px; width: 80px; display: grid; place-items: center; height: 18px; }
+.next-grab .grab { margin: 0; }
+.next.min { padding: 8px 14px 10px; gap: 4px; }
+.next.min > :not(.next-grab):not(.next-h) { display: none; }
+.next.min .next-h { grid-template-columns: 34px 1fr; }
+.next.min .next-h .num { width: 34px; height: 34px; font-size: .95rem; }
+.next.min .next-h .muted, .next.min .next-h br, .next.min .next-h .incar { display: none; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .pin { width: 30px; height: 30px; border-radius: 50%; background: var(--surface); color: #111827; border: 2.5px solid #2563eb; display: grid; place-items: center; font: 700 12px/1 -apple-system, system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
@@ -303,7 +310,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261111d"></script>
+<script src="app.js?v=20261112a"></script>
 <script type="module" src="sync.js?v=20261110d"></script>
 </body>
 </html>

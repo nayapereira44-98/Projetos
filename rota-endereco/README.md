@@ -70,3 +70,5 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 ## Parada única e raio do agrupamento (11/11)
 - Endereços próximos viram **uma parada só** no mapa: um número, o total de pacotes, e a folha lista cada endereço com os pacotes, o botão Google (endereço exato), Entreguei, Problema e "Entreguei todos".
 - **Raio escolhido por você**: no botão de agrupar do mapa, "Juntar automático as paradas a até": Desligado, 20, 30, 50 (padrão), 80, 100, 150, 200 m ou outro valor (5 a 1000 m). A escolha fica salva (`rc3:grpR`) e vale para as próximas planilhas.
+- **Mapa limpo com agrupamento**: quando a rota tem paradas agrupadas, os números ficam todos no mesmo estilo (azul = próxima, verde = feita, laranja = parcial, vermelho = não entregue), sem as cores de grupo e de AT e sem linhas tracejadas. As outras rotas em andamento aparecem pequenas e apagadas.
+- **Cartão da próxima parada**: toque no tracinho de cima (ou arraste para baixo) para diminuir; ele fica só com o número e o endereço. Toque de novo (ou arraste para cima) para abrir. A escolha fica salva (`rc3:nextMin`).
