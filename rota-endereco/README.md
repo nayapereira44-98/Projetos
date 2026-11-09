@@ -66,3 +66,7 @@ Tudo fica no celular: `rc3:route` (rota aberta), `rc3:hist` (histórico) e as fo
 ## Nome da rota antes da planilha (10/11)
 - Toda rota em andamento pode ser renomeada a qualquer momento. No Início, use "Dar nome à rota" ou "Renomear", mesmo antes de subir a planilha (por exemplo, "Rota da manhã").
 - Quando a planilha entra, a AT aparece ao lado do nome: "Rota da manhã · AT20261106C9V3G". Esse nome aparece no topo, no mapa, na lista de rotas em andamento e no histórico. Se você apagar o nome, fica só a AT.
+
+## Parada única e raio do agrupamento (11/11)
+- Endereços próximos viram **uma parada só** no mapa: um número, o total de pacotes, e a folha lista cada endereço com os pacotes, o botão Google (endereço exato), Entreguei, Problema e "Entreguei todos".
+- **Raio escolhido por você**: no botão de agrupar do mapa, "Juntar automático as paradas a até": Desligado, 20, 30, 50 (padrão), 80, 100, 150, 200 m ou outro valor (5 a 1000 m). A escolha fica salva (`rc3:grpR`) e vale para as próximas planilhas.

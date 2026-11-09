@@ -107,7 +107,7 @@
     const known = (R.order || []).filter(k => byKey.has(k));
     const set = new Set(known);
     stops = known.map(k => byKey.get(k)).concat(A.filter(a => !set.has(a.key)));
-    // Paradas agrupadas (a até 50 m, ou juntadas à mão) viram uma parada só: mesmo número.
+    // Paradas agrupadas (raio automático escolhido, padrão 50 m, ou juntadas à mão) viram uma parada só: mesmo número.
     let n = 0; const gN = new Map();
     stops.forEach(a => { const g = (R.groups || []).find(x => x.keys.includes(a.key)); if (g) { if (!gN.has(g.id)) gN.set(g.id, ++n); a.n = gN.get(g.id); } else a.n = ++n; });
   }
@@ -270,7 +270,7 @@
     shg = gid; sh = null;
     const mem = membersOf(g), pk = mem.reduce((t, x) => t + x.pkgs.length, 0), left = mem.reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0);
     const pkRow = p => { const s = R.st[p.tn]; return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue" : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : ""}</div>`; };
-    openSheet(`<div class="sheet-h"><span class="num">${mem[0].n}</span><div><div class="addr">Parada ${mem[0].n} · ${mem.length} endereços a pé</div><div class="muted small">${left} de ${pk} pacotes faltando · até 50 m</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
+    openSheet(`<div class="sheet-h"><span class="num">${mem[0].n}</span><div><div class="addr">Parada ${mem[0].n} · ${mem.length} endereços a pé</div><div class="muted small">${left} de ${pk} pacotes faltando ${g.auto && AUTO_R ? ` · até ${AUTO_R} m` : g.auto ? "" : " · juntadas à mão"}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       ${mem.map(a => `<div class="card flat gaddr${done(a) ? " gdone" : ""}">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(a.label)}</b><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))} · ${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</div></div>${done(a) ? `<span class="chip ok">${ICON.check}</span>` : ""}</div>
         <div class="pkgs">${a.pkgs.map(pkRow).join("")}</div>
@@ -895,27 +895,30 @@
     toast(`Grupo a pé com ${keys.length} paradas ✓`);
   }
   // Automático: paradas pendentes a até 50 m umas das outras viram um grupo (refaz só os grupos automáticos).
-  const AUTO_R = 50;
+  let AUTO_R = +store.get("rc3:grpR", 50) || 0; // 0 = automático desligado
   function autoGroup(silent) {
     R.groups = (R.groups || []).filter(g => !g.auto);
     const manual = new Set(R.groups.flatMap(g => g.keys));
-    const pend = stops.filter(a => !done(a) && !manual.has(a.key)), used = new Set();
+    const pend = AUTO_R > 0 ? stops.filter(a => !done(a) && !manual.has(a.key)) : [], used = new Set();
     let n = 0;
     pend.forEach(a => {
       if (used.has(a.key)) return;
       const grp = [a]; used.add(a.key);
-      // raio de 50 m a partir da primeira parada do grupo (na ordem da rota)
+      // raio escolhido (AUTO_R) a partir da primeira parada do grupo (na ordem da rota)
       pend.forEach(b => { if (!used.has(b.key) && Core.hav(a, b) <= AUTO_R) { grp.push(b); used.add(b.key); } });
       if (grp.length > 1) { grp.sort((x, y) => stops.indexOf(x) - stops.indexOf(y)); addGroup(grp.map(x => x.key), true); n++; }
     });
     if (silent) { derive(); return n; }
     save(); closeSheet(); render();
-    toast(n ? `${n} grupo${n > 1 ? "s" : ""} a pé (até 50 m) ✓` : "Nenhuma parada a até 50 m de outra.");
+    toast(!AUTO_R ? "Agrupamento automático desligado" : n ? `${n} grupo${n > 1 ? "s" : ""} a pé (até ${AUTO_R} m) ✓` : `Nenhuma parada a até ${AUTO_R} m de outra.`);
   }
   function openGroupPick() {
     const na = (R.groups || []).filter(g => g.auto).length, nm = (R.groups || []).filter(g => !g.auto).length;
     openSheet(`<h2>Agrupar paradas a pé</h2>
-      <button type="button" class="pri full" data-grpauto="1">Automático: juntar paradas a até 50 m</button>
+      <p class="small muted" style="margin-bottom:6px">Juntar automático as paradas a até:</p>
+      <div class="reasons">${[0, 20, 30, 50, 80, 100, 150, 200].map(m => `<button type="button" class="${AUTO_R === m ? "on" : ""}" data-grpr="${m}">${m ? m + " m" : "Desligado"}</button>`).join("")}</div>
+      <div class="row2"><input id="grpRin" type="number" inputmode="numeric" min="5" max="1000" placeholder="Outro (metros)" value="${[0, 20, 30, 50, 80, 100, 150, 200].includes(AUTO_R) ? "" : AUTO_R}"><button type="button" data-grpr="custom">Usar</button></div>
+      ${AUTO_R ? `<button type="button" class="pri full" data-grpauto="1">Refazer agora: juntar paradas a até ${AUTO_R} m</button>` : ""}
       <button type="button" class="full" data-grpmanual="1">Manual: eu escolho no mapa</button>
       ${na || nm ? `<p class="muted small">Agora: ${na} grupo${na === 1 ? "" : "s"} automático${na === 1 ? "" : "s"} e ${nm} manua${nm === 1 ? "l" : "is"}.</p>
       ${na ? `<button type="button" class="ghost full sm" data-grpclear="auto">Desfazer os grupos automáticos</button>` : ""}
@@ -1173,6 +1176,7 @@
     if (d.slotnew) return newSlot();
     if (d.grpok) return makeGroup();
     if (d.grpauto) return autoGroup();
+    if (d.grpr) { const v = d.grpr === "custom" ? Math.round(+($("grpRin")?.value || 0)) : +d.grpr; if (d.grpr === "custom" && !(v >= 5 && v <= 1000)) return toast("Digite de 5 a 1000 metros"); AUTO_R = v; store.set("rc3:grpR", v); if (R?.pkgs?.length) return autoGroup(); return openGroupPick(); }
     if (d.grpmanual) { closeSheet(); grpMode = true; grpSel = new Set(); renderMap(); return toast("Toque nas paradas que você faz a pé e depois em Agrupar"); }
     if (d.grpclear) { R.groups = d.grpclear === "auto" ? (R.groups || []).filter(g => !g.auto) : []; save(); closeSheet(); render(); return toast("Grupos desfeitos"); }
     if (d.grpcancel) { grpMode = false; grpSel = new Set(); return renderMap(); }
