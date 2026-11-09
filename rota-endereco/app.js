@@ -269,10 +269,11 @@
     const g = (R.groups || []).find(x => x.id === gid); if (!g) return;
     shg = gid; sh = null;
     const mem = membersOf(g), pk = mem.reduce((t, x) => t + x.pkgs.length, 0), left = mem.reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0);
-    const pkRow = p => { const s = R.st[p.tn]; return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue" : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : ""}</div>`; };
+    const multiAt = routeAts().length > 1;
+    const pkRow = p => { const s = R.st[p.tn]; return `<div class="pkg">${multiAt ? `<span class="atdot" style="background:${atColorOf(p.at || "Manual")}" title="${esc(atLabel(p.at || "Manual"))}"></span>` : ""}<div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue" : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : ""}</div>`; };
     openSheet(`<div class="sheet-h"><span class="num">${mem[0].n}</span><div><div class="addr">Parada ${mem[0].n} · ${mem.length} endereços a pé</div><div class="muted small">${left} de ${pk} pacotes faltando ${g.auto && AUTO_R ? ` · até ${AUTO_R} m` : g.auto ? "" : " · juntadas à mão"}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       ${mem.map(a => `<div class="card flat gaddr${done(a) ? " gdone" : ""}">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(a.label)}</b><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))} · ${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</div></div>${done(a) ? `<span class="chip ok">${ICON.check}</span>` : ""}</div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(a.label)}</b><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))} · ${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</div>${multiAt ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${[...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<span class="chip"><span class="atdot" style="background:${atColorOf(at)}"></span>…${esc(String(at).slice(-4))}</span>`).join("")}</div>` : ""}</div>${done(a) ? `<span class="chip ok">${ICON.check}</span>` : ""}</div>
         <div class="pkgs">${a.pkgs.map(pkRow).join("")}</div>
         <div class="row3"><a class="btn sm pri" href="${gmapsAddr(a)}" target="_blank" rel="noopener">Google</a>${done(a) ? `<button type="button" class="sm danger" data-undo="${esc(a.key)}">Desfazer</button>` : `<button type="button" class="sm" data-okall="${esc(a.key)}">Entreguei</button>`}<button type="button" class="sm" data-stopone="${esc(a.key)}">Problema</button></div></div>`).join("")}
       ${left ? `<button type="button" class="pri full" data-okgroup="${esc(g.id)}">Entreguei todos (${left} pacote${left > 1 ? "s" : ""})</button>` : ""}
@@ -1009,6 +1010,14 @@
       drawToNext();
     }, err => { if (err.code === 1) { watch = null; toast("Sem permissão de localização. Libere nos ajustes do iPhone para ver onde você está."); } }, { enableHighAccuracy: true, maximumAge: 5000 });
   }
+  $("mStart")?.addEventListener("click", () => {
+    if (!R?.pkgs?.length) return toast("Suba a planilha primeiro.");
+    openSheet(`<h2>Começar a rota daqui</h2>
+      <p class="muted">O app usa a sua localização agora como ponto de partida: a parada mais perto vira a <b>1</b> e o resto da ordem é refeita a partir dela. Faça isso antes de carregar o carro, para a sugestão de posição seguir a ordem certa.</p>
+      ${R.pkgs.some(p => zoneOfPkg(p) != null) ? `<p class="small muted">Os pacotes que já estão no carro não mudam de lugar.</p>` : ""}
+      <button type="button" class="pri full" data-startnow="1">Usar minha localização agora</button>
+      <button type="button" class="ghost full" data-close="1">Cancelar</button>`, "start");
+  });
   $("mLocate").addEventListener("click", () => { startGps(); follow = true; if (here && map) map.setView([here.lat, here.lng], 17); else toast("Procurando sua localização…"); });
   $("mFit").addEventListener("click", () => { follow = false; fitAll(); });
   $("mGroup").addEventListener("click", () => { if (!R) return; if (grpMode) { grpMode = false; grpSel = new Set(); return renderMap(); } openGroupPick(); });
@@ -1222,6 +1231,10 @@
     if (d.hist != null) return openHist(+d.hist);
     if (d.histdel != null) return twoTap(t, () => { H.splice(+d.histdel, 1); saveH(); closeSheet(); render(); toast("Apagado"); });
     if (d.finish) return twoTap(t, () => { const c = counts(); archive(); render(); go("historico"); toast(`Rota guardada: ${c.ok} entregues${c.fail ? `, ${c.fail} pendências` : ""}`); });
+    if (d.startnow) { (async () => {
+      const pt = await getPos(8000); if (!pt) return toast("Sem localização. Libere a localização para este site.");
+      buildOrder(pt); save(); closeSheet(); fitted = false; render(); const nx = nextStop(); toast(nx ? `Pronto: a parada 1 é ${nx.label}` : "Ordem refeita");
+    })(); return toast("Pegando sua localização…"); }
     if (d.reopt) return twoTap(t, async () => {
       if (R.pkgs.some(p => zoneOfPkg(p) != null)) toast("A posição de cada pacote no carro continua a mesma.");
       const pt = await getPos(); if (!pt) return toast("Sem localização. Libere a localização para este site.");
