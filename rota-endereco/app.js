@@ -403,7 +403,7 @@
   function openRename() {
     const sl = curSlot();
     openSheet(`<h2>Nome da rota</h2><p class="muted small">Dê um nome para não se perder (ex.: "Rota da manhã", "Cambuí"). Quando você subir a planilha, a AT aparece ao lado do nome.</p>
-      <input type="text" id="rName" maxlength="40" value="${esc(sl?.name || "")}" placeholder="${esc(R?.name || "Nome da rota")}">
+      <input type="text" id="rName" aria-label="Nome da rota" maxlength="40" value="${esc(sl?.name || "")}" placeholder="${esc(R?.name || "Nome da rota")}">
       <button type="button" class="pri full" data-renamesave="1">Salvar</button>`, "rename");
     setTimeout(() => $("rName")?.focus(), 50);
   }
@@ -532,6 +532,7 @@
       const sc = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
       const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * sc); cv.height = Math.round(img.naturalHeight * sc);
       cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      try { URL.revokeObjectURL(img.src); } catch {}
       const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.72));
       const id = "car:" + zoneCamFor + ":" + Date.now();
       await idb.put(id, blob);
@@ -544,7 +545,7 @@
       const p = R?.pkgs.find(x => normTn(x.tn) === k || k.includes(normTn(x.tn)));
       return { k, p, a: p && byTn.get(p.tn) };
     }).sort((x, y) => (x.a?.n ?? 1e9) - (y.a?.n ?? 1e9));
-    openSheet(`<div class="sheet-h"><span class="num sm idle">${i + 1}</span><div><div class="addr">${esc(zName(i))}</div><div class="muted small">${items.length} pacote${items.length === 1 ? "" : "s"}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+    openSheet(`<div class="sheet-h"><span class="num sm idle">${i + 1}</span><div><div class="addr">${esc(zName(i))}</div><div class="muted small">${items.length} pacote${items.length === 1 ? "" : "s"}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       <div id="zImg"></div>
       <button type="button" class="sm" data-zcam="${i}">${CAR.zph?.[i] ? "Trocar a foto desta parte" : "Tirar foto desta parte (opcional)"}</button>
       <div class="list">${items.map(({ k, p, a }) => `<div class="pkg"><div class="sp"><small>${a ? "Parada" : "Shopee"}</small><b>${a ? a.n : p?.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(k)}</div><div class="meta">${a ? esc(a.label) + (p.shopeeStop != null ? " · Shopee " + p.shopeeStop : "") : "Ainda sem rota"}</div></div><div class="ck-act">${CAR.pk[k].v ? `<span class="chip warn">volumoso</span>` : ""}${p && resolved(p) ? `<span class="chip ok">entregue</span>` : ""}<button type="button" class="sm" data-ckedit="${esc(k)}">Editar</button><button type="button" class="sm danger" data-ckdel="${esc(k)}">Apagar</button></div></div>`).join("") || `<p class="muted">Nenhum pacote nesta parte.</p>`}</div>`, "zone");
@@ -589,7 +590,7 @@
     const u = window.RCApp?.user;
     if (!window.RCSync) return toast("Conectando… tente de novo em alguns segundos.");
     if (!u) return window.RCSync.openLogin();
-    openSheet(`<div class="sheet-h"><span class="num">${esc((u.name || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(u.name)}</div><div class="muted small">${esc(u.email)}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+    openSheet(`<div class="sheet-h"><span class="num">${esc((u.name || "?")[0].toUpperCase())}</span><div><div class="addr">${esc(u.name)}</div><div class="muted small">${esc(u.email)}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       ${R ? `<button type="button" class="pri full" data-sync="share">Chamar alguém para esta rota</button>` : ""}
       <button type="button" class="full" data-go="comunidade">Dicas da comunidade</button>
       <button type="button" class="full" data-sync="openTeam">Amigos e equipe</button>
@@ -677,7 +678,7 @@
     let rows = listFilter === "pend" ? stops.filter(a => !done(a)) : listFilter === "feitas" ? stops.filter(done) : stops.filter(a => a.pkgs.some(p => pst(p) === "fail") || R.notes[a.key]);
     if (q) rows = stops.filter(a => (/^\d{1,3}$/.test(q) ? a.shopeeStops.includes(+q) || a.n === +q : nrm(a.label).includes(q) || a.pkgs.some(p => p.tn.toUpperCase().includes(q))));
     v.innerHTML = `<div class="seg"><button type="button" class="${listFilter === "pend" ? "on" : ""}" data-filter="pend">Pendentes ${stops.filter(a => !done(a)).length}</button><button type="button" class="${listFilter === "feitas" ? "on" : ""}" data-filter="feitas">Feitas ${c.sDone}</button><button type="button" class="${listFilter === "notas" ? "on" : ""}" data-filter="notas">Anotações ${c.issues}</button></div>
-      <input type="search" id="lq" value="${esc(listQ)}" placeholder="Buscar: parada, rua ou final do BR" autocomplete="off">
+      <input type="search" id="lq" aria-label="Buscar parada, rua ou final do BR" value="${esc(listQ)}" placeholder="Buscar: parada, rua ou final do BR" autocomplete="off">
       ${listFilter === "notas" && !q ? `<button type="button" class="full" data-copy="pend">Copiar pendências para conferir na Shopee</button>` : ""}
       <div class="list">${rows.map(a => {
         const st = stateOf(a), fails = a.pkgs.filter(p => pst(p) === "fail").length, oks = a.pkgs.filter(p => pst(p) === "ok").length;
@@ -698,9 +699,9 @@
     const n = (CAR.err || []).length;
     const missing = R ? R.pkgs.filter(p => !resolved(p) && zoneOfPkg(p) == null) : [];
     const list = hits || missing;
-    openSheet(`<div class="sheet-h"><span class="num part">${n}</span><div><div class="addr">Pacotes com erro</div><div class="muted small">No banco da frente, esperando conferir</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+    openSheet(`<div class="sheet-h"><span class="num part">${n}</span><div><div class="addr">Pacotes com erro</div><div class="muted small">No banco da frente, esperando conferir</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       ${n ? `<p class="muted small">Pegue um desses pacotes, digite o final do código da etiqueta ou toque nele na lista abaixo.</p>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input type="search" id="errQ" placeholder="Final do código (ex.: 1640T)" autocapitalize="characters" autocomplete="off"><button type="button" class="pri" data-errfind="1">Buscar</button></div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input type="search" id="errQ" aria-label="Final do código do pacote" placeholder="Final do código (ex.: 1640T)" autocapitalize="characters" autocomplete="off"><button type="button" class="pri" data-errfind="1">Buscar</button></div>
       ${R ? `<h3>${hits ? "Achei estes" : `Da rota, ainda sem lugar no carro (${missing.length})`}</h3><div class="list">${list.slice(0, 60).map(p => { const a = byTn.get(p.tn); return `<button type="button" class="stop" data-errpick="${esc(normTn(p.tn))}"><span class="num sm idle">${a?.n ?? "?"}</span><span><span class="addr">Shopee ${p.shopeeStop ?? "s/n"} · ${tnHtml(p.tn)}</span><br><span class="muted small">${esc(a?.label || "")}</span></span><span></span></button>`; }).join("") || `<p class="muted small">Nenhum.</p>`}</div>` : `<p class="muted small">Sem planilha ainda: digite o código completo.</p>`}
       <button type="button" class="ghost full sm" data-errdrop="1">Não era pacote: tirar 1 da contagem</button>` : `<p class="muted">Nenhum pacote com erro. ✓</p>`}`, "err");
     setTimeout(() => $("errQ")?.addEventListener("keydown", e => { if (e.key === "Enter") document.querySelector("[data-errfind]")?.click(); }), 0);
@@ -759,7 +760,7 @@
     const h = H[i]; if (!h) return;
     const pk = h.stops.flatMap(s => s.pkgs), ok = pk.filter(p => p.st?.s === "ok").length;
     const bad = h.stops.filter(s => s.note || s.pkgs.some(p => p.st?.s !== "ok"));
-    openSheet(`<div class="sheet-h"><span class="num sm idle">${ddmm(h.created).slice(0, 2)}</span><div><div class="addr">${esc(h.name)}</div><div class="muted small">${ddmm(h.created)} ${hhmm(h.created)} – ${hhmm(h.finished)}</div></div><button type="button" class="x" data-close="1">${ICON.x}</button></div>
+    openSheet(`<div class="sheet-h"><span class="num sm idle">${ddmm(h.created).slice(0, 2)}</span><div><div class="addr">${esc(h.name)}</div><div class="muted small">${ddmm(h.created)} ${hhmm(h.created)} – ${hhmm(h.finished)}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       <div class="stats"><div class="stat"><b>${h.stops.length}</b><span>paradas</span></div><div class="stat"><b>${ok}/${pk.length}</b><span>entregues</span></div><div class="stat"><b>${bad.length}</b><span>pendências</span></div></div>
       <button type="button" class="pri full" data-copyhist="${i}">Copiar resumo para conferir na Shopee</button>
       ${bad.length ? `<h3>Pendências e anotações</h3><div class="list">${bad.map(s => `<div class="card flat" style="padding:12px;gap:6px"><b>Parada ${s.n} · ${esc(s.label)}</b>${s.note ? `<span class="small">📝 ${esc(s.note)}</span>` : ""}${s.pkgs.filter(p => p.st?.s !== "ok").map(p => `<span class="small">${p.st?.s === "fail" ? "✕" : "?"} Shopee ${p.s ?? "s/n"} · ${tnHtml(p.tn)} · ${esc(p.st?.r || "sem registro")}</span>`).join("")}</div>`).join("")}</div>` : `<p class="muted">Sem pendências.</p>`}
@@ -920,7 +921,7 @@
     openSheet(`<h2>Agrupar paradas a pé</h2>
       <p class="small muted" style="margin-bottom:6px">Juntar automático as paradas a até:</p>
       <div class="reasons">${[0, 20, 30, 50, 80, 100, 150, 200].map(m => `<button type="button" class="${AUTO_R === m ? "on" : ""}" data-grpr="${m}">${m ? m + " m" : "Desligado"}</button>`).join("")}</div>
-      <div class="row2"><input id="grpRin" type="number" inputmode="numeric" min="5" max="1000" placeholder="Outro (metros)" value="${[0, 20, 30, 50, 80, 100, 150, 200].includes(AUTO_R) ? "" : AUTO_R}"><button type="button" data-grpr="custom">Usar</button></div>
+      <div class="row2"><input id="grpRin" aria-label="Distância em metros" type="number" inputmode="numeric" min="5" max="1000" placeholder="Outro (metros)" value="${[0, 20, 30, 50, 80, 100, 150, 200].includes(AUTO_R) ? "" : AUTO_R}"><button type="button" data-grpr="custom">Usar</button></div>
       ${AUTO_R ? `<button type="button" class="pri full" data-grpauto="1">Refazer agora: juntar paradas a até ${AUTO_R} m</button>` : ""}
       <button type="button" class="full" data-grpmanual="1">Manual: eu escolho no mapa</button>
       ${na || nm ? `<p class="muted small">Agora: ${na} grupo${na === 1 ? "" : "s"} automático${na === 1 ? "" : "s"} e ${nm} manua${nm === 1 ? "l" : "is"}.</p>
@@ -1206,7 +1207,7 @@
     if (d.nextmin) return setNextMin(!nextMin);
     // Código bipado errado: editar ou apagar do carro.
     if (d.ckdel) return twoTap(t, () => { const z = CAR.pk[d.ckdel]?.z; delete CAR.pk[d.ckdel]; saveCar(); toast("Apagado do carro"); if (sheetOn === "zone" && z != null) openZone(z); else { closeSheet(); render(); } });
-    if (d.ckedit) { const k = d.ckedit; openSheet(`<h2>Editar código</h2><p class="muted small">Corrija o código do pacote (ex.: BR264026571640T).</p><input type="text" id="ckNew" value="${esc(k)}" autocapitalize="characters" autocomplete="off"><button type="button" class="pri full" data-cksave="${esc(k)}">Salvar</button><button type="button" class="ghost full" data-close="1">Cancelar</button>`, "ckedit"); return; }
+    if (d.ckedit) { const k = d.ckedit; openSheet(`<h2>Editar código</h2><p class="muted small">Corrija o código do pacote (ex.: BR264026571640T).</p><input type="text" id="ckNew" aria-label="Código do pacote" value="${esc(k)}" autocapitalize="characters" autocomplete="off"><button type="button" class="pri full" data-cksave="${esc(k)}">Salvar</button><button type="button" class="ghost full" data-close="1">Cancelar</button>`, "ckedit"); return; }
     if (d.cksave) { const old = d.cksave, nw = codeOf($("ckNew")?.value || ""); if (nw.length < 6) return toast("Código muito curto."); const v = CAR.pk[old]; if (!v) return closeSheet(); delete CAR.pk[old]; CAR.pk[nw] = v; saveCar(); toast("Código corrigido"); return openZone(v.z); }
     if (d.bzone != null) { bip.zone = +d.bzone; CAR.cur = bip.zone; saveCar(); return bipZonePanel(); }
     if (d.vol) { const k = carKey(bip.cur) || bip.cur, c0 = CAR.pk[k]; if (!c0) return; c0.v = !c0.v; saveCar(); tone("ok"); return bipShow(); }
