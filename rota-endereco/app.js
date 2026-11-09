@@ -853,17 +853,46 @@
   const GRP_COLORS = ["#9333ea", "#0891b2", "#c2410c", "#be123c", "#4d7c0f"];
   const groupOf = a => (R?.groups || []).find(g => g.keys.includes(a.key)) || null;
   const grpColor = g => GRP_COLORS[(R.groups || []).indexOf(g) % GRP_COLORS.length];
+  // Cria um grupo e põe as outras paradas dele logo depois da primeira, na sequência.
+  function addGroup(keys, auto) {
+    R.groups = (R.groups || []).map(g => ({ ...g, keys: g.keys.filter(k => !keys.includes(k)) })).filter(g => g.keys.length > 1);
+    R.groups.push({ id: "g" + Date.now() + Math.random().toString(36).slice(2, 5), keys, auto: !!auto });
+    const ord = (R.order && R.order.length ? R.order : stops.map(a => a.key)).slice(), first = keys[0], rest = keys.slice(1);
+    const base = ord.filter(k => !rest.includes(k)), i = base.indexOf(first);
+    R.order = base.slice(0, i + 1).concat(rest, base.slice(i + 1)); R.geom = null;
+  }
   function makeGroup() {
     const keys = stops.filter(a => grpSel.has(a.key)).map(a => a.key);
     if (keys.length < 2) return toast("Escolha pelo menos 2 paradas.");
-    R.groups = (R.groups || []).map(g => ({ ...g, keys: g.keys.filter(k => !keys.includes(k)) })).filter(g => g.keys.length > 1);
-    R.groups.push({ id: "g" + Date.now(), keys });
-    // Ordem: as outras paradas do grupo vão logo depois da primeira.
-    const ord = stops.map(a => a.key), first = keys[0], rest = keys.slice(1);
-    const base = ord.filter(k => !rest.includes(k)), i = base.indexOf(first);
-    R.order = base.slice(0, i + 1).concat(rest, base.slice(i + 1)); R.geom = null;
+    addGroup(keys, false);
     grpMode = false; grpSel = new Set(); save(); render();
     toast(`Grupo a pé com ${keys.length} paradas ✓`);
+  }
+  // Automático: paradas pendentes a até 50 m umas das outras viram um grupo (refaz só os grupos automáticos).
+  const AUTO_R = 50;
+  function autoGroup() {
+    R.groups = (R.groups || []).filter(g => !g.auto);
+    const manual = new Set(R.groups.flatMap(g => g.keys));
+    const pend = stops.filter(a => !done(a) && !manual.has(a.key)), used = new Set();
+    let n = 0;
+    pend.forEach(a => {
+      if (used.has(a.key)) return;
+      const grp = [a]; used.add(a.key);
+      // raio de 50 m a partir da primeira parada do grupo (na ordem da rota)
+      pend.forEach(b => { if (!used.has(b.key) && Core.hav(a, b) <= AUTO_R) { grp.push(b); used.add(b.key); } });
+      if (grp.length > 1) { grp.sort((x, y) => stops.indexOf(x) - stops.indexOf(y)); addGroup(grp.map(x => x.key), true); n++; }
+    });
+    save(); closeSheet(); render();
+    toast(n ? `${n} grupo${n > 1 ? "s" : ""} a pé (até 50 m) ✓` : "Nenhuma parada a até 50 m de outra.");
+  }
+  function openGroupPick() {
+    const na = (R.groups || []).filter(g => g.auto).length, nm = (R.groups || []).filter(g => !g.auto).length;
+    openSheet(`<h2>Agrupar paradas a pé</h2>
+      <button type="button" class="pri full" data-grpauto="1">Automático: juntar paradas a até 50 m</button>
+      <button type="button" class="full" data-grpmanual="1">Manual: eu escolho no mapa</button>
+      ${na || nm ? `<p class="muted small">Agora: ${na} grupo${na === 1 ? "" : "s"} automático${na === 1 ? "" : "s"} e ${nm} manua${nm === 1 ? "l" : "is"}.</p>
+      ${na ? `<button type="button" class="ghost full sm" data-grpclear="auto">Desfazer os grupos automáticos</button>` : ""}
+      <button type="button" class="ghost full sm danger" data-grpclear="all">Desfazer todos os grupos</button>` : ""}`, "grp");
   }
   function ungroup(id) { R.groups = (R.groups || []).filter(g => g.id !== id); save(); render(); toast("Grupo desfeito"); }
   function drawGroups() {
@@ -942,7 +971,7 @@
   }
   $("mLocate").addEventListener("click", () => { startGps(); follow = true; if (here && map) map.setView([here.lat, here.lng], 17); else toast("Procurando sua localização…"); });
   $("mFit").addEventListener("click", () => { follow = false; fitAll(); });
-  $("mGroup").addEventListener("click", () => { if (!R) return; grpMode = !grpMode; grpSel = new Set(); renderMap(); if (grpMode) toast("Toque nas paradas que você faz a pé e depois em Agrupar"); });
+  $("mGroup").addEventListener("click", () => { if (!R) return; if (grpMode) { grpMode = false; grpSel = new Set(); return renderMap(); } openGroupPick(); });
 
   // ---------- Bipar ----------
   // Câmera aberta: aponte para a etiqueta (código de barras ou QR). "consulta" mostra onde o pacote está e deixa
@@ -1111,6 +1140,9 @@
     if (d.slot) return switchSlot(d.slot);
     if (d.slotnew) return newSlot();
     if (d.grpok) return makeGroup();
+    if (d.grpauto) return autoGroup();
+    if (d.grpmanual) { closeSheet(); grpMode = true; grpSel = new Set(); renderMap(); return toast("Toque nas paradas que você faz a pé e depois em Agrupar"); }
+    if (d.grpclear) { R.groups = d.grpclear === "auto" ? (R.groups || []).filter(g => !g.auto) : []; save(); closeSheet(); render(); return toast("Grupos desfeitos"); }
     if (d.grpcancel) { grpMode = false; grpSel = new Set(); return renderMap(); }
     if (d.ungroup) { ungroup(d.ungroup); return closeSheet(); }
     if (d.atsel) { const ats = routeAts(); if (d.atsel === "all") R.atSel = null; else { let sel = R.atSel || ats.slice(); sel = sel.includes(d.atsel) ? sel.filter(x => x !== d.atsel) : sel.concat(d.atsel); R.atSel = !sel.length || sel.length === ats.length ? null : sel; } save(); renderMap(); return openMapSel(); }
