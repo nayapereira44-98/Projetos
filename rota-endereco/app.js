@@ -289,6 +289,7 @@
     }
     openSheet(`<div class="sheet-h"><span class="num ${st === "idle" ? "" : st}">${a.n}</span><div><div class="addr">${esc(a.label)}</div><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${shopeeTxt(a) ? `<span class="chip">Shopee ${esc(shopeeTxt(a))}</span>` : ""}${zt ? `<span class="chip acc">No carro: ${esc(zt)}</span>` : ""}${routeAts().length > 1 ? [...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<span class="chip"><span class="atdot" style="background:${atColorOf(at)}"></span>…${esc(String(at).slice(-4))}</span>`).join("") : ""}</div>
+      ${(() => { const g = groupOf(a); if (!g) return ""; const o = g.keys.map(k => byKey.get(k)).filter(x => x && x !== a); return `<div class="incar" style="background:#f3e8ff;color:#7e22ce">🚶 Grupo a pé com: ${o.map(x => `<b>${x.n}</b>`).join(", ")} · <button type="button" class="linkbtn" data-ungroup="${esc(g.id)}" style="color:#7e22ce">desfazer grupo</button></div>`; })()}
       ${R.shared && window.RCApp?.user && !done(a) ? (() => { const c = claimOf(a), mine = c && c.uid === me(); return `<button type="button" class="sm ${mine ? "pri" : ""}" data-sync="claim" data-key="${esc(key)}">${!c ? "Pego esta parada" : mine ? "✓ Você pegou esta · soltar" : `${esc(c.name)} pegou esta · pegar para mim`}</button>`; })() : ""}
       ${nav}<div class="pkgs">${pk}</div>${act}`, "stop");
   }
@@ -798,7 +799,8 @@
     const s = isNext ? 40 : 30;
     const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
     const multiAt = routeAts().length > 1;
-    const sty = multiAt && !isNext && st === "idle" ? `;background:${atColorOf(stopAt(a))};border-color:#fff;color:#fff` : multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : "";
+    const g = groupOf(a);
+    const sty = grpMode && grpSel.has(a.key) ? ";box-shadow:0 0 0 4px #f59e0b, 0 2px 6px rgba(0,0,0,.3)" : g && !isNext && st === "idle" ? `;border-color:${grpColor(g)};border-width:3.5px` : multiAt && !isNext && st === "idle" ? `;background:${atColorOf(stopAt(a))};border-color:#fff;color:#fff` : multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : "";
     return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${sty}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}${multiAt && new Set(a.pkgs.map(p => p.at || "Manual")).size > 1 ? `<span class="atmix">${[...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<i style="background:${atColorOf(at)}"></i>`).join("")}</span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
   // Outras rotas em andamento no mapa: todas, ou só as escolhidas. Cada uma com uma cor; tocar abre aquela rota.
@@ -844,22 +846,54 @@
       });
     });
   }
+  // ---------- agrupar paradas (manual) ----------
+  // No mapa, "Agrupar": toque nas paradas que dá para fazer a pé e confirme. As paradas do grupo passam a sair
+  // juntas na sequência (logo depois da primeira delas) e ficam ligadas no mapa.
+  let grpMode = false, grpSel = new Set(), grpLayer = null;
+  const GRP_COLORS = ["#9333ea", "#0891b2", "#c2410c", "#be123c", "#4d7c0f"];
+  const groupOf = a => (R?.groups || []).find(g => g.keys.includes(a.key)) || null;
+  const grpColor = g => GRP_COLORS[(R.groups || []).indexOf(g) % GRP_COLORS.length];
+  function makeGroup() {
+    const keys = stops.filter(a => grpSel.has(a.key)).map(a => a.key);
+    if (keys.length < 2) return toast("Escolha pelo menos 2 paradas.");
+    R.groups = (R.groups || []).map(g => ({ ...g, keys: g.keys.filter(k => !keys.includes(k)) })).filter(g => g.keys.length > 1);
+    R.groups.push({ id: "g" + Date.now(), keys });
+    // Ordem: as outras paradas do grupo vão logo depois da primeira.
+    const ord = stops.map(a => a.key), first = keys[0], rest = keys.slice(1);
+    const base = ord.filter(k => !rest.includes(k)), i = base.indexOf(first);
+    R.order = base.slice(0, i + 1).concat(rest, base.slice(i + 1)); R.geom = null;
+    grpMode = false; grpSel = new Set(); save(); render();
+    toast(`Grupo a pé com ${keys.length} paradas ✓`);
+  }
+  function ungroup(id) { R.groups = (R.groups || []).filter(g => g.id !== id); save(); render(); toast("Grupo desfeito"); }
+  function drawGroups() {
+    grpLayer?.remove(); grpLayer = null;
+    if (!map || !R?.groups?.length) return;
+    grpLayer = L.layerGroup().addTo(map);
+    R.groups.forEach(g => {
+      const pts = g.keys.map(k => byKey.get(k)).filter(a => a && !done(a)).map(a => [a.lat, a.lng]);
+      if (pts.length > 1) L.polyline(pts, { color: grpColor(g), weight: 4, opacity: 0.8, dashArray: "2 8", lineCap: "round", interactive: false }).addTo(grpLayer);
+    });
+  }
   function renderMap() {
     const nx = nextStop(), c = counts();
     $("mapTop").innerHTML = R ? `<b>${esc(routeTitle())}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
     $("mNext").innerHTML = nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
+      ${(() => { const g = groupOf(nx); if (!g) return ""; const o = g.keys.map(k => byKey.get(k)).filter(x => x && x !== nx && !done(x)); return o.length ? `<div class="incar" style="background:#f3e8ff;color:#7e22ce">🚶 A pé daqui: ${o.map(x => `<b>${x.n}</b> ${esc(x.label.split(",").slice(0, 2).join(","))}`).join(" · ")}</div>` : ""; })()}
       <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
       : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
     const nAt = routeAts().length, nSl = SLOTS ? SLOTS.filter(x => x.R?.pkgs?.length).length : 0;
     if (nAt > 1 || nSl > 1) $("mapTop").innerHTML += ` · <button type="button" class="ghost sm" data-mapselopen="1" style="min-height:0;padding:0 4px">${[nAt > 1 ? (R.atSel ? R.atSel.length + " de " + nAt + " ATs" : nAt + " ATs") : "", nSl > 1 ? (mapSel ? mapSel.length + " rotas" : "todas as rotas") : ""].filter(Boolean).join(" · ")} ▾</button>`;
+    if (grpMode) $("mapTop").innerHTML = `<b>Agrupar paradas a pé</b> · toque nas paradas (${grpSel.size} escolhida${grpSel.size === 1 ? "" : "s"})<div class="row2" style="margin-top:6px"><button type="button" class="pri sm" data-grpok="1">Agrupar</button><button type="button" class="sm" data-grpcancel="1">Cancelar</button></div>`;
     if (!map) return;
     layer.clearLayers();
     drawOtherRoutes();
+    drawGroups();
     if (R && !slotShown(activeSlot)) { lineL?.remove(); return; }
     stops.filter(a => a === nx || atShown(stopAt(a))).forEach(a => {
       const m = L.marker([a.lat, a.lng], { icon: pinIcon(a, a === nx), zIndexOffset: a === nx ? 1000 : done(a) ? 0 : 500 }).addTo(layer);
-      m.on("click", () => openStop(a.key));
+      m.on("click", () => { if (grpMode) { grpSel.has(a.key) ? grpSel.delete(a.key) : grpSel.add(a.key); return renderMap(); } openStop(a.key); });
     });
     drawLine();
     drawToNext();
@@ -908,6 +942,7 @@
   }
   $("mLocate").addEventListener("click", () => { startGps(); follow = true; if (here && map) map.setView([here.lat, here.lng], 17); else toast("Procurando sua localização…"); });
   $("mFit").addEventListener("click", () => { follow = false; fitAll(); });
+  $("mGroup").addEventListener("click", () => { if (!R) return; grpMode = !grpMode; grpSel = new Set(); renderMap(); if (grpMode) toast("Toque nas paradas que você faz a pé e depois em Agrupar"); });
 
   // ---------- Bipar ----------
   // Câmera aberta: aponte para a etiqueta (código de barras ou QR). "consulta" mostra onde o pacote está e deixa
@@ -1075,6 +1110,9 @@
     }
     if (d.slot) return switchSlot(d.slot);
     if (d.slotnew) return newSlot();
+    if (d.grpok) return makeGroup();
+    if (d.grpcancel) { grpMode = false; grpSel = new Set(); return renderMap(); }
+    if (d.ungroup) { ungroup(d.ungroup); return closeSheet(); }
     if (d.atsel) { const ats = routeAts(); if (d.atsel === "all") R.atSel = null; else { let sel = R.atSel || ats.slice(); sel = sel.includes(d.atsel) ? sel.filter(x => x !== d.atsel) : sel.concat(d.atsel); R.atSel = !sel.length || sel.length === ats.length ? null : sel; } save(); renderMap(); return openMapSel(); }
     if (d.mapsel) { const id = d.mapsel; mapSel = id === "all" ? null : (mapSel || SLOTS.map(x => x.id)); if (id !== "all") { mapSel = mapSel.includes(id) ? mapSel.filter(x => x !== id) : mapSel.concat(id); if (!mapSel.length || mapSel.length === SLOTS.length) mapSel = null; } store.set("rc3:mapsel", mapSel); renderMap(); return openMapSel(); }
     if (d.mapselopen) return openMapSel();
