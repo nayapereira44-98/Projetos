@@ -270,7 +270,8 @@
       const right = sh.mode === "issue"
         ? `<div class="seg" style="grid-auto-columns:auto"><button type="button" class="${(sh.sel[p.tn] || s?.s || "ok") === "ok" ? "on" : ""}" data-psel="${esc(p.tn)}|ok">Entregue</button><button type="button" class="${(sh.sel[p.tn] || s?.s) === "fail" ? "on" : ""}" data-psel="${esc(p.tn)}|fail">Não</button></div>`
         : s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue " + hhmm(s.t) : esc(s.r || "Não entregue")}${esc(byTxt(s))}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : `<span class="chip warn">não bipado</span>`;
-      return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${right}</div>`;
+      const atDot = routeAts().length > 1 ? `<span class="atdot" style="background:${atColorOf(p.at || "Manual")}" title="${esc(atLabel(p.at || "Manual"))}"></span>` : "";
+      return `<div class="pkg">${atDot}<div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${right}</div>`;
     }).join("");
     const nav = `<div class="row3"><a class="btn sm ${navPref === "gmaps" ? "pri" : ""}" href="${Core.links.gmaps(a)}" target="_blank" rel="noopener">Google</a><a class="btn sm ${navPref === "waze" ? "pri" : ""}" href="${Core.links.waze(a)}" target="_blank" rel="noopener">Waze</a><a class="btn sm ${navPref === "apple" ? "pri" : ""}" href="${Core.links.apple(a)}" target="_blank" rel="noopener">Apple</a></div>`;
     let act;
@@ -287,7 +288,7 @@
         <button type="button" class="full" data-stopmode="issue">Problema ou entrega parcial</button>`;
     }
     openSheet(`<div class="sheet-h"><span class="num ${st === "idle" ? "" : st}">${a.n}</span><div><div class="addr">${esc(a.label)}</div><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))}</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${shopeeTxt(a) ? `<span class="chip">Shopee ${esc(shopeeTxt(a))}</span>` : ""}${zt ? `<span class="chip acc">No carro: ${esc(zt)}</span>` : ""}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip">${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</span>${shopeeTxt(a) ? `<span class="chip">Shopee ${esc(shopeeTxt(a))}</span>` : ""}${zt ? `<span class="chip acc">No carro: ${esc(zt)}</span>` : ""}${routeAts().length > 1 ? [...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<span class="chip"><span class="atdot" style="background:${atColorOf(at)}"></span>…${esc(String(at).slice(-4))}</span>`).join("") : ""}</div>
       ${R.shared && window.RCApp?.user && !done(a) ? (() => { const c = claimOf(a), mine = c && c.uid === me(); return `<button type="button" class="sm ${mine ? "pri" : ""}" data-sync="claim" data-key="${esc(key)}">${!c ? "Pego esta parada" : mine ? "✓ Você pegou esta · soltar" : `${esc(c.name)} pegou esta · pegar para mim`}</button>`; })() : ""}
       ${nav}<div class="pkgs">${pk}</div>${act}`, "stop");
   }
@@ -798,7 +799,7 @@
     const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
     const multiAt = routeAts().length > 1;
     const sty = multiAt && !isNext && st === "idle" ? `;background:${atColorOf(stopAt(a))};border-color:#fff;color:#fff` : multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : "";
-    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${sty}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${sty}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}${multiAt && new Set(a.pkgs.map(p => p.at || "Manual")).size > 1 ? `<span class="atmix">${[...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<i style="background:${atColorOf(at)}"></i>`).join("")}</span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
   // Outras rotas em andamento no mapa: todas, ou só as escolhidas. Cada uma com uma cor; tocar abre aquela rota.
   const SLOT_COLORS = ["#2563eb", "#ea580c", "#7c3aed", "#0d9488", "#db2777", "#65a30d"];

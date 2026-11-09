@@ -138,6 +138,10 @@ nav.tabs .bipbtn { color: var(--ink); }
 .addr { font-weight: 700; font-size: 1.05rem; }
 .pkgs { display: grid; gap: 8px; }
 .pkg { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.pin .atmix { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); display: flex; gap: 2px; padding: 1px 3px; background: #fff; border-radius: 6px; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.pin .atmix i { width: 7px; height: 7px; border-radius: 50%; display: block; }
+.atdot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line); }
+.pkg:has(.atdot) { grid-template-columns: 12px auto 1fr auto; }
 .pkg .sp { background: var(--soft); border-radius: 10px; padding: 4px 8px; text-align: center; min-width: 54px; }
 .pkg .sp small { display: block; font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
 .pkg .sp b { font-size: 1.15rem; }
@@ -296,7 +300,7 @@ label.f { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
 <script src="vendor/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="../rota-certa/core.js?v=20261108a"></script>
-<script src="app.js?v=20261110h"></script>
+<script src="app.js?v=20261110i"></script>
 <script type="module" src="sync.js?v=20261110d"></script>
 </body>
 </html>
