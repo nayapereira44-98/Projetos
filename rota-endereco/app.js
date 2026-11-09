@@ -107,7 +107,9 @@
     const known = (R.order || []).filter(k => byKey.has(k));
     const set = new Set(known);
     stops = known.map(k => byKey.get(k)).concat(A.filter(a => !set.has(a.key)));
-    stops.forEach((a, i) => (a.n = i + 1));
+    // Paradas agrupadas (a até 50 m, ou juntadas à mão) viram uma parada só: mesmo número.
+    let n = 0; const gN = new Map();
+    stops.forEach(a => { const g = (R.groups || []).find(x => x.keys.includes(a.key)); if (g) { if (!gN.has(g.id)) gN.set(g.id, ++n); a.n = gN.get(g.id); } else a.n = ++n; });
   }
   // Rota em equipe: parada que outra pessoa pegou ("Pego esta") sai da sua sequência.
   const me = () => window.RCApp?.user?.uid || null;
@@ -205,6 +207,7 @@
     newRoute(pkgs, file);
     toast("Montando a rota pelas ruas…");
     buildOrder(await getPos());
+    autoGroup(true);
     save(); render(); go("mapa");
     toast(`${stops.length} paradas · ${pkgs.length} pacotes`);
   }
@@ -261,9 +264,25 @@
   // ---------- parada: ver, entregar, anotar ----------
   const REASONS = ["Ausente", "Endereço não encontrado", "Recusado", "Avariado", "Sem acesso", "Pacote não achado"];
   let sh = null; // { key, mode: "view" | "issue", sel: { tn: "ok" | "fail" }, reason }
+  let shg = null;
+  function openGroupSheet(gid) {
+    const g = (R.groups || []).find(x => x.id === gid); if (!g) return;
+    shg = gid; sh = null;
+    const mem = membersOf(g), pk = mem.reduce((t, x) => t + x.pkgs.length, 0), left = mem.reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0);
+    const pkRow = p => { const s = R.st[p.tn]; return `<div class="pkg"><div class="sp"><small>Shopee</small><b>${p.shopeeStop ?? "–"}</b></div><div><div class="tn">${tnHtml(p.tn)}</div>${compl(p) ? `<div class="meta">${esc(compl(p))}</div>` : ""}</div>${s ? `<span class="chip ${s.s === "ok" ? "ok" : "bad"}">${s.s === "ok" ? "Entregue" : esc(s.r || "Não entregue")}</span>` : pkgPlace(p) ? `<span class="chip acc">${esc(pkgPlace(p))}</span>` : ""}</div>`; };
+    openSheet(`<div class="sheet-h"><span class="num">${mem[0].n}</span><div><div class="addr">Parada ${mem[0].n} · ${mem.length} endereços a pé</div><div class="muted small">${left} de ${pk} pacotes faltando · até 50 m</div></div><button type="button" class="x" data-close="1" aria-label="Fechar">${ICON.x}</button></div>
+      ${mem.map(a => `<div class="card flat gaddr${done(a) ? " gdone" : ""}">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>${esc(a.label)}</b><div class="muted small">${esc([a.bairro, cepOf(a) && "CEP " + cepOf(a)].filter(Boolean).join(" · "))} · ${a.pkgs.length} pacote${a.pkgs.length > 1 ? "s" : ""}</div></div>${done(a) ? `<span class="chip ok">${ICON.check}</span>` : ""}</div>
+        <div class="pkgs">${a.pkgs.map(pkRow).join("")}</div>
+        <div class="row3"><a class="btn sm pri" href="${gmapsAddr(a)}" target="_blank" rel="noopener">Google</a>${done(a) ? `<button type="button" class="sm danger" data-undo="${esc(a.key)}">Desfazer</button>` : `<button type="button" class="sm" data-okall="${esc(a.key)}">Entreguei</button>`}<button type="button" class="sm" data-stopone="${esc(a.key)}">Problema</button></div></div>`).join("")}
+      ${left ? `<button type="button" class="pri full" data-okgroup="${esc(g.id)}">Entreguei todos (${left} pacote${left > 1 ? "s" : ""})</button>` : ""}
+      <button type="button" class="ghost full sm" data-ungroup="${esc(g.id)}">Separar estas paradas</button>`, "group");
+  }
   function openStop(key, mode) {
     const a = byKey.get(key); if (!a) return;
-    if (!sh || sh.key !== key || mode) sh = { key, mode: mode || "view", sel: {}, reason: R.notes[key + "#r"] || "" };
+    const gg = groupOf(a);
+    if (gg && !mode && !(sh && sh.key === key && sh.single)) return openGroupSheet(gg.id);
+    if (!sh || sh.key !== key || (mode && mode !== "single")) sh = { key, mode: mode === "single" || !mode ? "view" : mode, sel: {}, reason: R.notes[key + "#r"] || "", single: !!gg };
     const st = stateOf(a), zt = zonesTxt(a);
     const pk = a.pkgs.map(p => {
       const s = R.st[p.tn];
@@ -587,14 +606,16 @@
     $("tProg").hidden = false; $("tBar").style.width = (c.pk ? (c.ok + c.fail) / c.pk * 100 : 0).toFixed(1) + "%";
   }
   function render() {
-    derive(); renderTop();
+    derive();
+    if (R && R.groups === undefined && R.pkgs?.length) { autoGroup(true); store.set("rc3:route", R); persistSlots(); } renderTop();
     if (tab === "inicio") renderHome();
     if (tab === "paradas") renderParadas();
     if (tab === "carregar") renderCarregar();
     if (tab === "historico") renderHist();
     if (tab === "comunidade" && !$("cmList")) window.RCSync?.community($("v-comunidade"));
-    if (tab === "mapa") renderMap();
+    if (tab === "mapa") { try { renderMap(); } catch (e) { console.warn(e); } }
     if (sheetOn === "stop" && sh) openStop(sh.key);
+    if (sheetOn === "group" && shg) openGroupSheet(shg);
   }
 
   const ICON_TEAM = `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg>`;
@@ -793,7 +814,9 @@
   }
   let follow = false;
   function pinIcon(a, isNext) {
-    const st = stateOf(a), left = a.pkgs.filter(p => !resolved(p)).length;
+    const gg = groupOf(a), mem = gg ? membersOf(gg) : [a];
+    const st = gg ? (mem.every(done) ? "ok" : mem.some(x => stateOf(x) !== "idle") ? "part" : "idle") : stateOf(a);
+    const left = mem.reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0);
     const cls = isNext ? "next" : st === "idle" ? (otherClaim(a) ? "other" : "") : st;
     const multi = SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1;
     const s = isNext ? 40 : 30;
@@ -851,7 +874,10 @@
   // juntas na sequência (logo depois da primeira delas) e ficam ligadas no mapa.
   let grpMode = false, grpSel = new Set(), grpLayer = null;
   const GRP_COLORS = ["#9333ea", "#0891b2", "#c2410c", "#be123c", "#4d7c0f"];
-  const groupOf = a => (R?.groups || []).find(g => g.keys.includes(a.key)) || null;
+  const groupOf = a => (a && (R?.groups || []).find(g => g.keys.includes(a.key))) || null;
+  const membersOf = g => g.keys.map(k => byKey.get(k)).filter(Boolean).sort((x, y) => stops.indexOf(x) - stops.indexOf(y));
+  const headOf = g => { const m = membersOf(g); return m.find(x => !done(x)) || m[0]; };
+  const gmapsAddr = a => "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" + encodeURIComponent([a.label, a.pkgs[0]?.city].filter(Boolean).join(", "));
   const grpColor = g => GRP_COLORS[(R.groups || []).indexOf(g) % GRP_COLORS.length];
   // Cria um grupo e põe as outras paradas dele logo depois da primeira, na sequência.
   function addGroup(keys, auto) {
@@ -870,7 +896,7 @@
   }
   // Automático: paradas pendentes a até 50 m umas das outras viram um grupo (refaz só os grupos automáticos).
   const AUTO_R = 50;
-  function autoGroup() {
+  function autoGroup(silent) {
     R.groups = (R.groups || []).filter(g => !g.auto);
     const manual = new Set(R.groups.flatMap(g => g.keys));
     const pend = stops.filter(a => !done(a) && !manual.has(a.key)), used = new Set();
@@ -882,6 +908,7 @@
       pend.forEach(b => { if (!used.has(b.key) && Core.hav(a, b) <= AUTO_R) { grp.push(b); used.add(b.key); } });
       if (grp.length > 1) { grp.sort((x, y) => stops.indexOf(x) - stops.indexOf(y)); addGroup(grp.map(x => x.key), true); n++; }
     });
+    if (silent) { derive(); return n; }
     save(); closeSheet(); render();
     toast(n ? `${n} grupo${n > 1 ? "s" : ""} a pé (até 50 m) ✓` : "Nenhuma parada a até 50 m de outra.");
   }
@@ -901,15 +928,15 @@
     grpLayer = L.layerGroup().addTo(map);
     R.groups.forEach(g => {
       const pts = g.keys.map(k => byKey.get(k)).filter(a => a && !done(a)).map(a => [a.lat, a.lng]);
-      if (pts.length > 1) L.polyline(pts, { color: grpColor(g), weight: 4, opacity: 0.8, dashArray: "2 8", lineCap: "round", interactive: false }).addTo(grpLayer);
+      if (pts.length > 1) try { L.polyline(pts, { color: grpColor(g), weight: 4, opacity: 0.8, dashArray: "2 8", lineCap: "round", interactive: false }).addTo(grpLayer); } catch (e) {}
     });
   }
   function renderMap() {
     const nx = nextStop(), c = counts();
     $("mapTop").innerHTML = R ? `<b>${esc(routeTitle())}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
     $("mNext").innerHTML = nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
-      ${(() => { const g = groupOf(nx); if (!g) return ""; const o = g.keys.map(k => byKey.get(k)).filter(x => x && x !== nx && !done(x)); return o.length ? `<div class="incar" style="background:#f3e8ff;color:#7e22ce">🚶 A pé daqui: ${o.map(x => `<b>${x.n}</b> ${esc(x.label.split(",").slice(0, 2).join(","))}`).join(" · ")}</div>` : ""; })()}
-      <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a><button type="button" data-okall="${esc(nx.key)}">Entreguei</button></div>
+      ${(() => { const g = groupOf(nx); if (!g) return ""; const o = membersOf(g).filter(x => x !== nx && !done(x)); const lp = membersOf(g).reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0); return o.length ? `<button type="button" class="incar" data-stop="${esc(nx.key)}" style="background:#f3e8ff;color:#7e22ce;border:0;text-align:left;min-height:0">🚶 Parada com ${o.length + 1} endereços a pé · ${lp} pacotes: ${o.map(x => esc(x.label.split(",").slice(0, 2).join(","))).join(" · ")} · <b>ver todos</b></button>` : ""; })()}
+      <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a>${(() => { const g = groupOf(nx), o = g ? membersOf(g).filter(x => !done(x)) : []; return o.length > 1 ? `<button type="button" data-stop="${esc(nx.key)}">Ver ${o.length} endereços</button>` : `<button type="button" data-okall="${esc(nx.key)}">Entreguei</button>`; })()}</div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
       : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
     const nAt = routeAts().length, nSl = SLOTS ? SLOTS.filter(x => x.R?.pkgs?.length).length : 0;
@@ -920,8 +947,10 @@
     drawOtherRoutes();
     drawGroups();
     if (R && !slotShown(activeSlot)) { lineL?.remove(); return; }
-    stops.filter(a => a === nx || atShown(stopAt(a))).forEach(a => {
-      const m = L.marker([a.lat, a.lng], { icon: pinIcon(a, a === nx), zIndexOffset: a === nx ? 1000 : done(a) ? 0 : 500 }).addTo(layer);
+    const nxG = groupOf(nx);
+    stops.filter(a => (a === nx || atShown(stopAt(a))) && (!groupOf(a) || headOf(groupOf(a)) === a)).forEach(a => {
+      const isN = a === nx || (nxG && groupOf(a) === nxG);
+      const m = L.marker([a.lat, a.lng], { icon: pinIcon(a, isN), zIndexOffset: isN ? 1000 : done(a) ? 0 : 500 }).addTo(layer);
       m.on("click", () => { if (grpMode) { grpSel.has(a.key) ? grpSel.delete(a.key) : grpSel.add(a.key); return renderMap(); } openStop(a.key); });
     });
     drawLine();
@@ -1123,12 +1152,15 @@
     if (d.manual) return openManual();
     if (d.geo != null) return addManual(+d.geo);
     if (d.imp) return importChoice(d.imp);
-    if (d.stop) return openStop(d.stop, "view");
+    if (d.stop) return openStop(d.stop);
     if (d.bipstop) { const k = d.bipstop; closeBip(); return openStop(k, "view"); }
     if (d.stopmode) { sh.mode = d.stopmode; sh.sel = {}; return openStop(sh.key); }
     if (d.psel) { const [tn, s] = d.psel.split("|"); sh.sel[tn] = s; return openStop(sh.key); }
     if (d.reason) { sh.reason = sh.reason === d.reason ? "" : d.reason; return openStop(sh.key); }
     if (d.issuesave) return saveIssue(d.issuesave);
+    if (d.okgroup) { const g = (R.groups || []).find(x => x.id === d.okgroup); if (g) membersOf(g).forEach(a => markAll(a.key, "ok")); buzz(50); closeSheet(); render(); const nx = nextStop(); return toast(nx ? `Feito ✓ Próxima: parada ${nx.n}` : "Rota completa ✓"); }
+    if (d.stopone) return openStop(d.stopone, "single");
+    if (d.okall && sheetOn === "group") { markAll(d.okall, "ok"); buzz(50); render(); return toast("Endereço entregue ✓"); }
     if (d.okall) { markAll(d.okall, "ok"); buzz(50); closeSheet(); render(); const nx = nextStop(); return toast(nx ? `Feito ✓ Próxima: parada ${nx.n}` : "Rota completa ✓"); }
     if (d.undo) { const a = byKey.get(d.undo); a.pkgs.forEach(p => delete R.st[p.tn]); delete R.notes[d.undo]; save(); render(); return toast("Desfeito"); }
     if (d.pok) { R.st[d.pok] = { s: "ok", t: Date.now(), r: "" }; save(); tone("ok"); return bipShow(); }
