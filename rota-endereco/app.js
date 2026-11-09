@@ -821,8 +821,9 @@
     const multi = SLOTS && SLOTS.filter(x => x.R?.pkgs?.length).length > 1;
     const s = isNext ? 40 : 30;
     const vol = a.pkgs.some(p => !resolved(p) && (carOf(p)?.v || window.RCApp?.remote?.car?.[normTn(p.tn)]?.v));
-    const multiAt = routeAts().length > 1;
-    const g = groupOf(a);
+    const clean = !!R?.groups?.length;
+    const multiAt = !clean && routeAts().length > 1;
+    const g = clean ? null : groupOf(a);
     const sty = grpMode && grpSel.has(a.key) ? ";box-shadow:0 0 0 4px #f59e0b, 0 2px 6px rgba(0,0,0,.3)" : g && !isNext && st === "idle" ? `;border-color:${grpColor(g)};border-width:3.5px` : multiAt && !isNext && st === "idle" ? `;background:${atColorOf(stopAt(a))};border-color:#fff;color:#fff` : multi && !isNext && st === "idle" ? `;border-color:${slotColor(activeSlot)}` : "";
     return L.divIcon({ className: "", html: `<div class="pin ${cls}" style="position:relative${sty}">${st === "ok" ? "✓" : a.n}${left > 1 ? `<span class="n2">${left}</span>` : ""}${vol ? `<span class="vdot" title="volumoso"></span>` : ""}${multiAt && new Set(a.pkgs.map(p => p.at || "Manual")).size > 1 ? `<span class="atmix">${[...new Set(a.pkgs.map(p => p.at || "Manual"))].map(at => `<i style="background:${atColorOf(at)}"></i>`).join("")}</span>` : ""}</div>`, iconSize: [s, s], iconAnchor: [s / 2, s / 2] });
   }
@@ -864,7 +865,8 @@
       const col = slotColor(sl.id);
       ord.forEach((a, i) => {
         const left = a.pkgs.filter(p => !sl.R.st?.[p.tn]).length; if (!left) return;
-        const m = L.marker([a.lat, a.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="position:relative;background:${col};border-color:#fff;color:#fff">${i + 1}${left > 1 ? `<span class="n2">${left}</span>` : ""}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), zIndexOffset: 200 }).addTo(otherLayer);
+        const cl = !!R?.groups?.length;
+        const m = L.marker([a.lat, a.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="position:relative;background:${col};border-color:#fff;color:#fff${cl ? ";opacity:.4;width:22px;height:22px;font-size:10px" : ""}">${i + 1}${left > 1 && !cl ? `<span class="n2">${left}</span>` : ""}</div>`, iconSize: cl ? [22, 22] : [30, 30], iconAnchor: cl ? [11, 11] : [15, 15] }), zIndexOffset: 200 }).addTo(otherLayer);
         m.on("click", () => { switchSlot(sl.id); setTimeout(() => openStop(a.key, "view"), 50); });
       });
     });
@@ -927,21 +929,27 @@
   function ungroup(id) { R.groups = (R.groups || []).filter(g => g.id !== id); save(); render(); toast("Grupo desfeito"); }
   function drawGroups() {
     grpLayer?.remove(); grpLayer = null;
-    if (!map || !R?.groups?.length) return;
+    if (!map || !R?.groups?.length || !grpMode) return;
     grpLayer = L.layerGroup().addTo(map);
     R.groups.forEach(g => {
       const pts = g.keys.map(k => byKey.get(k)).filter(a => a && !done(a)).map(a => [a.lat, a.lng]);
       if (pts.length > 1) try { L.polyline(pts, { color: grpColor(g), weight: 4, opacity: 0.8, dashArray: "2 8", lineCap: "round", interactive: false }).addTo(grpLayer); } catch (e) {}
     });
   }
+  let nextMin = store.get("rc3:nextMin", false);
+  function setNextMin(v) { nextMin = !!v; store.set("rc3:nextMin", nextMin); renderMap(); }
+  (() => { const el = $("mNext"); if (!el) return; let y0 = null;
+    el.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, { passive: true });
+    el.addEventListener("touchend", e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null; if (dy > 40 && !nextMin) setNextMin(true); else if (dy < -40 && nextMin) setNextMin(false); }, { passive: true }); })();
   function renderMap() {
     const nx = nextStop(), c = counts();
     $("mapTop").innerHTML = R ? `<b>${esc(routeTitle())}</b> · ${c.sDone}/${c.sAll} paradas · ${c.ok}/${c.pk} pacotes` : "";
-    $("mNext").innerHTML = nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
-      ${(() => { const g = groupOf(nx); if (!g) return ""; const o = membersOf(g).filter(x => x !== nx && !done(x)); const lp = membersOf(g).reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0); return o.length ? `<button type="button" class="incar" data-stop="${esc(nx.key)}" style="background:#f3e8ff;color:#7e22ce;border:0;text-align:left;min-height:0">🚶 Parada com ${o.length + 1} endereços a pé · ${lp} pacotes: ${o.map(x => esc(x.label.split(",").slice(0, 2).join(","))).join(" · ")} · <b>ver todos</b></button>` : ""; })()}
+    $("mNext").classList.toggle("min", !!nextMin);
+    $("mNext").innerHTML = (nx ? `<button type="button" class="next-grab" data-nextmin="1" aria-label="${nextMin ? "Mostrar" : "Diminuir"} a próxima parada"><span class="grab"></span></button>` : "") + (nx ? `<button type="button" class="next-h" data-stop="${esc(nx.key)}"><span class="num">${nx.n}</span><span><span class="muted">Próxima parada</span><br><span class="addr">${esc(nx.label)}</span><br><span class="muted">${nx.pkgs.length} pacote${nx.pkgs.length > 1 ? "s" : ""}${shopeeTxt(nx) ? " · Shopee " + esc(shopeeTxt(nx)) : ""}</span>${zonesTxt(nx) ? `<br><span class="incar">Localização no carro: <b>${esc(zonesTxt(nx))}</b></span>` : ""}</span></button>
+      ${(() => { const g = groupOf(nx); if (!g) return ""; const o = membersOf(g).filter(x => x !== nx && !done(x)); const lp = membersOf(g).reduce((t, x) => t + x.pkgs.filter(p => !resolved(p)).length, 0); return o.length ? `<button type="button" class="incar" data-stop="${esc(nx.key)}" style="background:#f3e8ff;color:#7e22ce;border:0;text-align:left;min-height:0">🚶 + ${o.length} endereço${o.length > 1 ? "s" : ""} aqui perto · ${lp} pacotes no total · <b>ver todos</b></button>` : ""; })()}
       <div class="row2"><a class="btn pri" href="${navOf().link(nx)}" target="_blank" rel="noopener">${navOf().name}</a>${(() => { const g = groupOf(nx), o = g ? membersOf(g).filter(x => !done(x)) : []; return o.length > 1 ? `<button type="button" data-stop="${esc(nx.key)}">Ver ${o.length} endereços</button>` : `<button type="button" data-okall="${esc(nx.key)}">Entreguei</button>`; })()}</div>
       <button type="button" class="ghost sm" data-navset="1" style="min-height:28px;justify-self:center">${here ? "🟢 GPS ligado" : "GPS: procurando…"} · navegar com ${navOf().name} · trocar</button>`
-      : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`;
+      : `<b>Todas as paradas resolvidas ✓</b><a class="btn" href="#inicio">Finalizar no Início</a>`);
     const nAt = routeAts().length, nSl = SLOTS ? SLOTS.filter(x => x.R?.pkgs?.length).length : 0;
     if (nAt > 1 || nSl > 1) $("mapTop").innerHTML += ` · <button type="button" class="ghost sm" data-mapselopen="1" style="min-height:0;padding:0 4px">${[nAt > 1 ? (R.atSel ? R.atSel.length + " de " + nAt + " ATs" : nAt + " ATs") : "", nSl > 1 ? (mapSel ? mapSel.length + " rotas" : "todas as rotas") : ""].filter(Boolean).join(" · ")} ▾</button>`;
     if (grpMode) $("mapTop").innerHTML = `<b>Agrupar paradas a pé</b> · toque nas paradas (${grpSel.size} escolhida${grpSel.size === 1 ? "" : "s"})<div class="row2" style="margin-top:6px"><button type="button" class="pri sm" data-grpok="1">Agrupar</button><button type="button" class="sm" data-grpcancel="1">Cancelar</button></div>`;
@@ -964,7 +972,7 @@
     if (!map || !stops.length) return;
     const pend = stops.filter(a => !done(a));
     const pts = (pend.length ? pend : stops).map(a => [a.lat, a.lng]);
-    map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, 70], paddingBottomRight: [30, 230], maxZoom: 16 });
+    map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, 70], paddingBottomRight: [30, nextMin ? 90 : 230], maxZoom: 16 });
   }
   function drawLine() {
     lineL?.remove(); lineL = null;
@@ -1186,6 +1194,7 @@
     if (d.mapselopen) return openMapSel();
     if (d.navpick) { navPref = d.navpick; store.set("rc3:nav", navPref); closeSheet(); render(); return toast("Navegação: " + navOf().name); }
     if (d.navset) return openNavPick();
+    if (d.nextmin) return setNextMin(!nextMin);
     // Código bipado errado: editar ou apagar do carro.
     if (d.ckdel) return twoTap(t, () => { const z = CAR.pk[d.ckdel]?.z; delete CAR.pk[d.ckdel]; saveCar(); toast("Apagado do carro"); if (sheetOn === "zone" && z != null) openZone(z); else { closeSheet(); render(); } });
     if (d.ckedit) { const k = d.ckedit; openSheet(`<h2>Editar código</h2><p class="muted small">Corrija o código do pacote (ex.: BR264026571640T).</p><input type="text" id="ckNew" value="${esc(k)}" autocapitalize="characters" autocomplete="off"><button type="button" class="pri full" data-cksave="${esc(k)}">Salvar</button><button type="button" class="ghost full" data-close="1">Cancelar</button>`, "ckedit"); return; }
