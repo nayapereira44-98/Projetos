@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contador ML</title>
+<meta name="description" content="Conte os pacotes do Mercado Livre bipando as etiquetas na hora de carregar o carro. Avisa quando um pacote já foi contado.">
+<meta name="theme-color" content="#2D3277">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Contador ML">
+<link rel="canonical" href="https://nayapereira44-98.github.io/Projetos/contador-ml/">
+<meta property="og:title" content="Contador ML">
+<meta property="og:description" content="Bipe as etiquetas e saiba quantos pacotes estão no carro.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nayapereira44-98.github.io/Projetos/contador-ml/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232D3277'/%3E%3Ctext x='32' y='44' font-size='34' font-family='Arial' font-weight='700' text-anchor='middle' fill='%23FFE600'%3EML%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --azul: #2D3277;
+    --amarelo: #FFE600;
+    --bg: #f3f4f8;
+    --card: #ffffff;
+    --txt: #16182f;
+    --muted: #5a5e78;
+    --borda: #d9dbe6;
+    --ok: #0a7d3b;
+    --ok-bg: #e3f6ea;
+    --err: #c4141b;
+    --err-bg: #ffe3e3;
+    --warn-bg: #fff6bf;
+    --warn-txt: #5a4a00;
+    --r: 14px;
+    --esp: 16px;
+    --fonte: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1122; --card: #1b1e38; --txt: #f1f2f8; --muted: #a7abc6; --borda: #2f3358;
+      --ok: #5fe08f; --ok-bg: #12351f; --err: #ff8a8a; --err-bg: #3d1114; --warn-bg: #3a3300; --warn-txt: #ffef80;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1122; --card: #1b1e38; --txt: #f1f2f8; --muted: #a7abc6; --borda: #2f3358;
+    --ok: #5fe08f; --ok-bg: #12351f; --err: #ff8a8a; --err-bg: #3d1114; --warn-bg: #3a3300; --warn-txt: #ffef80;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; overflow-x: hidden; }
+  body { font-family: var(--fonte); background: var(--bg); color: var(--txt); font-size: 17px; line-height: 1.4; -webkit-text-size-adjust: 100%; padding-bottom: env(safe-area-inset-bottom); }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  header { background: var(--azul); color: #fff; padding: calc(10px + env(safe-area-inset-top)) var(--esp) 14px; position: sticky; top: 0; z-index: 5; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: .02em; }
+  h1 span { color: var(--amarelo); }
+  .contador { display: flex; align-items: baseline; gap: 12px; margin-top: 2px; }
+  #num { font-size: 88px; font-weight: 800; line-height: 1; color: var(--amarelo); font-variant-numeric: tabular-nums; }
+  .rot { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .bump { animation: bump .25s ease-out; }
+  @keyframes bump { 50% { transform: scale(1.12); } }
+  .tema { background: transparent; border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 10px; min-height: 44px; min-width: 44px; padding: 0 10px; font-size: 14px; }
+
+  main { max-width: 640px; margin: 0 auto; padding: var(--esp); display: grid; gap: 14px; }
+
+  .cam { position: relative; background: #000; border-radius: var(--r); overflow: hidden; aspect-ratio: 4 / 3; max-height: 42vh; width: 100%; }
+  .cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mira { position: absolute; inset: 18% 12%; border: 3px solid var(--amarelo); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,.25); pointer-events: none; }
+  .cam.flash-ok .mira { border-color: #3ddc84; }
+  .cam.flash-err .mira { border-color: #ff3b3b; }
+  .cam-off { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; color: #fff; background: #1b1e38; }
+  .cam-off p { margin: 0; font-size: 15px; color: #d6d8ea; }
+  .cam-bts { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 8px; }
+  .cam-bts button { min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 10px; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; font-weight: 600; }
+  .cam-bts button[aria-pressed="true"] { background: var(--amarelo); color: #111; }
+
+  .bt { min-height: 48px; border-radius: 12px; border: 0; padding: 0 18px; font-weight: 700; font-size: 17px; }
+  .bt-am { background: var(--amarelo); color: #1b1b1b; }
+  .bt-az { background: var(--azul); color: #fff; }
+  .bt-lin { background: transparent; color: var(--txt); border: 2px solid var(--borda); }
+  .bt-red { background: var(--err); color: #fff; }
+  :root[data-theme="dark"] .bt-red { color: #2a0000; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bt-red { color: #2a0000; } }
+
+  .res { border-radius: var(--r); padding: 14px 16px; background: var(--card); border: 2px solid var(--borda); min-height: 64px; }
+  .res b.grande { display: block; font-size: 22px; line-height: 1.2; }
+  .res .det { display: block; margin-top: 4px; font-size: 16px; }
+  .res.ok { background: var(--ok-bg); border-color: var(--ok); }
+  .res.ok b.grande { color: var(--ok); }
+  .res.dup { background: var(--err); border-color: var(--err); color: #fff; }
+  .res.dup b.grande { font-size: 30px; letter-spacing: .02em; }
+  :root[data-theme="dark"] .res.dup { background: #b3121a; border-color: #ff6b6b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .res.dup { background: #b3121a; border-color: #ff6b6b; } }
+  .res.warn { background: var(--warn-bg); border-color: #e0c200; color: var(--warn-txt); }
+  .res.info { color: var(--muted); }
+  .res.pisca { animation: pisca .5s ease-out 2; }
+  @keyframes pisca { 50% { transform: scale(1.03); } }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+
+  form.manual { display: flex; gap: 8px; }
+  form.manual input { flex: 1; min-width: 0; min-height: 48px; border-radius: 12px; border: 2px solid var(--borda); background: var(--card); color: var(--txt); padding: 0 12px; font-size: 18px; }
+  label.tit { font-weight: 700; font-size: 15px; display: block; margin-bottom: 6px; }
+
+  .lista-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  h2 { font-size: 18px; margin: 0; }
+  ol.lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+  .item { background: var(--card); border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+  .item > button { width: 100%; min-height: 52px; display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 8px; padding: 6px 12px; background: transparent; border: 0; color: var(--txt); text-align: left; }
+  .item .n { font-weight: 800; font-size: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .item .cod { font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .item .cod b { font-size: 22px; }
+  .item .cod small { color: var(--muted); font-size: 13px; display: block; }
+  .item .h { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .item .acoes { display: flex; gap: 8px; padding: 0 12px 12px; flex-wrap: wrap; }
+  .item.novo { animation: novo 1.2s ease-out; }
+  @keyframes novo { from { background: var(--ok-bg); } }
+  .vazio { color: var(--muted); text-align: center; padding: 18px 8px; margin: 0; }
+
+  .zerar { display: grid; gap: 8px; margin-top: 6px; }
+  .zerar p { margin: 0; font-weight: 600; }
+  .zerar .linha { display: flex; gap: 8px; flex-wrap: wrap; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 16px 24px; }
+
+  @media (min-width: 900px) {
+    main { max-width: 1100px; grid-template-columns: 1fr 1fr; align-items: start; }
+    .col-a, .col-b { display: grid; gap: 14px; }
+    .cam { max-height: 55vh; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Contador <span>ML</span></h1>
+    <button type="button" class="tema" id="btTema" aria-label="Trocar tema claro ou escuro">Tema</button>
+  </div>
+  <div class="contador" aria-live="polite">
+    <span id="num">0</span>
+    <span class="rot" id="rot">pacotes<br>no carro</span>
+  </div>
+</header>
+
+<main>
+  <div class="col-a">
+    <section class="cam" id="cam" aria-label="Câmera para bipar etiquetas">
+      <video id="video" playsinline muted autoplay aria-hidden="true"></video>
+      <div class="mira" id="mira" hidden></div>
+      <div class="cam-off" id="camOff">
+        <p id="camMsg">Aponte a câmera para o código de barras ou QR da etiqueta.</p>
+        <button type="button" class="bt bt-am" id="btCam">Abrir câmera</button>
+      </div>
+      <div class="cam-bts" id="camBts" hidden>
+        <button type="button" id="btLuz" aria-pressed="false" hidden>Lanterna</button>
+        <button type="button" id="btParar">Pausar câmera</button>
+      </div>
+    </section>
+
+    <div class="res info" id="res" role="status" aria-live="assertive">
+      <b class="grande">Pronto para bipar</b>
+      <span class="det">Cada etiqueta nova soma 1. Se repetir, o app avisa.</span>
+    </div>
+
+    <form class="manual" id="formManual" autocomplete="off">
+      <div style="flex:1;min-width:0">
+        <label class="tit" for="campo">Digitar o número do envio</label>
+        <div style="display:flex;gap:8px">
+          <input id="campo" inputmode="numeric" enterkeyhint="done" placeholder="Ex.: 48638274752" aria-describedby="res">
+          <button type="submit" class="bt bt-az">Contar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-b">
+    <section aria-labelledby="titLista">
+      <div class="lista-cab">
+        <h2 id="titLista">Pacotes bipados</h2>
+        <span class="h" id="resumo"></span>
+      </div>
+      <ol class="lista" id="lista"></ol>
+    </section>
+
+    <section class="zerar" id="zerar" aria-label="Começar nova carga"></section>
+  </div>
+</main>
+<footer>Os dados ficam só neste aparelho. Toque num pacote da lista para tirar da contagem.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const CHAVE = "contadorML.v1";
+  const ESPERA_RELEITURA = 3000; // ms: mesma leitura da câmera em seguida é ignorada
+  const buzz = ms => { try { navigator.vibrate?.(ms); } catch {} };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const hora = t => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const ha = t => {
+    const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 60) return "agora há pouco";
+    const m = Math.round(s / 60);
+    if (m < 60) return `há ${m} min`;
+    const h = Math.floor(m / 60), r = m % 60;
+    return `há ${h} h${r ? " " + r + " min" : ""}`;
+  };
+
+  // ---------- Lógica: entender o que foi lido ----------
+  // Devolve { tipo: "envio" | "nota" | "outro" | "vazio", chave, envio?, texto }
+  function entender(texto) {
+    const t = String(texto || "").trim();
+    if (!t) return { tipo: "vazio", texto: t };
+    // QR do Mercado Livre: JSON com "id"
+    if (t[0] === "{") {
+      try {
+        const o = JSON.parse(t);
+        const id = o && (o.id ?? o.shipment_id ?? o.envio);
+        const d = String(id ?? "").replace(/\D/g, "");
+        if (d.length >= 8 && d.length <= 14) return { tipo: "envio", chave: d, envio: d, texto: t };
+      } catch {}
+      const m = t.match(/"id"\s*:\s*"?(\d{8,14})/);
+      if (m) return { tipo: "envio", chave: m[1], envio: m[1], texto: t };
+    }
+    const soDig = t.replace(/[\s.\-\/]/g, "");
+    if (/^\d+$/.test(soDig)) {
+      if (soDig.length === 44) return { tipo: "nota", texto: t };
+      if (soDig.length >= 10 && soDig.length <= 12) return { tipo: "envio", chave: soDig, envio: soDig, texto: t };
+    }
+    // Chave de nota fiscal no meio de um texto/endereço (ex.: QR da nota)
+    if (/(^|\D)\d{44}(\D|$)/.test(t) && !/(^|\D)\d{10,12}(\D|$)/.test(t.replace(/\d{44}/g, ""))) return { tipo: "nota", texto: t };
+    // Etiqueta da transportadora ou outro formato: procura 10 a 12 dígitos seguidos
+    const m = t.match(/(?:^|\D)(\d{10,12})(?!\d)/);
+    if (m) return { tipo: "envio", chave: m[1], envio: m[1], texto: t };
+    return { tipo: "outro", chave: "T:" + t, texto: t };
+  }
+
+  // ---------- Dados ----------
+  let itens = []; // { k, e (envio ou ""), x (texto lido), t (hora em ms) } em ordem de bipe
+  function carregar() {
+    try { const d = JSON.parse(localStorage.getItem(CHAVE) || "null"); if (d && Array.isArray(d.itens)) itens = d.itens.filter(i => i && i.k); } catch { itens = []; }
+  }
+  function salvar() {
+    try { localStorage.setItem(CHAVE, JSON.stringify({ itens })); return true; }
+    catch { mostrar("warn", "Não consegui guardar neste aparelho", "A contagem continua, mas pode se perder se fechar a página."); return false; }
+  }
+  const posDe = k => itens.findIndex(i => i.k === k);
+
+  // ---------- Som ----------
+  let ac = null;
+  function prepararSom() {
+    if (ac) { try { ac.resume?.(); } catch {} return; }
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume?.(); } catch { ac = null; }
+  }
+  function tom(tipo) {
+    try {
+      if (!ac) return;
+      const seq = tipo === "ok" ? [[1046, 0.09]] : tipo === "warn" ? [[523, 0.15], [523, 0.15]] : [[260, 0.18], [190, 0.18], [150, 0.28]];
+      let t = ac.currentTime;
+      seq.forEach(([f, d]) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = tipo === "err" ? "square" : "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02); t += d + 0.05;
+      });
+    } catch {}
+  }
+  document.addEventListener("pointerdown", prepararSom, { passive: true });
+
+  // ---------- Tela ----------
+  function finalDestacado(e) {
+    if (!e) return "";
+    return `${esc(e.slice(0, -5))}<b>${esc(e.slice(-5))}</b>`;
+  }
+  function mostrar(cls, titulo, det, pisca) {
+    const r = $("res");
+    r.className = "res " + cls + (pisca ? " pisca" : "");
+    r.innerHTML = `<b class="grande">${titulo}</b>${det ? `<span class="det">${det}</span>` : ""}`;
+    if (pisca) { void r.offsetWidth; }
+  }
+  function piscarCam(tipo) {
+    const c = $("cam"); c.classList.remove("flash-ok", "flash-err"); void c.offsetWidth;
+    c.classList.add(tipo === "err" ? "flash-err" : "flash-ok");
+    clearTimeout(piscarCam.t); piscarCam.t = setTimeout(() => c.classList.remove("flash-ok", "flash-err"), 900);
+  }
+  let aberto = null, novoK = null, confirmando = false;
+  function desenhar() {
+    const n = itens.length;
+    const num = $("num");
+    if (num.textContent !== String(n)) { num.textContent = n; num.classList.remove("bump"); void num.offsetWidth; num.classList.add("bump"); }
+    $("rot").innerHTML = n === 1 ? "pacote<br>no carro" : "pacotes<br>no carro";
+    $("resumo").textContent = n ? `${n} no total` : "";
+    const ol = $("lista");
+    if (!n) ol.innerHTML = `<li class="vazio">Nenhum pacote ainda. Bipe a primeira etiqueta.</li>`;
+    else ol.innerHTML = itens.map((it, i) => ({ it, i })).reverse().map(({ it, i }) => `
+      <li class="item${it.k === novoK ? " novo" : ""}">
+        <button type="button" data-abrir="${esc(it.k)}" aria-expanded="${aberto === it.k}">
+          <span class="n">${i + 1}º</span>
+          <span class="cod">${it.e ? `<span class="mono" style="word-break:normal">${finalDestacado(it.e)}</span>` : `<span class="mono">${esc(it.x.slice(0, 60))}</span><small>código não reconhecido</small>`}</span>
+          <span class="h">${hora(it.t)}</span>
+        </button>
+        ${aberto === it.k ? `<div class="acoes"><button type="button" class="bt bt-red" data-tirar="${esc(it.k)}">Tirar da contagem</button><button type="button" class="bt bt-lin" data-fechar="1">Cancelar</button></div>` : ""}
+      </li>`).join("");
+    novoK = null;
+    const z = $("zerar");
+    z.innerHTML = confirmando
+      ? `<p>Zerar os ${n} pacote${n === 1 ? "" : "s"} e começar outra carga?</p><div class="linha"><button type="button" class="bt bt-red" data-zerar="sim">Sim, zerar tudo</button><button type="button" class="bt bt-lin" data-zerar="nao">Não, voltar</button></div>`
+      : `<button type="button" class="bt bt-lin" data-zerar="pedir"${n ? "" : " disabled"}>Nova carga (zerar)</button>`;
+  }
+
+  // ---------- Bipar (a câmera e o campo de digitar chamam esta função) ----------
+  const ultimaLeitura = {}; // chave/texto -> última vez que a câmera leu
+  function onCode(texto, origem) {
+    origem = origem || "camera";
+    const r = entender(texto);
+    if (r.tipo === "vazio") return { resultado: "vazio" };
+    const agora = Date.now();
+    const id = r.chave || "NF:" + r.texto;
+    if (origem === "camera") {
+      const antes = ultimaLeitura[id];
+      ultimaLeitura[id] = agora;
+      if (antes && agora - antes < ESPERA_RELEITURA) return { resultado: "ignorado" };
+    }
+    if (r.tipo === "nota") {
+      tom("warn"); buzz([80, 60, 80]); piscarCam("err");
+      mostrar("warn", "Esse é o código da nota fiscal.", "Bipe o QR ou o código de barras do <b>Envio</b>. Não foi contado.", true);
+      return { resultado: "nota" };
+    }
+    const p = posDe(r.chave);
+    if (p >= 0) {
+      const it = itens[p];
+      tom("err"); buzz([250, 100, 250, 100, 250]); piscarCam("err");
+      mostrar("dup", "JÁ ESCANEADO", `${it.e ? `Envio <span class="mono">${finalDestacado(it.e)}</span><br>` : `<span class="mono">${esc(it.x.slice(0, 80))}</span><br>`}Bipado como nº ${p + 1}, às ${hora(it.t)} (${ha(it.t)}). <b>Não somou.</b>`, true);
+      return { resultado: "duplicado", n: p + 1 };
+    }
+    itens.push({ k: r.chave, e: r.envio || "", x: r.texto.slice(0, 300), t: agora });
+    salvar();
+    novoK = r.chave; aberto = null;
+    tom("ok"); buzz(70); piscarCam("ok");
+    if (r.tipo === "envio") mostrar("ok", `+1 · Pacote nº ${itens.length}`, `Envio <span class="mono">${finalDestacado(r.envio)}</span>`);
+    else mostrar("ok", `+1 · Pacote nº ${itens.length}`, `Código lido (não é do padrão do ML): <span class="mono">${esc(r.texto.slice(0, 120))}</span>`);
+    desenhar();
+    return { resultado: "contado", n: itens.length };
+  }
+  window.onCode = onCode;
+  window.entenderCodigo = entender;
+
+  $("formManual").addEventListener("submit", ev => {
+    ev.preventDefault();
+    prepararSom();
+    const c = $("campo"), v = c.value.trim();
+    if (!v) { mostrar("warn", "Digite o número do envio", "Ele fica embaixo do código de barras, depois de “Envio:”."); c.focus(); return; }
+    const r = onCode(v, "manual");
+    if (r.resultado === "contado") c.value = "";
+  });
+
+  document.addEventListener("click", ev => {
+    const b = ev.target.closest("button"); if (!b) return;
+    const d = b.dataset;
+    if (d.abrir !== undefined) { aberto = aberto === d.abrir ? null : d.abrir; confirmando = false; desenhar(); return; }
+    if (d.fechar) { aberto = null; desenhar(); return; }
+    if (d.tirar !== undefined) {
+      const p = posDe(d.tirar);
+      if (p >= 0) {
+        const it = itens.splice(p, 1)[0];
+        salvar(); aberto = null; delete ultimaLeitura[it.k];
+        mostrar("info", "Tirado da contagem", `${it.e ? `Envio <span class="mono">${finalDestacado(it.e)}</span>` : esc(it.x.slice(0, 80))}. Agora são ${itens.length}.`);
+        desenhar();
+      }
+      return;
+    }
+    if (d.zerar === "pedir") { confirmando = true; aberto = null; desenhar(); $("zerar").querySelector("[data-zerar=nao]")?.focus(); return; }
+    if (d.zerar === "nao") { confirmando = false; desenhar(); return; }
+    if (d.zerar === "sim") {
+      itens = []; confirmando = false; aberto = null;
+      Object.keys(ultimaLeitura).forEach(k => delete ultimaLeitura[k]);
+      salvar();
+      mostrar("info", "Nova carga começada", "Contador zerado. Pode bipar.");
+      desenhar(); return;
+    }
+  });
+
+  // ---------- Tema ----------
+  const raiz = document.documentElement;
+  try { const t = localStorage.getItem(CHAVE + ".tema"); if (t) raiz.dataset.theme = t; } catch {}
+  $("btTema").addEventListener("click", () => {
+    const escuroAgora = raiz.dataset.theme ? raiz.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    raiz.dataset.theme = escuroAgora ? "light" : "dark";
+    try { localStorage.setItem(CHAVE + ".tema", raiz.dataset.theme); } catch {}
+  });
+
+  // ---------- Câmera (mesmo jeito do Rota Certa: ZXing lendo quadros do vídeo) ----------
+  let cam = null;
+  function dicas() {
+    const F = ZXing.BarcodeFormat, h = new Map();
+    h.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.EAN_13, F.QR_CODE, F.DATA_MATRIX]);
+    return h;
+  }
+  function camMsg(txt, botao) {
+    $("camOff").hidden = false; $("mira").hidden = true; $("camBts").hidden = true;
+    $("camMsg").innerHTML = txt;
+    $("btCam").textContent = botao || "Abrir câmera";
+  }
+  async function abrirCam() {
+    prepararSom();
+    if (!window.ZXing) return camMsg("O leitor não carregou. Confira a internet e recarregue a página. Enquanto isso, digite o número abaixo.", "Tentar de novo");
+    if (!navigator.mediaDevices?.getUserMedia) return camMsg("Este navegador não abre a câmera aqui. Use o Safari (iPhone) ou o Chrome (Android), ou digite o número abaixo.", "Tentar de novo");
+    fecharCam();
+    cam = { stream: null, parar: false, rot: 0, f: false };
+    $("camMsg").textContent = "Abrindo a câmera…";
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (err) {
+      cam = null;
+      const negou = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
+      return camMsg(negou
+        ? "<b>A câmera foi bloqueada.</b><br>iPhone: Ajustes &gt; Safari &gt; Câmera &gt; Permitir (ou toque em “aA” na barra do endereço &gt; Ajustes do site &gt; Câmera).<br>Android: toque no cadeado ao lado do endereço &gt; Permissões &gt; Câmera.<br>Enquanto isso, digite o número abaixo."
+        : "Não consegui abrir a câmera. Feche outros apps que usam a câmera e tente de novo, ou digite o número abaixo.", "Tentar de novo");
+    }
+    if (!cam || cam.parar) { stream.getTracks().forEach(t => t.stop()); return; }
+    cam.stream = stream;
+    const v = $("video");
+    v.srcObject = stream; v.setAttribute("playsinline", ""); v.muted = true;
+    try { await v.play(); } catch {}
+    $("camOff").hidden = true; $("mira").hidden = false; $("camBts").hidden = false;
+    const trilha = stream.getVideoTracks()[0];
+    cam.trilha = trilha;
+    try {
+      const cap = trilha.getCapabilities?.() || {};
+      if (Array.isArray(cap.focusMode) && cap.focusMode.includes("continuous")) trilha.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+      $("btLuz").hidden = !cap.torch;
+    } catch { $("btLuz").hidden = true; }
+    $("btLuz").setAttribute("aria-pressed", "false");
+    loop();
+  }
+  function fecharCam() {
+    if (cam) { cam.parar = true; cam.stream?.getTracks().forEach(t => t.stop()); }
+    cam = null; $("video").srcObject = null;
+  }
+  function loop() {
+    if (!cam || cam.parar) return;
+    const v = $("video");
+    if (v.readyState >= 2 && v.videoWidth) {
+      const vw = v.videoWidth, vh = v.videoHeight;
+      const full = (cam.f = !cam.f);
+      const sx = full ? 0 : vw * 0.12, sy = full ? 0 : vh * 0.18, sw = full ? vw : vw * 0.76, sh = full ? vh : vh * 0.64;
+      const sc = Math.min(1, 1000 / Math.max(sw, sh)), dw = Math.round(sw * sc), dh = Math.round(sh * sc);
+      const cv = cam.cv || (cam.cv = document.createElement("canvas")), ctx = cv.getContext("2d", { willReadFrequently: true });
+      const rot = (cam.rot = (cam.rot + (full ? 1 : 0)) % 2);
+      cv.width = rot ? dh : dw; cv.height = rot ? dw : dh;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (rot) { ctx.translate(dh, 0); ctx.rotate(Math.PI / 2); }
+      ctx.drawImage(v, sx, sy, sw, sh, 0, 0, dw, dh);
+      try {
+        const r = (cam.leitor || (cam.leitor = new ZXing.MultiFormatReader())).decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv))), cam.h || (cam.h = dicas()));
+        onCode(r.getText(), "camera");
+      } catch {}
+    }
+    setTimeout(() => requestAnimationFrame(loop), 60);
+  }
+  $("btCam").addEventListener("click", abrirCam);
+  $("btParar").addEventListener("click", () => { fecharCam(); camMsg("Câmera pausada.", "Abrir câmera"); });
+  $("btLuz").addEventListener("click", async () => {
+    const b = $("btLuz"), liga = b.getAttribute("aria-pressed") !== "true";
+    try { await cam?.trilha?.applyConstraints({ advanced: [{ torch: liga }] }); b.setAttribute("aria-pressed", String(liga)); }
+    catch { b.hidden = true; }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && cam) { fecharCam(); camMsg("Câmera pausada porque você saiu da tela.", "Abrir câmera"); }
+  });
+
+  // ---------- Início ----------
+  carregar();
+  desenhar();
+  if (itens.length) mostrar("info", `Contagem guardada: ${itens.length} pacote${itens.length === 1 ? "" : "s"}`, `Último às ${hora(itens[itens.length - 1].t)}. Continue bipando ou toque em “Nova carga”.`);
+  // Se a câmera já foi liberada antes, abre sozinha
+  try {
+    navigator.permissions?.query({ name: "camera" }).then(p => { if (p.state === "granted") abrirCam(); }).catch(() => {});
+  } catch {}
+})();
+</script>
+</body>
+</html>
